@@ -1,0 +1,17 @@
+[package]
+name = "squire"
+version = "0.0.1"
+edition = "2024"
+description = "Safe and idiomatic SQLite bindings"
+readme = "Readme.md"
+repository.workspace = true
+license.workspace = true
+categories = ["api-bindings", "database"]
+keywords = ["sqlite", "database", "api", "bindings", "sql"]
+
+[workspace]
+resolver = "3"
+
+[workspace.package]
+repository = "https://github.com/silverlyra/squire"
+license = "Apache-2.0"
