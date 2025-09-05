@@ -1,6 +1,6 @@
 [package]
 name = "squire"
-version = "0.0.1"
+version = "0.0.1-alpha.1"
 edition = "2024"
 description = "Safe and idiomatic SQLite bindings"
 readme = "Readme.md"
@@ -11,7 +11,76 @@ keywords = ["sqlite", "database", "api", "bindings", "sql"]
 
 [workspace]
 resolver = "3"
+members = ["crates/sys"]
 
 [workspace.package]
 repository = "https://github.com/silverlyra/squire"
 license = "Apache-2.0"
+
+[features]
+default = ["linked", "common", "multi-thread"]
+
+common = ["sqlite/common", "json", "url"]
+full = ["sqlite/full", "common"]
+
+bundled = ["sqlite/bundled"]
+linked = ["sqlite/bindgen"]
+static = ["sqlite/static"]
+
+single-thread = ["sqlite/single-thread"]
+multi-thread = ["sqlite/multi-thread"]
+serialized = ["sqlite/serialized"]
+
+armor = ["sqlite/armor"]
+auto-vacuum = ["sqlite/auto-vacuum"]
+column-metadata = ["sqlite/column-metadata"]
+decltype = ["sqlite/decltype"]
+extensions = ["sqlite/extensions"]
+fts = ["sqlite/fts"]
+fts3 = ["sqlite/fts3"]
+fts5 = ["sqlite/fts5"]
+geo = ["sqlite/geo"]
+geopoly = ["sqlite/geopoly"]
+json = ["sqlite/json", "dep:serde_json"]
+memory-status = ["sqlite/memory-status"]
+normalize-sql = ["sqlite/normalize-sql"]
+page-vtab = ["sqlite/page-vtab"]
+preupdate-hook = ["sqlite/preupdate-hook"]
+progress-callback = ["sqlite/progress-callback"]
+rtree = ["sqlite/rtree"]
+serialize = ["sqlite/serialize"]
+session = ["sqlite/session"]
+shared-cache = ["sqlite/shared-cache"]
+snapshot = ["sqlite/snapshot"]
+soundex = ["sqlite/soundex"]
+stat-vtab = ["sqlite/stat-vtab"]
+stat4 = ["sqlite/stat4"]
+trace = ["sqlite/trace"]
+
+nightly = []
+
+utf-16 = []
+
+url = ["dep:url"]
+widestring = ["utf-16", "dep:widestring"]
+
+[dependencies.sqlite]
+package = "squire-sqlite3-sys"
+path = "crates/sys"
+version = "0.0.1-alpha.1"
+
+[dependencies.serde_json]
+version = "^1.0"
+optional = true
+
+[dependencies.url]
+version = "^2.5"
+optional = true
+
+[dependencies.widestring]
+version = "^1.0.2"
+optional = true
+
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]

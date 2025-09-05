@@ -1,0 +1,72 @@
+use core::{ffi::CStr, ptr};
+
+use sqlite::{SQLITE_OK, SQLITE_OPEN_EXRESCODE, sqlite3, sqlite3_close, sqlite3_open_v2};
+
+use crate::{
+    call,
+    error::{Error, Result},
+};
+
+/// A thin wrapper around a [`sqlite3`] connection pointer.
+#[derive(Debug)]
+#[repr(transparent)]
+pub struct Connection {
+    handle: ptr::NonNull<sqlite3>,
+}
+
+#[cfg(any(feature = "multi-thread", feature = "serialized"))]
+unsafe impl Send for Connection {}
+#[cfg(feature = "serialized")]
+unsafe impl Sync for Connection {}
+
+impl Connection {
+    #[inline]
+    #[must_use]
+    pub const fn new(handle: *mut sqlite3) -> Option<Self> {
+        match ptr::NonNull::new(handle) {
+            Some(handle) => Some(Self { handle }),
+            None => None,
+        }
+    }
+
+    #[must_use]
+    pub fn open(path: &CStr, flags: i32, vfs: Option<&CStr>) -> Result<Self> {
+        let path = path.as_ptr();
+        let vfs = vfs.map(|vfs| vfs.as_ptr()).unwrap_or(ptr::null());
+
+        let mut db: *mut sqlite3 = ptr::null_mut();
+        let result = unsafe { sqlite3_open_v2(path, &mut db, flags | SQLITE_OPEN_EXRESCODE, vfs) };
+
+        match Self::new(db) {
+            Some(db) if result == SQLITE_OK => Ok(db),
+            _ => Err(Error::from(result)),
+        }
+    }
+
+    #[inline]
+    pub fn close(self) -> Result<()> {
+        call! { sqlite3_close(self.as_ptr()) }
+    }
+
+    #[inline]
+    pub(super) fn as_ptr(&self) -> *mut sqlite3 {
+        self.handle.as_ptr()
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use std::ffi::CString;
+
+    use sqlite::{SQLITE_OPEN_CREATE, SQLITE_OPEN_READWRITE};
+
+    use super::Connection;
+
+    #[test]
+    fn test_open_memory() {
+        let path = CString::new(":memory:").unwrap();
+        let connection = Connection::open(&path, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE, None)
+            .expect("open SQLite connection");
+        connection.close().expect("close SQLite connection");
+    }
+}

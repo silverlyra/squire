@@ -1,0 +1,112 @@
+[package]
+name = "squire-sqlite3-sys"
+description = "External FFI bindings for the SQLite C API"
+version = "0.0.1-alpha.1"
+edition = "2024"
+links = "sqlite3"
+readme = "Readme.md"
+repository.workspace = true
+license.workspace = true
+categories = ["external-ffi-bindings"]
+keywords = ["sqlite", "ffi"]
+
+[features]
+default = ["linked", "common", "multi-thread"]
+bindgen = [
+    "dep:bindgen",
+    "dep:syn",
+    "dep:prettyplease",
+    "dep:proc-macro2",
+    "dep:quote",
+]
+bundled = ["dep:sqlite", "bindgen", "static"]
+linked = ["bindgen"]
+static = []
+
+single-thread = []
+multi-thread = []
+serialized = []
+
+common = [
+    "fts",
+    "geo",
+    "json",
+    "metadata",
+    "serialize",
+    "snapshot",
+    "stat4",
+    "stat-vtab",
+]
+full = [
+    "common",
+    "extensions",
+    "memory-status",
+    "normalize-sql",
+    "preupdate-hook",
+    "progress-callback",
+    "session",
+    "soundex",
+    "trace",
+]
+metadata = ["column-metadata", "decltype"]
+
+armor = []
+auto-vacuum = []
+column-metadata = []
+decltype = []
+extensions = []
+fts = ["fts3", "fts5"]
+fts3 = []
+fts5 = []
+geo = ["geopoly", "rtree"]
+geopoly = []
+json = []
+memory-status = []
+normalize-sql = []
+page-vtab = []
+preupdate-hook = []
+progress-callback = []
+rtree = []
+serialize = []
+session = ["preupdate-hook"]
+shared-cache = ["multi-thread"]
+snapshot = []
+soundex = []
+stat-vtab = []
+stat4 = []
+trace = []
+
+[build-dependencies.sqlite]
+package = "squire-sqlite3-src"
+path = "../../../ext/squire-src"
+version = "3.50.4-alpha.1"
+optional = true
+
+[build-dependencies.bindgen]
+version = "^0.72"
+optional = true
+
+[build-dependencies.syn]
+version = "^2.0"
+features = ["full", "parsing", "printing"]
+optional = true
+
+[build-dependencies.prettyplease]
+version = "^0.2"
+optional = true
+
+[build-dependencies.proc-macro2]
+version = "^1.0"
+optional = true
+
+[build-dependencies.quote]
+version = "^1.0"
+optional = true
+
+[build-dependencies.pkg-config]
+version = "^0.3.32"
+optional = true
+
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]
