@@ -15,11 +15,18 @@ pub struct Connection {
 }
 
 #[cfg(any(feature = "multi-thread", feature = "serialized"))]
+#[cfg_attr(
+    docsrs,
+    doc(cfg(any(feature = "multi-thread", feature = "serialized")))
+)]
 unsafe impl Send for Connection {}
+
 #[cfg(feature = "serialized")]
+#[cfg_attr(docsrs, doc(cfg(feature = "serialized")))]
 unsafe impl Sync for Connection {}
 
 impl Connection {
+    /// Adopt a raw [`sqlite3`] connection pointer.
     #[inline]
     #[must_use]
     pub const fn new(handle: *mut sqlite3) -> Option<Self> {
@@ -29,7 +36,9 @@ impl Connection {
         }
     }
 
+    /// Open a new SQLite database connection.
     #[must_use]
+    #[doc(alias = "sqlite3_open_v2")]
     pub fn open(path: &CStr, flags: i32, vfs: Option<&CStr>) -> Result<Self> {
         let path = path.as_ptr();
         let vfs = vfs.map(|vfs| vfs.as_ptr()).unwrap_or(ptr::null());
@@ -43,13 +52,15 @@ impl Connection {
         }
     }
 
+    /// Close the SQLite database connection.
     #[inline]
     pub fn close(self) -> Result<()> {
         call! { sqlite3_close(self.as_ptr()) }
     }
 
+    /// Access the raw [`sqlite3`] connection pointer.
     #[inline]
-    pub(super) fn as_ptr(&self) -> *mut sqlite3 {
+    pub const fn as_ptr(&self) -> *mut sqlite3 {
         self.handle.as_ptr()
     }
 }

@@ -38,7 +38,7 @@ where
     }
 }
 
-const EMPTY: &'static CStr = unsafe { CStr::from_bytes_with_nul_unchecked(b"\0") };
+const EMPTY: &'static CStr = c"";
 
 #[derive(PartialEq, Eq, Copy, Clone, Debug)]
 pub struct Database<L = CString>
@@ -78,6 +78,15 @@ where
 
     pub(crate) fn into_endpoint(self) -> Endpoint<L> {
         self.endpoint
+    }
+}
+
+impl<L> AsRef<Database<L>> for Database<L>
+where
+    L: AsRef<CStr> + Clone + fmt::Debug,
+{
+    fn as_ref(&self) -> &Database<L> {
+        self
     }
 }
 

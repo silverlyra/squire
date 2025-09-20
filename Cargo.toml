@@ -32,7 +32,9 @@ multi-thread = ["sqlite/multi-thread"]
 serialized = ["sqlite/serialized"]
 
 armor = ["sqlite/armor"]
+authorization = ["sqlite/authorization"]
 auto-vacuum = ["sqlite/auto-vacuum"]
+blob-io = ["sqlite/blob-io"]
 column-metadata = ["sqlite/column-metadata"]
 decltype = ["sqlite/decltype"]
 extensions = ["sqlite/extensions"]
@@ -81,6 +83,10 @@ optional = true
 version = "^1.0.2"
 optional = true
 
+[[test]]
+name = "raw"
+
 [package.metadata.docs.rs]
-all-features = true
+features = ["bundled", "full", "serialized"]
+no-default-features = true
 rustdoc-args = ["--cfg", "docsrs"]

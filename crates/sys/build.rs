@@ -83,8 +83,12 @@ fn build_bundled_sqlite(dest: &Path) -> Result<sqlite::Build> {
 
     #[cfg(feature = "armor")]
     config.set(sqlite::Setting::EnableApiArmor(true));
+    #[cfg(feature = "authorization")]
+    config.set(sqlite::Setting::EnableAuthorization(true));
     #[cfg(feature = "auto-vacuum")]
     config.set(sqlite::Setting::DefaultAutomaticVacuum(true));
+    #[cfg(feature = "blob-io")]
+    config.set(sqlite::Setting::EnableBlobIo(true));
     #[cfg(feature = "column-metadata")]
     config.set(sqlite::Setting::EnableColumnMetadata(true));
     #[cfg(feature = "decltype")]

@@ -39,6 +39,8 @@ common = [
 ]
 full = [
     "common",
+    "authorization",
+    "blob-io",
     "extensions",
     "memory-status",
     "normalize-sql",
@@ -51,7 +53,9 @@ full = [
 metadata = ["column-metadata", "decltype"]
 
 armor = []
+authorization = []
 auto-vacuum = []
+blob-io = []
 column-metadata = []
 decltype = []
 extensions = []
@@ -108,5 +112,6 @@ version = "^0.3.32"
 optional = true
 
 [package.metadata.docs.rs]
-all-features = true
+features = ["bundled", "full", "serialized"]
+no-default-features = true
 rustdoc-args = ["--cfg", "docsrs"]

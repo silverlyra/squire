@@ -3,7 +3,7 @@ use std::ffi::CString;
 
 use sqlite::{
     SQLITE_OPEN_CREATE, SQLITE_OPEN_FULLMUTEX, SQLITE_OPEN_NOFOLLOW, SQLITE_OPEN_NOMUTEX,
-    SQLITE_OPEN_READONLY, SQLITE_OPEN_READWRITE,
+    SQLITE_OPEN_READONLY, SQLITE_OPEN_READWRITE, SQLITE_OPEN_URI,
 };
 
 use crate::database::{Database, Endpoint, IntoLocation};
@@ -22,20 +22,27 @@ impl Connection {
     where
         L: AsRef<CStr> + Clone + fmt::Debug;
 
+    #[inline]
+    #[must_use]
     fn new(inner: ffi::Connection) -> Self {
         Self { inner }
     }
 
-    pub fn open<L>(database: &Database<L>) -> Result<Self>
+    #[must_use]
+    pub fn open<L>(database: impl AsRef<Database<L>>) -> Result<Self>
     where
         L: AsRef<CStr> + Clone + fmt::Debug,
     {
-        let connection =
-            ffi::Connection::open(database.endpoint().location(), DEFAULT_OPEN_MODE, None)?;
+        let connection = ffi::Connection::open(
+            database.as_ref().endpoint().location(),
+            DEFAULT_OPEN_MODE,
+            None,
+        )?;
 
         Ok(Connection::new(connection))
     }
 
+    #[must_use]
     pub fn builder<L>(database: impl ToOwned<Owned = Database<L>>) -> ConnectionBuilder<L>
     where
         L: AsRef<CStr> + Clone + fmt::Debug,
@@ -45,6 +52,11 @@ impl Connection {
 
     pub fn close(self) -> Result<()> {
         self.inner.close()
+    }
+
+    #[inline]
+    pub fn internal_ref(&self) -> &ffi::Connection {
+        &self.inner
     }
 }
 
@@ -123,6 +135,16 @@ where
         } else {
             SQLITE_OPEN_NOMUTEX
         })
+    }
+
+    #[doc(alias = "SQLITE_OPEN_URI")]
+    pub fn uri_filenames(self, enable: bool) -> Self {
+        let flags = if enable {
+            self.flags | SQLITE_OPEN_URI
+        } else {
+            self.flags & !SQLITE_OPEN_URI
+        };
+        self.with_flags(flags)
     }
 
     pub fn vfs(self, vfs: impl IntoLocation<Location = L>) -> Self {
