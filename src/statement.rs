@@ -1,6 +1,8 @@
+use sqlite::{SQLITE_PREPARE_DONT_LOG, SQLITE_PREPARE_NO_VTAB, SQLITE_PREPARE_PERSISTENT};
+
 use crate::{
     connection::Connection,
-    error::{Error, Result},
+    error::{Error, ErrorLocation, ErrorMessage, Result},
     ffi::{self, Execute},
     param::{Bind, Index, Parameters},
 };
@@ -19,6 +21,20 @@ impl<'c> Statement<'c> {
     #[must_use]
     pub(crate) const fn new(inner: ffi::Statement<'c>) -> Self {
         Self { inner }
+    }
+
+    #[must_use]
+    pub fn prepare(
+        connection: &'c Connection,
+        query: impl AsRef<str>,
+        options: PrepareOptions,
+    ) -> Result<Self, (ErrorMessage, Option<ErrorLocation>)> {
+        ffi::Statement::prepare(
+            connection.internal_ref(),
+            query.as_ref(),
+            options.into_inner(),
+        )
+        .map(|(statement, _)| Self::new(statement))
     }
 
     pub fn binding(&mut self) -> Binding<'c, '_> {
@@ -66,7 +82,7 @@ where
     where
         B: Bind<'b>,
     {
-        unsafe { self.inner.set(index, value.into_bind_value()) }
+        unsafe { self.inner.set(index, value.into_bind_value()?) }
     }
 
     pub fn ready<'b>(&'b mut self) -> Execution<'c, &'b mut ffi::Binding<'c, 's>> {
@@ -94,5 +110,43 @@ where
     #[inline]
     const fn new(inner: ffi::Execution<'c, S>) -> Self {
         Self { inner }
+    }
+}
+
+/// Controls the behavior of [preparing](Statement::prepare()) a [`Statement`].
+#[derive(PartialEq, Eq, Clone, Copy)]
+pub struct PrepareOptions(u32);
+
+impl PrepareOptions {
+    const DONT_LOG: u32 = SQLITE_PREPARE_DONT_LOG as u32;
+    const PERSISTENT: u32 = SQLITE_PREPARE_PERSISTENT as u32;
+    const NO_VTAB: u32 = SQLITE_PREPARE_NO_VTAB as u32;
+
+    pub const fn transient() -> Self {
+        Self(0)
+    }
+
+    pub const fn persistent() -> Self {
+        Self(Self::PERSISTENT)
+    }
+
+    pub const fn allow_virtual_tables(&self, allowed: bool) -> Self {
+        if allowed {
+            Self(self.0 & !Self::NO_VTAB)
+        } else {
+            Self(self.0 | Self::NO_VTAB)
+        }
+    }
+
+    pub const fn log(&self, allowed: bool) -> Self {
+        if allowed {
+            Self(self.0 & !Self::DONT_LOG)
+        } else {
+            Self(self.0 | Self::DONT_LOG)
+        }
+    }
+
+    pub const fn into_inner(self) -> u32 {
+        self.0
     }
 }

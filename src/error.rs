@@ -38,7 +38,12 @@ use sqlite::{
 use crate::ffi;
 
 /// A [`Result`][core::result::Result] returned by a SQLite operation.
-pub type Result<T, C: ErrorContext = ErrorMessage> = core::result::Result<T, Error<C>>;
+pub type Result<T, C = ErrorMessage> = core::result::Result<T, Error<C>>;
+
+const SQUIRE_ERROR: i32 = 0x00c0;
+const SQUIRE_ERROR_PARAMETER: i32 = 0x00c1;
+const SQUIRE_ERROR_PARAMETER_BIND: i32 = 0x01c1;
+const SQUIRE_ERROR_PARAMETER_RESOLVE: i32 = 0x02c1;
 
 /// An [error][return-codes] returned by a SQLite operation.
 ///
@@ -103,8 +108,23 @@ impl Error<()> {
     }
 }
 
+impl Error {
+    /// Returns a [parameter binding error](ParameterError::Bind).
+    pub fn bind(message: impl Into<ErrorMessage>) -> Self {
+        unsafe { Error::new_unchecked(SQUIRE_ERROR_PARAMETER_BIND) }.attach(message.into())
+    }
+
+    /// Returns a [parameter index resolution error](ParameterError::Resolve).
+    pub fn resolve(message: impl Into<ErrorMessage>) -> Self {
+        unsafe { Error::new_unchecked(SQUIRE_ERROR_PARAMETER_BIND) }.attach(message.into())
+    }
+}
+
 impl<Context: ErrorContext> Error<Context> {
-    pub(crate) fn from_connection(connection: impl ffi::Connected, code: i32) -> Option<Self> {
+    pub(crate) fn from_connection(connection: impl ffi::Connected, code: i32) -> Option<Self>
+    where
+        Context: ConnectedErrorContext,
+    {
         match NonZero::new(code) {
             Some(code) => {
                 let ptr = connection.as_connection_ptr();
@@ -158,6 +178,9 @@ impl<Context: ErrorContext> Error<Context> {
             SQLITE_READONLY => ErrorCategory::ReadOnly,
             SQLITE_SCHEMA => ErrorCategory::Schema,
             SQLITE_TOOBIG => ErrorCategory::TooBig,
+
+            SQUIRE_ERROR_PARAMETER => ErrorCategory::Parameter,
+
             _ => ErrorCategory::Unknown,
         }
     }
@@ -264,6 +287,10 @@ impl<Context: ErrorContext> Error<Context> {
             SQLITE_READONLY_DBMOVED => Some(ErrorCode::ReadOnly(ReadOnlyError::DbMoved)),
             SQLITE_READONLY_CANTINIT => Some(ErrorCode::ReadOnly(ReadOnlyError::CantInit)),
             SQLITE_READONLY_DIRECTORY => Some(ErrorCode::ReadOnly(ReadOnlyError::Directory)),
+
+            // Squire parameter errors
+            SQUIRE_ERROR_PARAMETER_BIND => Some(ErrorCode::Parameter(ParameterError::Bind)),
+            SQUIRE_ERROR_PARAMETER_RESOLVE => Some(ErrorCode::Parameter(ParameterError::Resolve)),
 
             _ => None,
         }
@@ -401,6 +428,12 @@ impl<Context: ErrorContext> Error<Context> {
             SQLITE_READONLY_RECOVERY => Some("SQLITE_READONLY_RECOVERY"),
             SQLITE_READONLY_ROLLBACK => Some("SQLITE_READONLY_ROLLBACK"),
 
+            // Squire errors
+            SQUIRE_ERROR => Some("SQUIRE_ERROR"),
+            SQUIRE_ERROR_PARAMETER => Some("SQUIRE_ERROR_PARAMETER"),
+            SQUIRE_ERROR_PARAMETER_BIND => Some("SQUIRE_ERROR_PARAMETER_BIND"),
+            SQUIRE_ERROR_PARAMETER_RESOLVE => Some("SQUIRE_ERROR_PARAMETER_RESOLVE"),
+
             // Unrecognized code
             _ => None,
         }
@@ -487,19 +520,23 @@ impl From<Error> for Error<(ErrorMessage, Option<ErrorLocation>)> {
 }
 
 pub trait ErrorContext {
-    unsafe fn capture(connection: *mut sqlite3, code: i32) -> Self;
-
     fn message(&self, code: i32) -> &str;
 }
 
+pub trait ConnectedErrorContext: ErrorContext {
+    unsafe fn capture(connection: *mut sqlite3, code: i32) -> Self;
+}
+
 impl ErrorContext for () {
+    fn message(&self, code: i32) -> &str {
+        ErrorMessage::resolve_code(code)
+    }
+}
+
+impl ConnectedErrorContext for () {
     #[inline(always)]
     unsafe fn capture(_connection: *mut sqlite3, _code: i32) -> Self {
         ()
-    }
-
-    fn message(&self, code: i32) -> &str {
-        ErrorMessage::resolve_code(code)
     }
 }
 
@@ -507,20 +544,28 @@ impl ErrorContext for () {
 pub struct ErrorMessage(Cow<'static, str>);
 
 impl ErrorMessage {
+    /// Return an `ErrorMessage` which [owns](Self::formatted) a [`String`]
+    /// containing the text of `message`.
     pub fn new(message: impl AsRef<str>) -> Self {
         Self::formatted(message.as_ref().to_owned())
     }
 
+    /// Create an [`ErrorMessage`] from a `&'static str`.
     #[inline]
     pub const fn constant(message: &'static str) -> Self {
         Self(Cow::Borrowed(message))
     }
 
+    /// Create an [`ErrorMessage`] from a [`String`].
     #[inline]
     pub const fn formatted(message: String) -> Self {
         Self(Cow::Owned(message))
     }
 
+    /// Create a [constant](Self::constant) [`ErrorMessage`] for a SQLite
+    /// [return code][].
+    ///
+    /// [return code]: https://sqlite.org/rescode.html
     pub fn for_code(code: i32) -> Self {
         Self::constant(Self::resolve_code(code))
     }
@@ -531,6 +576,7 @@ impl ErrorMessage {
         unsafe { str::from_utf8_unchecked(bytes) }
     }
 
+    /// Access the message text as a `&str`.
     pub const fn as_str(&self) -> &str {
         match self.0 {
             Cow::Borrowed(message) => message,
@@ -538,12 +584,23 @@ impl ErrorMessage {
         }
     }
 
+    /// Convert the [`ErrorMessage`] to a [`String`].
+    ///
+    /// If the message is a `&'static str` internally (i.e., it’s the [default
+    /// error message](sqlite3_errstr) for an [`ErrorCode`]), allocates a new
+    /// `String`. Otherwise, returns the inner `String`.
     pub fn into_string(self) -> String {
         self.0.into_owned()
     }
 }
 
 impl ErrorContext for ErrorMessage {
+    fn message(&self, _code: i32) -> &str {
+        self.as_str()
+    }
+}
+
+impl ConnectedErrorContext for ErrorMessage {
     unsafe fn capture(connection: *mut sqlite3, code: i32) -> Self {
         if !connection.is_null() {
             let current = unsafe { sqlite3_errcode(connection) };
@@ -561,9 +618,14 @@ impl ErrorContext for ErrorMessage {
 
         Self::for_code(code)
     }
+}
 
-    fn message(&self, _code: i32) -> &str {
-        self.as_str()
+impl<T> From<T> for ErrorMessage
+where
+    Cow<'static, str>: From<T>,
+{
+    fn from(value: T) -> Self {
+        Self(value.into())
     }
 }
 
@@ -575,15 +637,17 @@ impl ErrorContext for ErrorMessage {
 pub struct ErrorLocation(u32);
 
 impl ErrorContext for (ErrorMessage, Option<ErrorLocation>) {
+    fn message(&self, code: i32) -> &str {
+        self.0.message(code)
+    }
+}
+
+impl ConnectedErrorContext for (ErrorMessage, Option<ErrorLocation>) {
     unsafe fn capture(connection: *mut sqlite3, code: i32) -> Self {
-        let message = unsafe { ErrorMessage::capture(connection, code) };
+        let message = unsafe { <ErrorMessage as ConnectedErrorContext>::capture(connection, code) };
         let location = unsafe { ErrorLocation::capture(connection) };
 
         (message, location)
-    }
-
-    fn message(&self, code: i32) -> &str {
-        self.0.message(code)
     }
 }
 
@@ -610,6 +674,7 @@ impl ErrorLocation {
 }
 
 #[derive(PartialEq, Eq, Copy, Clone, Debug)]
+#[non_exhaustive]
 #[repr(i32)]
 pub enum ErrorCategory {
     /// A generic error code that returned by SQLite when no other more specific
@@ -732,10 +797,20 @@ pub enum ErrorCategory {
     /// to be an SQLite database file.
     #[doc(alias = "SQLITE_NOTADB")]
     InvalidDatabase = SQLITE_NOTADB,
+
+    /// A parameter could not be [bound](crate::Bind); the [error
+    /// message](ErrorMessage) gives more detail about the underlying error.
+    ///
+    /// (This [error category](ErrorCategory) is defined by Squire; not SQLite.
+    /// No SQLite [result codes][] correspond to `ErrorCategory::Parameter`.)
+    ///
+    /// [result codes]: https://sqlite.org/rescode.html
+    Parameter = SQUIRE_ERROR_PARAMETER,
 }
 
 /// Extended SQLite result codes that provide more specific information about errors.
 #[derive(PartialEq, Eq, Copy, Clone, Debug)]
+#[non_exhaustive]
 pub enum ErrorCode {
     /// Extended abort error codes.
     Aborted(AbortError),
@@ -766,11 +841,19 @@ pub enum ErrorCode {
 
     /// Extended read-only error codes.
     ReadOnly(ReadOnlyError),
+
+    /// Extended [`ErrorCode::Parameter`] error codes.
+    ///
+    /// (This [error code](ErrorCode) is defined by Squire; not SQLite.
+    /// No SQLite [result codes][] correspond to `ErrorCode::Parameter`.)
+    ///
+    /// [result codes]: https://sqlite.org/rescode.html
+    Parameter(ParameterError),
 }
 
 impl ErrorCode {
     /// Returns the numeric value of this error code.
-    pub fn code(self) -> i32 {
+    pub const fn code(self) -> i32 {
         match self {
             ErrorCode::Aborted(err) => err as i32,
             ErrorCode::Authorization(err) => err as i32,
@@ -782,11 +865,13 @@ impl ErrorCode {
             ErrorCode::Io(err) => err as i32,
             ErrorCode::Locked(err) => err as i32,
             ErrorCode::ReadOnly(err) => err as i32,
+
+            ErrorCode::Parameter(err) => err as i32,
         }
     }
 
     /// Returns the primary error category for this extended error code.
-    pub fn primary_category(self) -> ErrorCategory {
+    pub const fn primary_category(self) -> ErrorCategory {
         match self {
             ErrorCode::Aborted(_) => ErrorCategory::Aborted,
             ErrorCode::Authorization(_) => ErrorCategory::Authorization,
@@ -798,6 +883,8 @@ impl ErrorCode {
             ErrorCode::Io(_) => ErrorCategory::Io,
             ErrorCode::Locked(_) => ErrorCategory::Locked,
             ErrorCode::ReadOnly(_) => ErrorCategory::ReadOnly,
+
+            ErrorCode::Parameter(_) => ErrorCategory::Parameter,
         }
     }
 }
@@ -1165,4 +1252,22 @@ pub enum ReadOnlyError {
     /// create a journal file in the same directory as the database.
     #[doc(alias = "SQLITE_READONLY_DIRECTORY")]
     Directory = SQLITE_READONLY_DIRECTORY,
+}
+
+/// An error passing prepared statement parameter(s) to SQLite.
+///
+/// (This [error category](ErrorCategory) is defined by Squire; not SQLite.
+/// No SQLite [result codes][] correspond to `ParameterError`.)
+///
+/// [result codes]: https://sqlite.org/rescode.html
+#[derive(PartialEq, Eq, Copy, Clone, Debug)]
+#[repr(i32)]
+pub enum ParameterError {
+    /// [Binding](crate::Bind) a parameter failed;
+    /// [`into_bind_value`](crate::Bind::into_bind_value()) returned an error.
+    Bind = SQUIRE_ERROR_PARAMETER_BIND,
+
+    /// [Resolving](crate::Parameters) parameter index(es) failed;
+    /// [`resolve`](crate::Parameters::resolve()) returned an error.
+    Resolve = SQUIRE_ERROR_PARAMETER_RESOLVE,
 }

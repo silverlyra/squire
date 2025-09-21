@@ -5,21 +5,26 @@ use core::{
 };
 
 use super::statement::Statement;
-use crate::error::{Error, ErrorMessage, Result};
+use crate::{
+    blob::Reservation,
+    error::{Error, ErrorMessage, Result},
+};
 
 use sqlite::{
     SQLITE_STATIC, SQLITE_TRANSIENT, sqlite3_bind_double, sqlite3_bind_int, sqlite3_bind_int64,
-    sqlite3_destructor_type,
+    sqlite3_bind_null, sqlite3_destructor_type,
 };
 #[cfg(target_pointer_width = "64")]
-use sqlite::{SQLITE_UTF8, sqlite3_bind_blob64, sqlite3_bind_text64, sqlite3_uint64};
+use sqlite::{
+    SQLITE_UTF8, sqlite3_bind_blob64, sqlite3_bind_text64, sqlite3_bind_zeroblob64, sqlite3_uint64,
+};
 #[cfg(target_pointer_width = "32")]
-use sqlite::{sqlite3_bind_blob, sqlite3_bind_text};
+use sqlite::{sqlite3_bind_blob, sqlite3_bind_text, sqlite3_bind_zeroblob};
 
 const ENCODING_UTF8: c_uchar = SQLITE_UTF8 as c_uchar;
 
 /// A value which can be [bound as a parameter][bind] in SQLite [prepared
-/// statements](crate::Statement).
+/// statements](Statement).
 ///
 /// `squire::ffi::Bind` is the low-level `unsafe trait` whose implementations
 /// directly call a [`sqlite3_bind_*`][bind] function in the C API. To make your
@@ -47,6 +52,15 @@ const ENCODING_UTF8: c_uchar = SQLITE_UTF8 as c_uchar;
     target_pointer_width = "64",
     doc = " - [`&[u8]`](primitive@slice) (via [`sqlite3_bind_blob64`])"
 )]
+#[cfg_attr(
+    target_pointer_width = "32",
+    doc = " - [`Reservation`] (via [`sqlite3_bind_zeroblob`])"
+)]
+#[cfg_attr(
+    target_pointer_width = "64",
+    doc = " - [`Reservation`] (via [`sqlite3_bind_zeroblob64`])"
+)]
+/// - [`None`] (via [`sqlite3_bind_null`])
 ///
 /// The lifetime parameter `'b` represents the lifetime of the binding operation,
 /// i.e., how long the statement reference passed to `bind` is valid for.
@@ -170,11 +184,11 @@ impl<'a, T: ?Sized> Static<'a, T> {
 
 #[cfg_attr(
     target_pointer_width = "32",
-    doc = "[Binds](Bind) a [`&[u8]`](primitive@slice) via [`sqlite3_bind_text`]."
+    doc = "[Binds](Bind) a [`&str`](str) via [`sqlite3_bind_text`]."
 )]
 #[cfg_attr(
     target_pointer_width = "64",
-    doc = "[Binds](Bind) a [`&[u8]`](primitive@slice) via [`sqlite3_bind_text64`]."
+    doc = "[Binds](Bind) a [`&str`](str) via [`sqlite3_bind_text64`]."
 )]
 ///
 /// The [`SQLITE_STATIC`] flag is used; SQLite will read the string's bytes
@@ -202,8 +216,8 @@ unsafe impl<'b, 'a: 'b> Bind<'b> for Static<'a, str> {
     doc = "[Binds](Bind) a [`&[u8]`](primitive@slice) via [`sqlite3_bind_blob64`]."
 )]
 ///
-/// The [`SQLITE_STATIC`] flag is used; SQLite will read the string's bytes
-/// without [cloning][] them.
+/// The [`SQLITE_STATIC`] flag is used; SQLite will read the bytes without
+/// [cloning][] them.
 ///
 /// [cloning]: https://sqlite.org/c3ref/c_static.html
 unsafe impl<'b, 'a: 'b> Bind<'b> for Static<'a, [u8]> {
@@ -213,6 +227,83 @@ unsafe impl<'b, 'a: 'b> Bind<'b> for Static<'a, [u8]> {
 
         #[cfg(target_pointer_width = "64")]
         bind! { sqlite3_bind_blob64(statement, index, self.as_ptr() as *const c_void, self.0.len() as sqlite3_uint64, SQLITE_STATIC) }
+    }
+}
+
+#[cfg_attr(
+    target_pointer_width = "32",
+    doc = "[Binds](Bind) a [`String`] via [`sqlite3_bind_text`]."
+)]
+#[cfg_attr(
+    target_pointer_width = "64",
+    doc = "[Binds](Bind) a [`String`] via [`sqlite3_bind_text64`]."
+)]
+///
+/// The [`SQLITE_TRANSIENT`] flag is used; SQLite will [clone][] the string's
+/// bytes before `bind` returns.
+///
+/// [clone]: https://sqlite.org/c3ref/c_static.html
+unsafe impl<'b> Bind<'b> for String {
+    unsafe fn bind(self, statement: &'b Statement, index: Index) -> Result<()> {
+        unsafe { self.as_str().bind(statement, index) }
+    }
+}
+
+#[cfg_attr(
+    target_pointer_width = "32",
+    doc = "[Binds](Bind) a `Vec<u8>` via [`sqlite3_bind_blob`]."
+)]
+#[cfg_attr(
+    target_pointer_width = "64",
+    doc = "[Binds](Bind) a `Vec<u8>` via [`sqlite3_bind_blob64`]."
+)]
+///
+/// The [`SQLITE_TRANSIENT`] flag is used; SQLite will [clone][] the bytes
+/// before `bind` returns.
+///
+/// [clone]: https://sqlite.org/c3ref/c_static.html
+unsafe impl<'b> Bind<'b> for Vec<u8> {
+    unsafe fn bind(self, statement: &'b Statement, index: Index) -> Result<()> {
+        unsafe { self.as_slice().bind(statement, index) }
+    }
+}
+
+#[cfg_attr(
+    target_pointer_width = "32",
+    doc = "[Binds](Bind) a [blob reservation](Reservation) via [`sqlite3_bind_zeroblob`]."
+)]
+#[cfg_attr(
+    target_pointer_width = "64",
+    doc = "[Binds](Bind) a [blob reservation](Reservation) via [`sqlite3_bind_zeroblob64`]."
+)]
+///
+/// When a `Reservation` is [used](Bind) as a prepared [statement](Statement)
+/// parameter, SQLite will create a `BLOB` of the [requested length](Reservation::len())
+/// and set every byte in the blob to `\0`.
+///
+/// [clone]: https://sqlite.org/c3ref/c_static.html
+unsafe impl<'b> Bind<'b> for Reservation {
+    unsafe fn bind(self, statement: &'b Statement, index: Index) -> Result<()> {
+        #[cfg(target_pointer_width = "32")]
+        bind! { sqlite3_bind_zeroblob(statement, index, self.0 as c_int) }
+
+        #[cfg(target_pointer_width = "64")]
+        bind! { sqlite3_bind_zeroblob64(statement, index, self.len() as sqlite3_uint64) }
+    }
+}
+
+/// [Binds](Bind) an [`Option`]. Bind the `Some` value if the option is present,
+/// or bind `NULL` via [`sqlite3_bind_null`] if `None`.
+unsafe impl<'b, T> Bind<'b> for Option<T>
+where
+    T: Bind<'b>,
+{
+    unsafe fn bind(self, statement: &'b Statement, index: Index) -> Result<()> {
+        if let Some(value) = self {
+            unsafe { value.bind(statement, index) }
+        } else {
+            bind! { sqlite3_bind_null(statement, index,) }
+        }
     }
 }
 
@@ -227,7 +318,6 @@ pub const fn destructor<T>() -> sqlite3_destructor_type {
 
 unsafe extern "C" fn destroy<T>(p: *mut c_void) {
     unsafe { ptr::drop_in_place(p) };
-    println!("destroyed {} {p:p}", core::any::type_name::<T>());
 }
 
 /// A SQLite [prepared statement](Statement) parameter index, used when

@@ -18,13 +18,14 @@ repository = "https://github.com/silverlyra/squire"
 license = "Apache-2.0"
 
 [features]
-default = ["linked", "common", "multi-thread"]
+# default = ["linked", "common", "multi-thread"]
+default = ["bundled", "common", "multi-thread"]
 
 common = ["sqlite/common", "json", "url", "mutex"]
 full = ["sqlite/full", "common"]
 
 bundled = ["sqlite/bundled"]
-linked = ["sqlite/bindgen"]
+linked = ["sqlite/linked"]
 static = ["sqlite/static"]
 
 single-thread = ["sqlite/single-thread"]
@@ -65,7 +66,7 @@ lang-iat = []
 lang-rustc-scalar-valid-range = []
 lang-step-trait = []
 
-utf-16 = []
+utf-16 = ["sqlite/utf-16"]
 
 url = ["dep:url"]
 widestring = ["utf-16", "dep:widestring"]
@@ -74,6 +75,7 @@ widestring = ["utf-16", "dep:widestring"]
 package = "squire-sqlite3-sys"
 path = "crates/sys"
 version = "0.0.1-alpha.1"
+default-features = false
 
 [dependencies.serde_json]
 version = "^1.0"

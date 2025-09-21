@@ -57,6 +57,8 @@ impl<'c> Statement<'c> {
         }
     }
 
+    /// Prepare a [`Statement`] on a [`Connection`] from SQL `query` text.
+    #[doc(alias = "sqlite3_prepare_v3")]
     #[must_use]
     pub fn prepare(
         connection: &'c Connection,

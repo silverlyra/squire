@@ -158,6 +158,11 @@ fn generate_bindings(header: &Path, dest: &Path) -> Result {
         config
     };
 
+    #[cfg(not(feature = "blob-io"))]
+    let config = config.blocklist_function("sqlite3_blob_\\w+");
+    #[cfg(not(feature = "utf-16"))]
+    let config = config.blocklist_function("sqlite3_\\w+16(be|le)?(_v\\d)?");
+
     let bindings = config.generate()?;
 
     // Parse the generated bindings using syn

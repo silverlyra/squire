@@ -2,6 +2,7 @@
 #![cfg_attr(feature = "lang-rustc-scalar-valid-range", feature(rustc_attrs))]
 #![cfg_attr(feature = "lang-step-trait", feature(step_trait))]
 
+mod blob;
 mod connection;
 mod database;
 mod error;
@@ -10,11 +11,14 @@ mod param;
 mod statement;
 pub mod types;
 
+pub use blob::Reservation;
 pub use connection::{Connection, ConnectionBuilder};
 pub use database::{Database, IntoLocation};
 pub use error::{
     AbortError, AuthorizationError, BusyError, CantOpenError, ConstraintError, CorruptError, Error,
-    ErrorCategory, ErrorCode, GeneralError, IoError, LockedError, ReadOnlyError, Result,
+    ErrorCategory, ErrorCode, GeneralError, IoError, LockedError, ParameterError, ReadOnlyError,
+    Result,
 };
+pub use param::{Bind, Index, Parameters};
 pub use statement::Statement;
 pub use types::RowId;

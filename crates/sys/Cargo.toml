@@ -11,7 +11,7 @@ categories = ["external-ffi-bindings"]
 keywords = ["sqlite", "ffi"]
 
 [features]
-default = ["linked", "common", "multi-thread"]
+default = ["bundled", "common", "multi-thread"]
 bindgen = [
     "dep:bindgen",
     "dep:syn",
@@ -28,6 +28,7 @@ multi-thread = []
 serialized = []
 
 common = [
+    "blob-io",
     "fts",
     "geo",
     "json",
@@ -40,7 +41,6 @@ common = [
 full = [
     "common",
     "authorization",
-    "blob-io",
     "extensions",
     "fts3",
     "memory-status",
@@ -62,7 +62,7 @@ decltype = []
 extensions = []
 fts = ["fts5"]
 fts3 = []
-fts5 = []
+fts5 = ["blob-io"]
 geo = ["geopoly", "rtree"]
 geopoly = []
 json = []
@@ -80,6 +80,7 @@ soundex = []
 stat-vtab = []
 stat4 = []
 trace = []
+utf-16 = []
 
 [build-dependencies.sqlite]
 package = "squire-sqlite3-src"
