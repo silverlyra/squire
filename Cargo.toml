@@ -59,7 +59,9 @@ stat-vtab = ["sqlite/stat-vtab"]
 stat4 = ["sqlite/stat4"]
 trace = ["sqlite/trace"]
 
-nightly = []
+nightly = ["lang-iat", "lang-step-trait"]
+lang-iat = []
+lang-step-trait = []
 
 utf-16 = []
 
@@ -90,3 +92,13 @@ name = "raw"
 features = ["bundled", "full", "serialized"]
 no-default-features = true
 rustdoc-args = ["--cfg", "docsrs"]
+targets = [
+    "aarch64-apple-darwin",
+    "aarch64-unknown-linux-gnu",
+    "arm-unknown-linux-gnueabihf",
+    "i686-unknown-linux-gnu",
+    "x86_64-unknown-freebsd",
+    "x86_64-unknown-linux-gnu",
+    "x86_64-unknown-illumos",
+    "x86_64-pc-windows-msvc",
+]

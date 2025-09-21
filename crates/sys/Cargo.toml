@@ -42,6 +42,7 @@ full = [
     "authorization",
     "blob-io",
     "extensions",
+    "fts3",
     "memory-status",
     "normalize-sql",
     "preupdate-hook",
@@ -59,7 +60,7 @@ blob-io = []
 column-metadata = []
 decltype = []
 extensions = []
-fts = ["fts3", "fts5"]
+fts = ["fts5"]
 fts3 = []
 fts5 = []
 geo = ["geopoly", "rtree"]
@@ -115,3 +116,13 @@ optional = true
 features = ["bundled", "full", "serialized"]
 no-default-features = true
 rustdoc-args = ["--cfg", "docsrs"]
+targets = [
+    "aarch64-apple-darwin",
+    "aarch64-unknown-linux-gnu",
+    "arm-unknown-linux-gnueabihf",
+    "i686-unknown-linux-gnu",
+    "x86_64-unknown-freebsd",
+    "x86_64-unknown-linux-gnu",
+    "x86_64-unknown-illumos",
+    "x86_64-pc-windows-msvc",
+]

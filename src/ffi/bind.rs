@@ -3,12 +3,10 @@ use core::{
     num::NonZero,
     ptr,
 };
+use std::borrow::Cow;
 
 use super::statement::Statement;
-use crate::{
-    call,
-    error::{Error, Result},
-};
+use crate::error::{Error, Result};
 
 use sqlite::{
     SQLITE_STATIC, SQLITE_TRANSIENT, sqlite3_bind_double, sqlite3_bind_int, sqlite3_bind_int64,
@@ -44,10 +42,6 @@ const ENCODING_UTF8: c_uchar = SQLITE_UTF8 as c_uchar;
 )]
 #[cfg_attr(
     target_pointer_width = "32",
-    doc = " - [`&str`](str) (via [`sqlite3_bind_text`])"
-)]
-#[cfg_attr(
-    target_pointer_width = "32",
     doc = " - [`&[u8]`](primitive@slice) (via [`sqlite3_bind_blob`])"
 )]
 #[cfg_attr(
@@ -66,24 +60,38 @@ pub unsafe trait Bind<'b> {
     unsafe fn bind(self, statement: &'b Statement, index: Index) -> Result<()>;
 }
 
+/// Call a `sqlite3_bind_…` function and handle any possible [`Error`].
+macro_rules! bind {
+    { $fn:ident($stmt:expr, $index:expr, $($arg:expr),*) } => {
+        {
+            let result = unsafe { $fn($stmt.as_ptr(), $index.value(), $($arg),*) };
+
+            match Error::<Cow<'static, str>>::from_connection($stmt, result) {
+                Some(err) => Err(err),
+                None => Ok(()),
+            }
+        }
+    };
+}
+
 /// [Binds](Bind) an [`i32`] via [`sqlite3_bind_int`].
 unsafe impl<'b> Bind<'b> for i32 {
     unsafe fn bind(self, statement: &'b Statement, index: Index) -> Result<()> {
-        call! { sqlite3_bind_int(statement.as_ptr(), index.value(), self) }
+        bind! { sqlite3_bind_int(statement, index, self) }
     }
 }
 
 /// [Binds](Bind) an [`i64`] via [`sqlite3_bind_int64`].
 unsafe impl<'b> Bind<'b> for i64 {
     unsafe fn bind(self, statement: &'b Statement, index: Index) -> Result<()> {
-        call! { sqlite3_bind_int64(statement.as_ptr(), index.value(), self) }
+        bind! { sqlite3_bind_int64(statement, index, self) }
     }
 }
 
 /// [Binds](Bind) an [`f64`] via [`sqlite3_bind_double`].
 unsafe impl<'b> Bind<'b> for f64 {
     unsafe fn bind(self, statement: &'b Statement, index: Index) -> Result<()> {
-        call! { sqlite3_bind_double(statement.as_ptr(), index.value(), self) }
+        bind! { sqlite3_bind_double(statement, index, self) }
     }
 }
 
@@ -104,10 +112,10 @@ unsafe impl<'b> Bind<'b> for f64 {
 unsafe impl<'b> Bind<'b> for &str {
     unsafe fn bind(self, statement: &'b Statement, index: Index) -> Result<()> {
         #[cfg(target_pointer_width = "32")]
-        call! { sqlite3_bind_text(statement.as_ptr(), index.value(), self.as_ptr() as *const i8, self.len() as c_int, SQLITE_TRANSIENT) }?;
+        bind! { sqlite3_bind_text(statement, index, self.as_ptr() as *const i8, self.len() as c_int, SQLITE_TRANSIENT) }?;
 
         #[cfg(target_pointer_width = "64")]
-        call! { sqlite3_bind_text64(statement.as_ptr(), index.value(), self.as_ptr() as *const i8, self.len() as sqlite3_uint64, SQLITE_TRANSIENT, ENCODING_UTF8) }?;
+        bind! { sqlite3_bind_text64(statement, index, self.as_ptr() as *const i8, self.len() as sqlite3_uint64, SQLITE_TRANSIENT, ENCODING_UTF8) }?;
 
         Ok(())
     }
@@ -363,7 +371,7 @@ impl TryFrom<usize> for Index {
     }
 }
 
-#[cfg(feature = "nightly")]
+#[cfg(feature = "lang-step-trait")]
 impl core::iter::Step for Index {
     fn steps_between(start: &Self, end: &Self) -> (usize, Option<usize>) {
         if start.0.get() <= end.0.get() {

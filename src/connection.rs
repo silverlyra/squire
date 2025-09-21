@@ -16,7 +16,7 @@ pub struct Connection {
 }
 
 impl Connection {
-    #[cfg(feature = "nightly")]
+    #[cfg(feature = "lang-iat")]
     type Builder<L = CString>
         = ConnectionBuilder<L>
     where
@@ -57,6 +57,12 @@ impl Connection {
     #[inline]
     pub fn internal_ref(&self) -> &ffi::Connection {
         &self.inner
+    }
+}
+
+impl ffi::Connected for Connection {
+    fn as_connection_ptr(&self) -> *mut sqlite::sqlite3 {
+        self.internal_ref().as_ptr()
     }
 }
 

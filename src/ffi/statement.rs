@@ -3,7 +3,7 @@ use core::{
     marker::PhantomData,
     ptr,
 };
-use std::ffi::CStr;
+use std::{borrow::Cow, ffi::CStr};
 
 #[cfg(target_pointer_width = "32")]
 use sqlite::sqlite3_changes;
@@ -18,7 +18,7 @@ use sqlite::{
 
 use super::{
     bind::{Bind, Index},
-    connection::Connection,
+    connection::{Connected, Connection},
     value::{Column, Fetch},
 };
 use crate::{
@@ -59,7 +59,11 @@ impl<'c> Statement<'c> {
     }
 
     #[must_use]
-    pub fn prepare(connection: &'c Connection, query: &str, flags: u32) -> Result<(Self, usize)> {
+    pub fn prepare(
+        connection: &'c Connection,
+        query: &str,
+        flags: u32,
+    ) -> Result<(Self, usize), (Cow<'static, str>, Option<u32>)> {
         let length = i32::try_from(query.len()).map_err(|_| Error::too_big())?;
         let query_p = query.as_bytes().as_ptr().cast::<c_char>();
         let mut handle: *mut sqlite3_stmt = ptr::null_mut();
@@ -84,7 +88,10 @@ impl<'c> Statement<'c> {
 
         match Self::new(handle) {
             Some(statement) if result == SQLITE_OK => Ok((statement, sql_length)),
-            _ => Err(Error::from(result)),
+            _ => {
+                let error = Error::from_connection(connection, result);
+                Err(error.unwrap_or_default())
+            }
         }
     }
 
@@ -99,7 +106,7 @@ impl<'c> Statement<'c> {
 
     #[inline]
     #[doc(alias = "sqlite3_finalize")]
-    pub fn close(self) -> Result<()> {
+    pub fn close(self) -> Result<(), &'static str> {
         call! { sqlite3_finalize(self.as_ptr()) }
     }
 
@@ -129,6 +136,18 @@ impl<'c> Statement<'c> {
         } else {
             Some(unsafe { CStr::from_ptr(ptr) })
         }
+    }
+}
+
+impl<'c> Connected for Statement<'c> {
+    fn as_connection_ptr(&self) -> *mut sqlite3 {
+        unsafe { self.connection_ptr() }
+    }
+}
+
+impl<'c> Connected for &Statement<'c> {
+    fn as_connection_ptr(&self) -> *mut sqlite3 {
+        unsafe { self.connection_ptr() }
     }
 }
 
@@ -411,7 +430,7 @@ where
         } else if result == SQLITE_DONE {
             Ok(None)
         } else {
-            match Error::new(result) {
+            match Error::from_connection(self, result) {
                 Some(err) => Err(err),
                 None => Ok(None),
             }
@@ -435,9 +454,9 @@ where
             let connection_ptr = unsafe { self.inner.connection_ptr() };
             Ok(C::from_connection_ptr(connection_ptr))
         } else if result == SQLITE_ROW {
-            Err(Error::misuse())
+            Err(Error::misuse().into())
         } else {
-            Err(Error::from(result))
+            Err(Error::from_connection(self, result).unwrap_or_default())
         }
     }
 
@@ -452,6 +471,24 @@ where
     #[inline]
     unsafe fn statement_ptr(&mut self) -> *mut sqlite3_stmt {
         unsafe { self.inner.statement_ptr() }
+    }
+}
+
+impl<'c, S> Connected for Execution<'c, S>
+where
+    S: Execute<'c>,
+{
+    fn as_connection_ptr(&self) -> *mut sqlite3 {
+        unsafe { self.inner.connection_ptr() }
+    }
+}
+
+impl<'c, S> Connected for &mut Execution<'c, S>
+where
+    S: Execute<'c>,
+{
+    fn as_connection_ptr(&self) -> *mut sqlite3 {
+        unsafe { self.inner.connection_ptr() }
     }
 }
 

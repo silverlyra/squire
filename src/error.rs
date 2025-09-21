@@ -3,6 +3,7 @@ use core::{
     fmt,
     num::NonZero,
 };
+use std::borrow::Cow;
 
 use sqlite::{
     SQLITE_ABORT, SQLITE_ABORT_ROLLBACK, SQLITE_AUTH, SQLITE_AUTH_USER, SQLITE_BUSY,
@@ -29,11 +30,13 @@ use sqlite::{
     SQLITE_NOTFOUND, SQLITE_PERM, SQLITE_PROTOCOL, SQLITE_RANGE, SQLITE_READONLY,
     SQLITE_READONLY_CANTINIT, SQLITE_READONLY_CANTLOCK, SQLITE_READONLY_DBMOVED,
     SQLITE_READONLY_DIRECTORY, SQLITE_READONLY_RECOVERY, SQLITE_READONLY_ROLLBACK, SQLITE_SCHEMA,
-    SQLITE_TOOBIG, sqlite3_errstr,
+    SQLITE_TOOBIG, sqlite3, sqlite3_errcode, sqlite3_errmsg, sqlite3_error_offset, sqlite3_errstr,
 };
 
+use crate::ffi;
+
 /// A [`Result`][core::result::Result] returned by a SQLite operation.
-pub type Result<T> = core::result::Result<T, Error>;
+pub type Result<T, M: Message = Cow<'static, str>> = core::result::Result<T, Error<M>>;
 
 /// An [error][return-codes] returned by a SQLite operation.
 ///
@@ -43,55 +46,92 @@ pub type Result<T> = core::result::Result<T, Error>;
 ///
 /// [return-codes]: https://sqlite.org/rescode.html
 #[derive(PartialEq, Eq, Copy, Clone)]
-pub struct Error {
+pub struct Error<M: Message = Cow<'static, str>> {
     code: NonZero<i32>,
+    message: M,
 }
 
-impl Error {
+/// An [`Error`] which holds no formatted message, only a general SQLite error
+/// message based on the [`ErrorCode`].
+pub type StaticError = Error<&'static str>;
+
+impl Error<&'static str> {
     /// Creates a new [error](Error) from a SQLite result code.
-    pub const fn new(code: i32) -> Option<Self> {
+    pub fn new(code: i32) -> Option<Self> {
         match NonZero::new(code) {
-            Some(code) => Some(Self { code }),
+            Some(code) => Some(Self {
+                code,
+                message: Self::message_for_code(code.get()),
+            }),
             None => None,
         }
     }
 
-    pub(crate) const unsafe fn new_unchecked(code: i32) -> Self {
+    pub(crate) unsafe fn new_unchecked(code: i32) -> Self {
         Self {
             code: unsafe { NonZero::new_unchecked(code) },
+            message: Self::message_for_code(code),
         }
     }
 
     /// Returns a non-specific `SQLITE_ERROR` [error](Error).
-    pub(crate) const fn unknown() -> Self {
+    pub(crate) fn unknown() -> Self {
         unsafe { Self::new_unchecked(SQLITE_ERROR) }
     }
 
     /// Returns a `SQLITE_MISUSE` [error](Error).
-    pub(crate) const fn misuse() -> Self {
+    pub(crate) fn misuse() -> Self {
         unsafe { Self::new_unchecked(SQLITE_MISUSE) }
     }
 
     /// Returns a `SQLITE_RANGE` [error](Error).
-    pub(crate) const fn range() -> Self {
+    pub(crate) fn range() -> Self {
         unsafe { Self::new_unchecked(SQLITE_RANGE) }
     }
 
     /// Returns a `SQLITE_TOOBIG` [error](Error).
-    pub(crate) const fn too_big() -> Self {
+    pub(crate) fn too_big() -> Self {
         unsafe { Self::new_unchecked(SQLITE_TOOBIG) }
     }
+}
 
-    /// Returns the raw SQLite result code.
-    pub const fn into_inner(self) -> i32 {
-        self.code.get()
+impl<M: Message> Error<M> {
+    pub(crate) fn from_connection(connection: impl ffi::Connected, code: i32) -> Option<Self> {
+        match NonZero::new(code) {
+            Some(code) => {
+                let ptr = connection.as_connection_ptr();
+                let message = unsafe { M::from_connection(ptr, code.get()) };
+
+                Some(Self { code, message })
+            }
+            None => None,
+        }
+    }
+
+    pub fn message(&self) -> &str {
+        self.message.text()
+    }
+
+    pub const fn name(&self) -> Option<&'static str> {
+        Self::name_for_code(self.raw())
+    }
+
+    pub fn to_owned(self) -> Error<M::Owned> {
+        Error {
+            code: self.code,
+            message: self.message.to_owned_message(),
+        }
+    }
+
+    pub fn to_static(self) -> StaticError {
+        unsafe { Error::new_unchecked(self.code.get()) }
     }
 
     /// Returns the [primary result code][] for this error.
     ///
     /// [primary result code]: https://sqlite.org/rescode.html#primary_result_codes_versus_extended_result_codes
     pub const fn category(&self) -> ErrorCategory {
-        let primary_code = self.into_inner() & 0xFF;
+        let primary_code = self.raw() & 0xFF;
 
         #[allow(deprecated)]
         match primary_code {
@@ -131,7 +171,7 @@ impl Error {
     /// is not recognized.
     pub const fn code(&self) -> Option<ErrorCode> {
         #[allow(deprecated)]
-        match self.into_inner() {
+        match self.raw() {
             // Abort errors
             SQLITE_ABORT_ROLLBACK => Some(ErrorCode::Aborted(AbortError::Rollback)),
 
@@ -231,42 +271,325 @@ impl Error {
             _ => None,
         }
     }
-}
 
-impl fmt::Debug for Error {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let message = unsafe {
-            let ptr = sqlite3_errstr(self.into_inner());
-            CStr::from_ptr(ptr).to_str().unwrap_unchecked()
-        };
-        f.debug_tuple("Error")
-            .field(&message)
-            .field(&self.code)
-            .finish()
+    /// Returns the raw SQLite result code.
+    pub const fn raw(&self) -> i32 {
+        self.code.get()
+    }
+
+    /// Returns the raw SQLite result code, discarding this [`Error`].
+    pub fn into_raw(self) -> i32 {
+        self.code.get()
+    }
+
+    pub(crate) fn message_for_code(code: i32) -> &'static str {
+        unsafe {
+            let ptr = sqlite3_errstr(code);
+            str::from_utf8_unchecked(CStr::from_ptr(ptr).to_bytes())
+        }
+    }
+
+    pub(crate) const fn name_for_code(code: i32) -> Option<&'static str> {
+        #[allow(deprecated)]
+        match code {
+            // Primary result codes
+            SQLITE_ABORT => Some("SQLITE_ABORT"),
+            SQLITE_AUTH => Some("SQLITE_AUTH"),
+            SQLITE_BUSY => Some("SQLITE_BUSY"),
+            SQLITE_CANTOPEN => Some("SQLITE_CANTOPEN"),
+            SQLITE_CONSTRAINT => Some("SQLITE_CONSTRAINT"),
+            SQLITE_CORRUPT => Some("SQLITE_CORRUPT"),
+            SQLITE_EMPTY => Some("SQLITE_EMPTY"),
+            SQLITE_ERROR => Some("SQLITE_ERROR"),
+            SQLITE_FORMAT => Some("SQLITE_FORMAT"),
+            SQLITE_FULL => Some("SQLITE_FULL"),
+            SQLITE_INTERNAL => Some("SQLITE_INTERNAL"),
+            SQLITE_INTERRUPT => Some("SQLITE_INTERRUPT"),
+            SQLITE_IOERR => Some("SQLITE_IOERR"),
+            SQLITE_LOCKED => Some("SQLITE_LOCKED"),
+            SQLITE_MISMATCH => Some("SQLITE_MISMATCH"),
+            SQLITE_MISUSE => Some("SQLITE_MISUSE"),
+            SQLITE_NOLFS => Some("SQLITE_NOLFS"),
+            SQLITE_NOMEM => Some("SQLITE_NOMEM"),
+            SQLITE_NOTADB => Some("SQLITE_NOTADB"),
+            SQLITE_NOTFOUND => Some("SQLITE_NOTFOUND"),
+            SQLITE_PERM => Some("SQLITE_PERM"),
+            SQLITE_PROTOCOL => Some("SQLITE_PROTOCOL"),
+            SQLITE_RANGE => Some("SQLITE_RANGE"),
+            SQLITE_READONLY => Some("SQLITE_READONLY"),
+            SQLITE_SCHEMA => Some("SQLITE_SCHEMA"),
+            SQLITE_TOOBIG => Some("SQLITE_TOOBIG"),
+
+            // Extended result codes
+            // Abort errors
+            SQLITE_ABORT_ROLLBACK => Some("SQLITE_ABORT_ROLLBACK"),
+
+            // Auth errors
+            SQLITE_AUTH_USER => Some("SQLITE_AUTH_USER"),
+
+            // Busy errors
+            SQLITE_BUSY_RECOVERY => Some("SQLITE_BUSY_RECOVERY"),
+            SQLITE_BUSY_SNAPSHOT => Some("SQLITE_BUSY_SNAPSHOT"),
+            SQLITE_BUSY_TIMEOUT => Some("SQLITE_BUSY_TIMEOUT"),
+
+            // CantOpen errors
+            SQLITE_CANTOPEN_CONVPATH => Some("SQLITE_CANTOPEN_CONVPATH"),
+            SQLITE_CANTOPEN_DIRTYWAL => Some("SQLITE_CANTOPEN_DIRTYWAL"),
+            SQLITE_CANTOPEN_FULLPATH => Some("SQLITE_CANTOPEN_FULLPATH"),
+            SQLITE_CANTOPEN_ISDIR => Some("SQLITE_CANTOPEN_ISDIR"),
+            SQLITE_CANTOPEN_NOTEMPDIR => Some("SQLITE_CANTOPEN_NOTEMPDIR"),
+            SQLITE_CANTOPEN_SYMLINK => Some("SQLITE_CANTOPEN_SYMLINK"),
+
+            // Constraint errors
+            SQLITE_CONSTRAINT_CHECK => Some("SQLITE_CONSTRAINT_CHECK"),
+            SQLITE_CONSTRAINT_COMMITHOOK => Some("SQLITE_CONSTRAINT_COMMITHOOK"),
+            SQLITE_CONSTRAINT_DATATYPE => Some("SQLITE_CONSTRAINT_DATATYPE"),
+            SQLITE_CONSTRAINT_FOREIGNKEY => Some("SQLITE_CONSTRAINT_FOREIGNKEY"),
+            SQLITE_CONSTRAINT_FUNCTION => Some("SQLITE_CONSTRAINT_FUNCTION"),
+            SQLITE_CONSTRAINT_NOTNULL => Some("SQLITE_CONSTRAINT_NOTNULL"),
+            SQLITE_CONSTRAINT_PINNED => Some("SQLITE_CONSTRAINT_PINNED"),
+            SQLITE_CONSTRAINT_PRIMARYKEY => Some("SQLITE_CONSTRAINT_PRIMARYKEY"),
+            SQLITE_CONSTRAINT_ROWID => Some("SQLITE_CONSTRAINT_ROWID"),
+            SQLITE_CONSTRAINT_TRIGGER => Some("SQLITE_CONSTRAINT_TRIGGER"),
+            SQLITE_CONSTRAINT_UNIQUE => Some("SQLITE_CONSTRAINT_UNIQUE"),
+            SQLITE_CONSTRAINT_VTAB => Some("SQLITE_CONSTRAINT_VTAB"),
+
+            // Corrupt errors
+            SQLITE_CORRUPT_INDEX => Some("SQLITE_CORRUPT_INDEX"),
+            SQLITE_CORRUPT_SEQUENCE => Some("SQLITE_CORRUPT_SEQUENCE"),
+            SQLITE_CORRUPT_VTAB => Some("SQLITE_CORRUPT_VTAB"),
+
+            // General errors
+            SQLITE_ERROR_MISSING_COLLSEQ => Some("SQLITE_ERROR_MISSING_COLLSEQ"),
+            SQLITE_ERROR_RETRY => Some("SQLITE_ERROR_RETRY"),
+            SQLITE_ERROR_SNAPSHOT => Some("SQLITE_ERROR_SNAPSHOT"),
+
+            // IO errors
+            SQLITE_IOERR_ACCESS => Some("SQLITE_IOERR_ACCESS"),
+            SQLITE_IOERR_AUTH => Some("SQLITE_IOERR_AUTH"),
+            SQLITE_IOERR_BEGIN_ATOMIC => Some("SQLITE_IOERR_BEGIN_ATOMIC"),
+            SQLITE_IOERR_BLOCKED => Some("SQLITE_IOERR_BLOCKED"),
+            SQLITE_IOERR_CHECKRESERVEDLOCK => Some("SQLITE_IOERR_CHECKRESERVEDLOCK"),
+            SQLITE_IOERR_CLOSE => Some("SQLITE_IOERR_CLOSE"),
+            SQLITE_IOERR_COMMIT_ATOMIC => Some("SQLITE_IOERR_COMMIT_ATOMIC"),
+            SQLITE_IOERR_CONVPATH => Some("SQLITE_IOERR_CONVPATH"),
+            SQLITE_IOERR_CORRUPTFS => Some("SQLITE_IOERR_CORRUPTFS"),
+            SQLITE_IOERR_DATA => Some("SQLITE_IOERR_DATA"),
+            SQLITE_IOERR_DELETE => Some("SQLITE_IOERR_DELETE"),
+            SQLITE_IOERR_DELETE_NOENT => Some("SQLITE_IOERR_DELETE_NOENT"),
+            SQLITE_IOERR_DIR_CLOSE => Some("SQLITE_IOERR_DIR_CLOSE"),
+            SQLITE_IOERR_DIR_FSYNC => Some("SQLITE_IOERR_DIR_FSYNC"),
+            SQLITE_IOERR_FSTAT => Some("SQLITE_IOERR_FSTAT"),
+            SQLITE_IOERR_FSYNC => Some("SQLITE_IOERR_FSYNC"),
+            SQLITE_IOERR_GETTEMPPATH => Some("SQLITE_IOERR_GETTEMPPATH"),
+            SQLITE_IOERR_LOCK => Some("SQLITE_IOERR_LOCK"),
+            SQLITE_IOERR_MMAP => Some("SQLITE_IOERR_MMAP"),
+            SQLITE_IOERR_NOMEM => Some("SQLITE_IOERR_NOMEM"),
+            SQLITE_IOERR_RDLOCK => Some("SQLITE_IOERR_RDLOCK"),
+            SQLITE_IOERR_READ => Some("SQLITE_IOERR_READ"),
+            SQLITE_IOERR_ROLLBACK_ATOMIC => Some("SQLITE_IOERR_ROLLBACK_ATOMIC"),
+            SQLITE_IOERR_SEEK => Some("SQLITE_IOERR_SEEK"),
+            SQLITE_IOERR_SHMLOCK => Some("SQLITE_IOERR_SHMLOCK"),
+            SQLITE_IOERR_SHMMAP => Some("SQLITE_IOERR_SHMMAP"),
+            SQLITE_IOERR_SHMOPEN => Some("SQLITE_IOERR_SHMOPEN"),
+            SQLITE_IOERR_SHMSIZE => Some("SQLITE_IOERR_SHMSIZE"),
+            SQLITE_IOERR_SHORT_READ => Some("SQLITE_IOERR_SHORT_READ"),
+            SQLITE_IOERR_TRUNCATE => Some("SQLITE_IOERR_TRUNCATE"),
+            SQLITE_IOERR_UNLOCK => Some("SQLITE_IOERR_UNLOCK"),
+            SQLITE_IOERR_VNODE => Some("SQLITE_IOERR_VNODE"),
+            SQLITE_IOERR_WRITE => Some("SQLITE_IOERR_WRITE"),
+
+            // Locked errors
+            SQLITE_LOCKED_SHAREDCACHE => Some("SQLITE_LOCKED_SHAREDCACHE"),
+            SQLITE_LOCKED_VTAB => Some("SQLITE_LOCKED_VTAB"),
+
+            // ReadOnly errors
+            SQLITE_READONLY_CANTINIT => Some("SQLITE_READONLY_CANTINIT"),
+            SQLITE_READONLY_CANTLOCK => Some("SQLITE_READONLY_CANTLOCK"),
+            SQLITE_READONLY_DBMOVED => Some("SQLITE_READONLY_DBMOVED"),
+            SQLITE_READONLY_DIRECTORY => Some("SQLITE_READONLY_DIRECTORY"),
+            SQLITE_READONLY_RECOVERY => Some("SQLITE_READONLY_RECOVERY"),
+            SQLITE_READONLY_ROLLBACK => Some("SQLITE_READONLY_ROLLBACK"),
+
+            // Unrecognized code
+            _ => None,
+        }
     }
 }
 
-impl fmt::Display for Error {
+impl<M: Message> fmt::Debug for Error<M> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let message = unsafe {
-            let ptr = sqlite3_errstr(self.into_inner());
-            CStr::from_ptr(ptr).to_str().unwrap_unchecked()
+        let raw = self.raw();
+        let name = Self::name_for_code(raw);
+
+        let mut format = f.debug_tuple("Error");
+
+        match name {
+            Some(name) => format.field(&name),
+            None => format.field(&raw),
         };
+
+        format.field(&self.message()).finish()
+    }
+}
+
+impl<M: Message> fmt::Display for Error<M> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let message = self.message();
         write!(f, "{message}")
     }
 }
 
-impl Default for Error {
+impl Default for Error<&'static str> {
     fn default() -> Self {
         Self::unknown()
     }
 }
 
+impl Default for Error {
+    #[inline]
+    fn default() -> Self {
+        Self::from(Error::<&'static str>::default())
+    }
+}
+
+impl Default for Error<(Cow<'static, str>, Option<u32>)> {
+    #[inline]
+    fn default() -> Self {
+        Self::from(Error::<&'static str>::default())
+    }
+}
+
 impl core::error::Error for Error {}
 
-impl From<c_int> for Error {
+impl From<c_int> for Error<&'static str> {
     fn from(value: c_int) -> Self {
         Error::new(value).unwrap_or_default()
+    }
+}
+
+impl From<Error<&'static str>> for Error {
+    fn from(error: Error<&'static str>) -> Self {
+        Error {
+            code: error.code,
+            message: Cow::Borrowed(error.message),
+        }
+    }
+}
+
+impl From<Error<&'static str>> for Error<(Cow<'static, str>, Option<u32>)> {
+    fn from(error: Error<&'static str>) -> Self {
+        Error {
+            code: error.code,
+            message: (Cow::Borrowed(error.message), None),
+        }
+    }
+}
+
+pub trait Message {
+    type Owned: Message;
+
+    unsafe fn from_connection(connection: *mut sqlite3, code: i32) -> Self;
+
+    fn text(&self) -> &str;
+
+    fn to_owned_message(self) -> Self::Owned;
+}
+
+impl Message for &'static str {
+    type Owned = String;
+
+    unsafe fn from_connection(_connection: *mut sqlite3, code: i32) -> Self {
+        Error::<Self>::message_for_code(code)
+    }
+
+    #[inline]
+    fn text(&self) -> &str {
+        self
+    }
+
+    fn to_owned_message(self) -> Self::Owned {
+        self.to_owned()
+    }
+}
+
+impl Message for String {
+    type Owned = Self;
+
+    unsafe fn from_connection(connection: *mut sqlite3, code: i32) -> Self {
+        let current = unsafe { sqlite3_errcode(connection) };
+
+        if current == code {
+            let ptr = unsafe { sqlite3_errmsg(connection) };
+            let basic_ptr = unsafe { sqlite3_errstr(code) };
+
+            if !ptr.is_null() && ptr != basic_ptr {
+                let text = unsafe { str::from_utf8_unchecked(CStr::from_ptr(ptr).to_bytes()) };
+                return text.to_owned();
+            }
+        }
+
+        let text = unsafe { <&'static str as Message>::from_connection(connection, code) };
+        text.to_owned()
+    }
+
+    fn text(&self) -> &str {
+        self
+    }
+
+    fn to_owned_message(self) -> Self::Owned {
+        self
+    }
+}
+
+impl Message for Cow<'static, str> {
+    type Owned = String;
+
+    unsafe fn from_connection(connection: *mut sqlite3, code: i32) -> Self {
+        let current = unsafe { sqlite3_errcode(connection) };
+
+        if current == code {
+            let ptr = unsafe { sqlite3_errmsg(connection) };
+            let basic_ptr = unsafe { sqlite3_errstr(code) };
+
+            if !ptr.is_null() && ptr != basic_ptr {
+                let text = unsafe { str::from_utf8_unchecked(CStr::from_ptr(ptr).to_bytes()) };
+                return Cow::Owned(text.to_owned());
+            }
+        }
+
+        Cow::Borrowed(unsafe { <&'static str as Message>::from_connection(connection, code) })
+    }
+
+    fn text(&self) -> &str {
+        self
+    }
+
+    fn to_owned_message(self) -> <Self as Message>::Owned {
+        self.into_owned()
+    }
+}
+
+impl<M: Message> Message for (M, Option<u32>) {
+    type Owned = (M::Owned, Option<u32>);
+
+    unsafe fn from_connection(connection: *mut sqlite3, code: i32) -> Self {
+        let message = unsafe { M::from_connection(connection, code) };
+        let offset = unsafe { sqlite3_error_offset(connection) };
+
+        if offset >= 0 {
+            (message, Some(offset as u32))
+        } else {
+            (message, None)
+        }
+    }
+
+    fn text(&self) -> &str {
+        self.0.text()
+    }
+
+    fn to_owned_message(self) -> Self::Owned {
+        (self.0.to_owned_message(), self.1)
     }
 }
 

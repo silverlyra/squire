@@ -39,7 +39,7 @@ impl Connection {
     /// Open a new SQLite database connection.
     #[must_use]
     #[doc(alias = "sqlite3_open_v2")]
-    pub fn open(path: &CStr, flags: i32, vfs: Option<&CStr>) -> Result<Self> {
+    pub fn open(path: &CStr, flags: i32, vfs: Option<&CStr>) -> Result<Self, &'static str> {
         let path = path.as_ptr();
         let vfs = vfs.map(|vfs| vfs.as_ptr()).unwrap_or(ptr::null());
 
@@ -62,6 +62,22 @@ impl Connection {
     #[inline]
     pub const fn as_ptr(&self) -> *mut sqlite3 {
         self.handle.as_ptr()
+    }
+}
+
+pub trait Connected {
+    fn as_connection_ptr(&self) -> *mut sqlite3;
+}
+
+impl Connected for Connection {
+    fn as_connection_ptr(&self) -> *mut sqlite3 {
+        self.as_ptr()
+    }
+}
+
+impl Connected for &Connection {
+    fn as_connection_ptr(&self) -> *mut sqlite3 {
+        self.as_ptr()
     }
 }
 

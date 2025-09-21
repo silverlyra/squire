@@ -1,7 +1,7 @@
 use crate::{
     connection::Connection,
     error::{Error, Result},
-    ffi,
+    ffi::{self, Execute},
     param::{Bind, Index, Parameters},
 };
 
@@ -40,6 +40,12 @@ impl<'c> Statement<'c> {
         P: Parameters,
     {
         self.bind(parameters).map(Binding::done)
+    }
+}
+
+impl<'c> ffi::Connected for Statement<'c> {
+    fn as_connection_ptr(&self) -> *mut sqlite::sqlite3 {
+        unsafe { self.inner.connection_ptr() }
     }
 }
 

@@ -1,5 +1,5 @@
-#![cfg_attr(feature = "nightly", feature(inherent_associated_types))]
-#![cfg_attr(feature = "nightly", feature(step_trait))]
+#![cfg_attr(feature = "lang-iat", feature(inherent_associated_types))]
+#![cfg_attr(feature = "lang-step-trait", feature(step_trait))]
 
 mod connection;
 mod database;
