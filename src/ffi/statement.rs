@@ -1,9 +1,8 @@
 use core::{
-    ffi::{c_char, c_int},
+    ffi::{CStr, c_char, c_int},
     marker::PhantomData,
     ptr,
 };
-use std::{borrow::Cow, ffi::CStr};
 
 #[cfg(target_pointer_width = "32")]
 use sqlite::sqlite3_changes;
@@ -23,7 +22,7 @@ use super::{
 };
 use crate::{
     call,
-    error::{Error, Result},
+    error::{Error, ErrorLocation, ErrorMessage, Result},
 };
 
 /// A thin wrapper around a [`sqlite3_stmt`] prepared statement pointer.
@@ -63,7 +62,7 @@ impl<'c> Statement<'c> {
         connection: &'c Connection,
         query: &str,
         flags: u32,
-    ) -> Result<(Self, usize), (Cow<'static, str>, Option<u32>)> {
+    ) -> Result<(Self, usize), (ErrorMessage, Option<ErrorLocation>)> {
         let length = i32::try_from(query.len()).map_err(|_| Error::too_big())?;
         let query_p = query.as_bytes().as_ptr().cast::<c_char>();
         let mut handle: *mut sqlite3_stmt = ptr::null_mut();
@@ -106,7 +105,7 @@ impl<'c> Statement<'c> {
 
     #[inline]
     #[doc(alias = "sqlite3_finalize")]
-    pub fn close(self) -> Result<(), &'static str> {
+    pub fn close(self) -> Result<(), ()> {
         call! { sqlite3_finalize(self.as_ptr()) }
     }
 
@@ -191,7 +190,7 @@ where
     }
 
     #[doc(alias = "sqlite3_clear_bindings")]
-    pub fn clear(self) -> Result<()> {
+    pub fn clear(self) -> Result<(), ()> {
         call! { sqlite3_clear_bindings(self.statement.as_ptr()) }
     }
 }
@@ -246,7 +245,7 @@ pub unsafe trait Execute<'c> {
         'c: 'e,
         Self: 'e;
 
-    unsafe fn reset(&mut self) -> Result<()>;
+    unsafe fn reset(&mut self) -> Result<(), ()>;
 }
 
 unsafe impl<'c> Execute<'c> for Statement<'c> {
@@ -276,7 +275,7 @@ unsafe impl<'c> Execute<'c> for Statement<'c> {
     }
 
     #[inline(always)]
-    unsafe fn reset(&mut self) -> Result<()> {
+    unsafe fn reset(&mut self) -> Result<(), ()> {
         Ok(())
     }
 }
@@ -311,7 +310,7 @@ where
     }
 
     #[inline]
-    unsafe fn reset(&mut self) -> Result<()> {
+    unsafe fn reset(&mut self) -> Result<(), ()> {
         call! { sqlite3_reset(self.statement_ptr()) }
     }
 }
@@ -346,7 +345,7 @@ where
     }
 
     #[inline]
-    unsafe fn reset(&mut self) -> Result<()> {
+    unsafe fn reset(&mut self) -> Result<(), ()> {
         let statement = unsafe { self.statement_ptr() };
         call! { sqlite3_reset(statement) }?;
         call! { sqlite3_clear_bindings(statement) }
@@ -384,7 +383,7 @@ where
     }
 
     #[inline]
-    unsafe fn reset(&mut self) -> Result<()> {
+    unsafe fn reset(&mut self) -> Result<(), ()> {
         call! { sqlite3_reset(self.statement_ptr()) }
     }
 }
@@ -464,7 +463,7 @@ where
     ///
     /// [reset]: https://sqlite.org/c3ref/reset.html
     #[doc(alias = "sqlite3_reset")]
-    pub fn reset(mut self) -> Result<()> {
+    pub fn reset(mut self) -> Result<(), ()> {
         unsafe { self.inner.reset() }
     }
 

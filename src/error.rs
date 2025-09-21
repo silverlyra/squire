@@ -1,3 +1,5 @@
+#![cfg_attr(feature = "lang-rustc-scalar-valid-range", allow(internal_features))]
+
 use core::{
     ffi::{CStr, c_int},
     fmt,
@@ -36,7 +38,7 @@ use sqlite::{
 use crate::ffi;
 
 /// A [`Result`][core::result::Result] returned by a SQLite operation.
-pub type Result<T, M: Message = Cow<'static, str>> = core::result::Result<T, Error<M>>;
+pub type Result<T, C: ErrorContext = ErrorMessage> = core::result::Result<T, Error<C>>;
 
 /// An [error][return-codes] returned by a SQLite operation.
 ///
@@ -46,85 +48,80 @@ pub type Result<T, M: Message = Cow<'static, str>> = core::result::Result<T, Err
 ///
 /// [return-codes]: https://sqlite.org/rescode.html
 #[derive(PartialEq, Eq, Copy, Clone)]
-pub struct Error<M: Message = Cow<'static, str>> {
+pub struct Error<Context: ErrorContext = ErrorMessage> {
     code: NonZero<i32>,
-    message: M,
+    context: Context,
 }
 
-/// An [`Error`] which holds no formatted message, only a general SQLite error
-/// message based on the [`ErrorCode`].
-pub type StaticError = Error<&'static str>;
-
-impl Error<&'static str> {
+impl Error<()> {
     /// Creates a new [error](Error) from a SQLite result code.
-    pub fn new(code: i32) -> Option<Self> {
+    ///
+    /// The returned `Error` has no [context](ErrorContext).
+    pub const fn new(code: i32) -> Option<Self> {
         match NonZero::new(code) {
-            Some(code) => Some(Self {
-                code,
-                message: Self::message_for_code(code.get()),
-            }),
+            Some(code) => Some(Self { code, context: () }),
             None => None,
         }
     }
 
-    pub(crate) unsafe fn new_unchecked(code: i32) -> Self {
+    pub(crate) const unsafe fn new_unchecked(code: i32) -> Self {
         Self {
             code: unsafe { NonZero::new_unchecked(code) },
-            message: Self::message_for_code(code),
+            context: (),
         }
     }
 
     /// Returns a non-specific `SQLITE_ERROR` [error](Error).
-    pub(crate) fn unknown() -> Self {
+    pub(crate) const fn unknown() -> Self {
         unsafe { Self::new_unchecked(SQLITE_ERROR) }
     }
 
     /// Returns a `SQLITE_MISUSE` [error](Error).
-    pub(crate) fn misuse() -> Self {
+    pub(crate) const fn misuse() -> Self {
         unsafe { Self::new_unchecked(SQLITE_MISUSE) }
     }
 
     /// Returns a `SQLITE_RANGE` [error](Error).
-    pub(crate) fn range() -> Self {
+    pub(crate) const fn range() -> Self {
         unsafe { Self::new_unchecked(SQLITE_RANGE) }
     }
 
     /// Returns a `SQLITE_TOOBIG` [error](Error).
-    pub(crate) fn too_big() -> Self {
+    pub(crate) const fn too_big() -> Self {
         unsafe { Self::new_unchecked(SQLITE_TOOBIG) }
+    }
+
+    pub(crate) const fn attach<C: ErrorContext>(self, context: C) -> Error<C> {
+        Error {
+            code: self.code,
+            context,
+        }
+    }
+
+    pub(crate) fn attach_static(self) -> Error {
+        self.attach(ErrorMessage::for_code(self.raw()))
     }
 }
 
-impl<M: Message> Error<M> {
+impl<Context: ErrorContext> Error<Context> {
     pub(crate) fn from_connection(connection: impl ffi::Connected, code: i32) -> Option<Self> {
         match NonZero::new(code) {
             Some(code) => {
                 let ptr = connection.as_connection_ptr();
-                let message = unsafe { M::from_connection(ptr, code.get()) };
+                let context = unsafe { Context::capture(ptr, code.get()) };
 
-                Some(Self { code, message })
+                Some(Self { code, context })
             }
             None => None,
         }
-    }
-
-    pub fn message(&self) -> &str {
-        self.message.text()
     }
 
     pub const fn name(&self) -> Option<&'static str> {
         Self::name_for_code(self.raw())
     }
 
-    pub fn to_owned(self) -> Error<M::Owned> {
-        Error {
-            code: self.code,
-            message: self.message.to_owned_message(),
-        }
-    }
-
-    pub fn to_static(self) -> StaticError {
-        unsafe { Error::new_unchecked(self.code.get()) }
+    pub fn message(&self) -> &str {
+        self.context.message(self.raw())
     }
 
     /// Returns the [primary result code][] for this error.
@@ -282,13 +279,6 @@ impl<M: Message> Error<M> {
         self.code.get()
     }
 
-    pub(crate) fn message_for_code(code: i32) -> &'static str {
-        unsafe {
-            let ptr = sqlite3_errstr(code);
-            str::from_utf8_unchecked(CStr::from_ptr(ptr).to_bytes())
-        }
-    }
-
     pub(crate) const fn name_for_code(code: i32) -> Option<&'static str> {
         #[allow(deprecated)]
         match code {
@@ -417,7 +407,7 @@ impl<M: Message> Error<M> {
     }
 }
 
-impl<M: Message> fmt::Debug for Error<M> {
+impl<Context: ErrorContext> fmt::Debug for Error<Context> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let raw = self.raw();
         let name = Self::name_for_code(raw);
@@ -433,14 +423,15 @@ impl<M: Message> fmt::Debug for Error<M> {
     }
 }
 
-impl<M: Message> fmt::Display for Error<M> {
+impl<Context: ErrorContext> fmt::Display for Error<Context> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let message = self.message();
         write!(f, "{message}")
     }
 }
 
-impl Default for Error<&'static str> {
+impl Default for Error<()> {
+    #[inline]
     fn default() -> Self {
         Self::unknown()
     }
@@ -449,147 +440,172 @@ impl Default for Error<&'static str> {
 impl Default for Error {
     #[inline]
     fn default() -> Self {
-        Self::from(Error::<&'static str>::default())
+        Self::from(Error::unknown())
     }
 }
 
-impl Default for Error<(Cow<'static, str>, Option<u32>)> {
+impl Default for Error<(ErrorMessage, Option<ErrorLocation>)> {
     #[inline]
     fn default() -> Self {
-        Self::from(Error::<&'static str>::default())
+        Self::from(Error::unknown())
     }
 }
 
-impl core::error::Error for Error {}
+impl<Context: ErrorContext> core::error::Error for Error<Context> {}
 
-impl From<c_int> for Error<&'static str> {
+impl From<c_int> for Error<()> {
     fn from(value: c_int) -> Self {
         Error::new(value).unwrap_or_default()
     }
 }
 
-impl From<Error<&'static str>> for Error {
-    fn from(error: Error<&'static str>) -> Self {
-        Error {
+impl From<c_int> for Error {
+    fn from(value: c_int) -> Self {
+        Error::<()>::from(value).attach_static()
+    }
+}
+
+impl From<Error<()>> for Error {
+    fn from(error: Error<()>) -> Self {
+        error.attach_static()
+    }
+}
+
+impl From<Error<()>> for Error<(ErrorMessage, Option<ErrorLocation>)> {
+    fn from(error: Error<()>) -> Self {
+        error.attach((ErrorMessage::for_code(error.raw()), None))
+    }
+}
+
+impl From<Error> for Error<(ErrorMessage, Option<ErrorLocation>)> {
+    fn from(error: Error) -> Self {
+        Self {
             code: error.code,
-            message: Cow::Borrowed(error.message),
+            context: (error.context, None),
         }
     }
 }
 
-impl From<Error<&'static str>> for Error<(Cow<'static, str>, Option<u32>)> {
-    fn from(error: Error<&'static str>) -> Self {
-        Error {
-            code: error.code,
-            message: (Cow::Borrowed(error.message), None),
-        }
+pub trait ErrorContext {
+    unsafe fn capture(connection: *mut sqlite3, code: i32) -> Self;
+
+    fn message(&self, code: i32) -> &str;
+}
+
+impl ErrorContext for () {
+    #[inline(always)]
+    unsafe fn capture(_connection: *mut sqlite3, _code: i32) -> Self {
+        ()
+    }
+
+    fn message(&self, code: i32) -> &str {
+        ErrorMessage::resolve_code(code)
     }
 }
 
-pub trait Message {
-    type Owned: Message;
+#[derive(PartialEq, Eq, PartialOrd, Ord, Clone, Debug)]
+pub struct ErrorMessage(Cow<'static, str>);
 
-    unsafe fn from_connection(connection: *mut sqlite3, code: i32) -> Self;
-
-    fn text(&self) -> &str;
-
-    fn to_owned_message(self) -> Self::Owned;
-}
-
-impl Message for &'static str {
-    type Owned = String;
-
-    unsafe fn from_connection(_connection: *mut sqlite3, code: i32) -> Self {
-        Error::<Self>::message_for_code(code)
+impl ErrorMessage {
+    pub fn new(message: impl AsRef<str>) -> Self {
+        Self::formatted(message.as_ref().to_owned())
     }
 
     #[inline]
-    fn text(&self) -> &str {
-        self
+    pub const fn constant(message: &'static str) -> Self {
+        Self(Cow::Borrowed(message))
     }
 
-    fn to_owned_message(self) -> Self::Owned {
-        self.to_owned()
+    #[inline]
+    pub const fn formatted(message: String) -> Self {
+        Self(Cow::Owned(message))
+    }
+
+    pub fn for_code(code: i32) -> Self {
+        Self::constant(Self::resolve_code(code))
+    }
+
+    pub(crate) fn resolve_code(code: i32) -> &'static str {
+        let ptr = unsafe { sqlite3_errstr(code) };
+        let bytes = unsafe { CStr::from_ptr(ptr) }.to_bytes();
+        unsafe { str::from_utf8_unchecked(bytes) }
+    }
+
+    pub const fn as_str(&self) -> &str {
+        match self.0 {
+            Cow::Borrowed(message) => message,
+            Cow::Owned(ref message) => message.as_str(),
+        }
+    }
+
+    pub fn into_string(self) -> String {
+        self.0.into_owned()
     }
 }
 
-impl Message for String {
-    type Owned = Self;
+impl ErrorContext for ErrorMessage {
+    unsafe fn capture(connection: *mut sqlite3, code: i32) -> Self {
+        if !connection.is_null() {
+            let current = unsafe { sqlite3_errcode(connection) };
 
-    unsafe fn from_connection(connection: *mut sqlite3, code: i32) -> Self {
-        let current = unsafe { sqlite3_errcode(connection) };
+            if current == code {
+                let ptr = unsafe { sqlite3_errmsg(connection) };
+                let static_ptr = unsafe { sqlite3_errstr(code) };
 
-        if current == code {
-            let ptr = unsafe { sqlite3_errmsg(connection) };
-            let basic_ptr = unsafe { sqlite3_errstr(code) };
-
-            if !ptr.is_null() && ptr != basic_ptr {
-                let text = unsafe { str::from_utf8_unchecked(CStr::from_ptr(ptr).to_bytes()) };
-                return text.to_owned();
+                if !ptr.is_null() && ptr != static_ptr {
+                    let text = unsafe { str::from_utf8_unchecked(CStr::from_ptr(ptr).to_bytes()) };
+                    return Self::new(text);
+                }
             }
         }
 
-        let text = unsafe { <&'static str as Message>::from_connection(connection, code) };
-        text.to_owned()
+        Self::for_code(code)
     }
 
-    fn text(&self) -> &str {
-        self
-    }
-
-    fn to_owned_message(self) -> Self::Owned {
-        self
+    fn message(&self, _code: i32) -> &str {
+        self.as_str()
     }
 }
 
-impl Message for Cow<'static, str> {
-    type Owned = String;
+#[derive(PartialEq, Eq, PartialOrd, Ord, Clone, Copy, Debug)]
+#[cfg_attr(
+    feature = "lang-rustc-scalar-valid-range",
+    rustc_layout_scalar_valid_range_end(0x7FFFFFFF)
+)]
+pub struct ErrorLocation(u32);
 
-    unsafe fn from_connection(connection: *mut sqlite3, code: i32) -> Self {
-        let current = unsafe { sqlite3_errcode(connection) };
+impl ErrorContext for (ErrorMessage, Option<ErrorLocation>) {
+    unsafe fn capture(connection: *mut sqlite3, code: i32) -> Self {
+        let message = unsafe { ErrorMessage::capture(connection, code) };
+        let location = unsafe { ErrorLocation::capture(connection) };
 
-        if current == code {
-            let ptr = unsafe { sqlite3_errmsg(connection) };
-            let basic_ptr = unsafe { sqlite3_errstr(code) };
-
-            if !ptr.is_null() && ptr != basic_ptr {
-                let text = unsafe { str::from_utf8_unchecked(CStr::from_ptr(ptr).to_bytes()) };
-                return Cow::Owned(text.to_owned());
-            }
-        }
-
-        Cow::Borrowed(unsafe { <&'static str as Message>::from_connection(connection, code) })
+        (message, location)
     }
 
-    fn text(&self) -> &str {
-        self
-    }
-
-    fn to_owned_message(self) -> <Self as Message>::Owned {
-        self.into_owned()
+    fn message(&self, code: i32) -> &str {
+        self.0.message(code)
     }
 }
 
-impl<M: Message> Message for (M, Option<u32>) {
-    type Owned = (M::Owned, Option<u32>);
-
-    unsafe fn from_connection(connection: *mut sqlite3, code: i32) -> Self {
-        let message = unsafe { M::from_connection(connection, code) };
-        let offset = unsafe { sqlite3_error_offset(connection) };
-
-        if offset >= 0 {
-            (message, Some(offset as u32))
+impl ErrorLocation {
+    const fn new(location: i32) -> Option<Self> {
+        if location >= 0 {
+            Some(Self(location as u32))
         } else {
-            (message, None)
+            None
         }
     }
 
-    fn text(&self) -> &str {
-        self.0.text()
+    unsafe fn capture(connection: *mut sqlite3) -> Option<Self> {
+        Self::new(unsafe { sqlite3_error_offset(connection) })
     }
 
-    fn to_owned_message(self) -> Self::Owned {
-        (self.0.to_owned_message(), self.1)
+    pub const fn offset(&self) -> usize {
+        self.0 as usize
+    }
+
+    pub fn prefix<'a>(&self, sql: &'a str) -> &'a str {
+        &sql[..self.offset()]
     }
 }
 

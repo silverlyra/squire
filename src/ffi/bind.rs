@@ -3,10 +3,9 @@ use core::{
     num::NonZero,
     ptr,
 };
-use std::borrow::Cow;
 
 use super::statement::Statement;
-use crate::error::{Error, Result};
+use crate::error::{Error, ErrorMessage, Result};
 
 use sqlite::{
     SQLITE_STATIC, SQLITE_TRANSIENT, sqlite3_bind_double, sqlite3_bind_int, sqlite3_bind_int64,
@@ -66,7 +65,7 @@ macro_rules! bind {
         {
             let result = unsafe { $fn($stmt.as_ptr(), $index.value(), $($arg),*) };
 
-            match Error::<Cow<'static, str>>::from_connection($stmt, result) {
+            match Error::<ErrorMessage>::from_connection($stmt, result) {
                 Some(err) => Err(err),
                 None => Ok(()),
             }
@@ -138,10 +137,10 @@ unsafe impl<'b> Bind<'b> for &str {
 unsafe impl<'b> Bind<'b> for &[u8] {
     unsafe fn bind(self, statement: &'b Statement, index: Index) -> Result<()> {
         #[cfg(target_pointer_width = "32")]
-        call! { sqlite3_bind_blob(statement.as_ptr(), index.value(), self.as_ptr() as *const c_void, self.len() as c_int, SQLITE_TRANSIENT) }
+        bind! { sqlite3_bind_blob(statement, index, self.as_ptr() as *const c_void, self.len() as c_int, SQLITE_TRANSIENT) }
 
         #[cfg(target_pointer_width = "64")]
-        call! { sqlite3_bind_blob64(statement.as_ptr(), index.value(), self.as_ptr() as *const c_void, self.len() as sqlite3_uint64, SQLITE_TRANSIENT) }
+        bind! { sqlite3_bind_blob64(statement, index, self.as_ptr() as *const c_void, self.len() as sqlite3_uint64, SQLITE_TRANSIENT) }
     }
 }
 
@@ -185,10 +184,10 @@ impl<'a, T: ?Sized> Static<'a, T> {
 unsafe impl<'b, 'a: 'b> Bind<'b> for Static<'a, str> {
     unsafe fn bind(self, statement: &'b Statement, index: Index) -> Result<()> {
         #[cfg(target_pointer_width = "32")]
-        call! { sqlite3_bind_text(statement.as_ptr(), index.value(), self.as_ptr() as *const i8, self.0.len() as c_int, SQLITE_STATIC) }?;
+        bind! { sqlite3_bind_text(statement, index, self.as_ptr() as *const i8, self.0.len() as c_int, SQLITE_STATIC) }?;
 
         #[cfg(target_pointer_width = "64")]
-        call! { sqlite3_bind_text64(statement.as_ptr(), index.value(), self.as_ptr() as *const i8, self.0.len() as sqlite3_uint64, SQLITE_STATIC, ENCODING_UTF8) }?;
+        bind! { sqlite3_bind_text64(statement, index, self.as_ptr() as *const i8, self.0.len() as sqlite3_uint64, SQLITE_STATIC, ENCODING_UTF8) }?;
 
         Ok(())
     }
@@ -210,10 +209,10 @@ unsafe impl<'b, 'a: 'b> Bind<'b> for Static<'a, str> {
 unsafe impl<'b, 'a: 'b> Bind<'b> for Static<'a, [u8]> {
     unsafe fn bind(self, statement: &'b Statement, index: Index) -> Result<()> {
         #[cfg(target_pointer_width = "32")]
-        call! { sqlite3_bind_blob(statement.as_ptr(), index.value(), self.as_ptr() as *const c_void, self.0.len() as c_int, SQLITE_STATIC) }
+        bind! { sqlite3_bind_blob(statement, index, self.as_ptr() as *const c_void, self.0.len() as c_int, SQLITE_STATIC) }
 
         #[cfg(target_pointer_width = "64")]
-        call! { sqlite3_bind_blob64(statement.as_ptr(), index.value(), self.as_ptr() as *const c_void, self.0.len() as sqlite3_uint64, SQLITE_STATIC) }
+        bind! { sqlite3_bind_blob64(statement, index, self.as_ptr() as *const c_void, self.0.len() as sqlite3_uint64, SQLITE_STATIC) }
     }
 }
 
@@ -247,7 +246,7 @@ impl Index {
     /// ```
     pub const INITIAL: Self = unsafe { Self(NonZero::new_unchecked(1)) };
 
-    pub const fn new(value: c_int) -> Result<Self> {
+    pub const fn new(value: c_int) -> Result<Self, ()> {
         match NonZero::new(value) {
             Some(value) => Ok(Self(value)),
             None => Err(Error::range()),
@@ -312,17 +311,17 @@ impl From<Index> for usize {
 }
 
 impl TryFrom<i32> for Index {
-    type Error = Error;
+    type Error = Error<()>;
 
-    fn try_from(value: i32) -> Result<Self> {
+    fn try_from(value: i32) -> Result<Self, ()> {
         Self::new(value as c_int)
     }
 }
 
 impl TryFrom<i64> for Index {
-    type Error = Error;
+    type Error = Error<()>;
 
-    fn try_from(value: i64) -> Result<Self> {
+    fn try_from(value: i64) -> Result<Self, ()> {
         match c_int::try_from(value) {
             Ok(value) => Self::new(value),
             Err(_) => Err(Error::range()),
@@ -331,17 +330,17 @@ impl TryFrom<i64> for Index {
 }
 
 impl TryFrom<isize> for Index {
-    type Error = Error;
+    type Error = Error<()>;
 
-    fn try_from(value: isize) -> Result<Self> {
+    fn try_from(value: isize) -> Result<Self, ()> {
         Self::new(value as c_int)
     }
 }
 
 impl TryFrom<u32> for Index {
-    type Error = Error;
+    type Error = Error<()>;
 
-    fn try_from(value: u32) -> Result<Self> {
+    fn try_from(value: u32) -> Result<Self, ()> {
         match c_int::try_from(value) {
             Ok(value) => Self::new(value),
             Err(_) => Err(Error::range()),
@@ -350,9 +349,9 @@ impl TryFrom<u32> for Index {
 }
 
 impl TryFrom<u64> for Index {
-    type Error = Error;
+    type Error = Error<()>;
 
-    fn try_from(value: u64) -> Result<Self> {
+    fn try_from(value: u64) -> Result<Self, ()> {
         match c_int::try_from(value) {
             Ok(value) => Self::new(value),
             Err(_) => Err(Error::range()),
@@ -361,9 +360,9 @@ impl TryFrom<u64> for Index {
 }
 
 impl TryFrom<usize> for Index {
-    type Error = Error;
+    type Error = Error<()>;
 
-    fn try_from(value: usize) -> Result<Self> {
+    fn try_from(value: usize) -> Result<Self, ()> {
         match c_int::try_from(value) {
             Ok(value) => Self::new(value),
             Err(_) => Err(Error::range()),

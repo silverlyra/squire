@@ -20,7 +20,7 @@ license = "Apache-2.0"
 [features]
 default = ["linked", "common", "multi-thread"]
 
-common = ["sqlite/common", "json", "url"]
+common = ["sqlite/common", "json", "url", "mutex"]
 full = ["sqlite/full", "common"]
 
 bundled = ["sqlite/bundled"]
@@ -29,7 +29,7 @@ static = ["sqlite/static"]
 
 single-thread = ["sqlite/single-thread"]
 multi-thread = ["sqlite/multi-thread"]
-serialized = ["sqlite/serialized"]
+serialized = ["sqlite/serialized", "mutex"]
 
 armor = ["sqlite/armor"]
 authorization = ["sqlite/authorization"]
@@ -45,6 +45,7 @@ geo = ["sqlite/geo"]
 geopoly = ["sqlite/geopoly"]
 json = ["sqlite/json", "dep:serde_json"]
 memory-status = ["sqlite/memory-status"]
+mutex = []
 normalize-sql = ["sqlite/normalize-sql"]
 page-vtab = ["sqlite/page-vtab"]
 preupdate-hook = ["sqlite/preupdate-hook"]
@@ -61,6 +62,7 @@ trace = ["sqlite/trace"]
 
 nightly = ["lang-iat", "lang-step-trait"]
 lang-iat = []
+lang-rustc-scalar-valid-range = []
 lang-step-trait = []
 
 utf-16 = []

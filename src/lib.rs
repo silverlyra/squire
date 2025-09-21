@@ -1,4 +1,5 @@
 #![cfg_attr(feature = "lang-iat", feature(inherent_associated_types))]
+#![cfg_attr(feature = "lang-rustc-scalar-valid-range", feature(rustc_attrs))]
 #![cfg_attr(feature = "lang-step-trait", feature(step_trait))]
 
 mod connection;

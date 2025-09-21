@@ -27,3 +27,5 @@ unsafe impl Conclusion for Option<RowId> {
         RowId::new(unsafe { sqlite3_last_insert_rowid(connection) })
     }
 }
+
+mod mutex {}

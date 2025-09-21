@@ -50,10 +50,11 @@ impl Connection {
         ConnectionBuilder::new(database.to_owned().into_endpoint())
     }
 
-    pub fn close(self) -> Result<()> {
+    pub fn close(self) -> Result<(), ()> {
         self.inner.close()
     }
 
+    /// Access the [`ffi::Connection`] underlying this [`Connection`].
     #[inline]
     pub fn internal_ref(&self) -> &ffi::Connection {
         &self.inner

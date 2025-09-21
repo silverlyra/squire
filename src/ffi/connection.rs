@@ -2,6 +2,8 @@ use core::{ffi::CStr, ptr};
 
 use sqlite::{SQLITE_OK, SQLITE_OPEN_EXRESCODE, sqlite3, sqlite3_close, sqlite3_open_v2};
 
+#[cfg(feature = "mutex")]
+use super::mutex::MutexRef;
 use crate::{
     call,
     error::{Error, Result},
@@ -39,7 +41,7 @@ impl Connection {
     /// Open a new SQLite database connection.
     #[must_use]
     #[doc(alias = "sqlite3_open_v2")]
-    pub fn open(path: &CStr, flags: i32, vfs: Option<&CStr>) -> Result<Self, &'static str> {
+    pub fn open(path: &CStr, flags: i32, vfs: Option<&CStr>) -> Result<Self> {
         let path = path.as_ptr();
         let vfs = vfs.map(|vfs| vfs.as_ptr()).unwrap_or(ptr::null());
 
@@ -48,14 +50,23 @@ impl Connection {
 
         match Self::new(db) {
             Some(db) if result == SQLITE_OK => Ok(db),
-            _ => Err(Error::from(result)),
+            Some(db) => Err(Error::from_connection(db, result).unwrap_or_default()),
+            None => Err(Error::from(result)),
         }
     }
 
     /// Close the SQLite database connection.
     #[inline]
-    pub fn close(self) -> Result<()> {
+    #[doc(alias = "sqlite3_close")]
+    pub fn close(self) -> Result<(), ()> {
         call! { sqlite3_close(self.as_ptr()) }
+    }
+
+    #[cfg(feature = "mutex")]
+    #[cfg_attr(docsrs, doc(cfg(any(feature = "mutex", feature = "serialized"))))]
+    #[doc(alias = "sqlite3_db_mutex")]
+    pub fn mutex(&self) -> Option<MutexRef<'_>> {
+        MutexRef::from_connection(self.as_ptr())
     }
 
     /// Access the raw [`sqlite3`] connection pointer.
@@ -83,17 +94,18 @@ impl Connected for &Connection {
 
 #[cfg(test)]
 mod test {
-    use std::ffi::CString;
-
     use sqlite::{SQLITE_OPEN_CREATE, SQLITE_OPEN_READWRITE};
 
     use super::Connection;
 
     #[test]
     fn test_open_memory() {
-        let path = CString::new(":memory:").unwrap();
-        let connection = Connection::open(&path, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE, None)
-            .expect("open SQLite connection");
+        let connection = Connection::open(
+            c":memory:",
+            SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE,
+            None,
+        )
+        .expect("open SQLite connection");
         connection.close().expect("close SQLite connection");
     }
 }
