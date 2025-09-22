@@ -131,6 +131,10 @@ fn build_bundled_sqlite(dest: &Path) -> Result<sqlite::Build> {
     config.set(sqlite::Setting::EnableStat4(true));
     #[cfg(feature = "trace")]
     config.set(sqlite::Setting::EnableTrace(true));
+    #[cfg(feature = "vtab")]
+    config.set(sqlite::Setting::EnableVirtualTables(true));
+    #[cfg(feature = "wal")]
+    config.set(sqlite::Setting::EnableWriteAheadLog(true));
 
     #[cfg(not(feature = "json"))]
     config.set(sqlite::Setting::EnableJson(false));

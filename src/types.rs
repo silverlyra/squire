@@ -21,9 +21,9 @@ impl RowId {
     }
 }
 
-unsafe impl Conclusion for Option<RowId> {
+impl Conclusion for Option<RowId> {
     #[inline]
-    fn from_connection_ptr(connection: *mut sqlite3) -> Self {
+    unsafe fn from_connection_ptr(connection: *mut sqlite3) -> Self {
         RowId::new(unsafe { sqlite3_last_insert_rowid(connection) })
     }
 }

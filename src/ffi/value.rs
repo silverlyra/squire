@@ -6,57 +6,47 @@ use sqlite::{
     sqlite3_column_text, sqlite3_column_type,
 };
 
-use super::statement::{Execute, Row};
+use super::statement::Statement;
 
 pub unsafe trait Fetch<'r> {
-    unsafe fn fetch<'c, 'e, E>(row: &'r Row<'c, 'e, E>, column: Column) -> Self
+    unsafe fn fetch<'c>(statement: &'r Statement<'c>, column: Column) -> Self
     where
-        E: Execute<'c> + 'e,
-        'c: 'e,
-        'e: 'r;
+        'c: 'r;
 }
 
 unsafe impl<'r> Fetch<'r> for i32 {
-    unsafe fn fetch<'c, 'e, E>(row: &'r Row<'c, 'e, E>, column: Column) -> Self
+    unsafe fn fetch<'c>(statement: &'r Statement<'c>, column: Column) -> Self
     where
-        E: Execute<'c> + 'e,
-        'c: 'e,
-        'e: 'r,
+        'c: 'r,
     {
-        unsafe { sqlite3_column_int(row.statement_ptr(), column.value()) as i32 }
+        unsafe { sqlite3_column_int(statement.as_ptr(), column.value()) as i32 }
     }
 }
 
 unsafe impl<'r> Fetch<'r> for u32 {
-    unsafe fn fetch<'c, 'e, E>(row: &'r Row<'c, 'e, E>, column: Column) -> Self
+    unsafe fn fetch<'c>(statement: &'r Statement<'c>, column: Column) -> Self
     where
-        E: Execute<'c> + 'e,
-        'c: 'e,
-        'e: 'r,
+        'c: 'r,
     {
-        unsafe { i64::fetch(row, column) as u32 }
+        unsafe { i64::fetch(statement, column) as u32 }
     }
 }
 
 unsafe impl<'r> Fetch<'r> for i64 {
-    unsafe fn fetch<'c, 'e, E>(row: &'r Row<'c, 'e, E>, column: Column) -> Self
+    unsafe fn fetch<'c>(statement: &'r Statement<'c>, column: Column) -> Self
     where
-        E: Execute<'c> + 'e,
-        'c: 'e,
-        'e: 'r,
+        'c: 'r,
     {
-        unsafe { sqlite3_column_int64(row.statement_ptr(), column.value()) as i64 }
+        unsafe { sqlite3_column_int64(statement.as_ptr(), column.value()) as i64 }
     }
 }
 
 unsafe impl<'r> Fetch<'r> for f64 {
-    unsafe fn fetch<'c, 'e, E>(row: &'r Row<'c, 'e, E>, column: Column) -> Self
+    unsafe fn fetch<'c>(statement: &'r Statement<'c>, column: Column) -> Self
     where
-        E: Execute<'c> + 'e,
-        'c: 'e,
-        'e: 'r,
+        'c: 'r,
     {
-        unsafe { sqlite3_column_double(row.statement_ptr(), column.value()) }
+        unsafe { sqlite3_column_double(statement.as_ptr(), column.value()) }
     }
 }
 
@@ -79,14 +69,12 @@ impl<'r, T: ?Sized> Deref for Bytes<'r, T> {
 }
 
 unsafe impl<'r> Fetch<'r> for Bytes<'r, str> {
-    unsafe fn fetch<'c, 'e, E>(row: &'r Row<'c, 'e, E>, column: Column) -> Self
+    unsafe fn fetch<'c>(statement: &'r Statement<'c>, column: Column) -> Self
     where
-        E: Execute<'c> + 'e,
-        'c: 'e,
-        'e: 'r,
+        'c: 'r,
     {
-        let data = unsafe { sqlite3_column_text(row.statement_ptr(), column.value()) };
-        let len = unsafe { sqlite3_column_bytes(row.statement_ptr(), column.value()) };
+        let data = unsafe { sqlite3_column_text(statement.as_ptr(), column.value()) };
+        let len = unsafe { sqlite3_column_bytes(statement.as_ptr(), column.value()) };
 
         let bytes = unsafe { slice::from_raw_parts::<'r, u8>(data, len as usize) };
         let text = unsafe { str::from_utf8_unchecked(bytes) };
@@ -96,14 +84,12 @@ unsafe impl<'r> Fetch<'r> for Bytes<'r, str> {
 }
 
 unsafe impl<'r> Fetch<'r> for Bytes<'r, [u8]> {
-    unsafe fn fetch<'c, 'e, E>(row: &'r Row<'c, 'e, E>, column: Column) -> Self
+    unsafe fn fetch<'c>(statement: &'r Statement<'c>, column: Column) -> Self
     where
-        E: Execute<'c> + 'e,
-        'c: 'e,
-        'e: 'r,
+        'c: 'r,
     {
-        let data = unsafe { sqlite3_column_blob(row.statement_ptr(), column.value()) };
-        let len = unsafe { sqlite3_column_bytes(row.statement_ptr(), column.value()) };
+        let data = unsafe { sqlite3_column_blob(statement.as_ptr(), column.value()) };
+        let len = unsafe { sqlite3_column_bytes(statement.as_ptr(), column.value()) };
 
         let bytes = unsafe { slice::from_raw_parts::<'r, u8>(data as *const u8, len as usize) };
 
@@ -112,13 +98,11 @@ unsafe impl<'r> Fetch<'r> for Bytes<'r, [u8]> {
 }
 
 unsafe impl<'r> Fetch<'r> for Type {
-    unsafe fn fetch<'c, 'e, E>(row: &'r Row<'c, 'e, E>, column: Column) -> Self
+    unsafe fn fetch<'c>(statement: &'r Statement<'c>, column: Column) -> Self
     where
-        E: Execute<'c> + 'e,
-        'c: 'e,
-        'e: 'r,
+        'c: 'r,
     {
-        let value = unsafe { sqlite3_column_type(row.statement_ptr(), column.value()) };
+        let value = unsafe { sqlite3_column_type(statement.as_ptr(), column.value()) };
 
         match value {
             SQLITE_INTEGER => Type::Integer,

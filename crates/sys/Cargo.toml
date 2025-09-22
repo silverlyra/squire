@@ -27,12 +27,17 @@ single-thread = []
 multi-thread = []
 serialized = []
 
+core = [
+    "json",
+    "metadata",
+    "vtab",
+    "wal"
+]
 common = [
+    "core",
     "blob-io",
     "fts",
     "geo",
-    "json",
-    "metadata",
     "serialize",
     "snapshot",
     "stat4",
@@ -64,23 +69,25 @@ fts = ["fts5"]
 fts3 = []
 fts5 = ["blob-io"]
 geo = ["geopoly", "rtree"]
-geopoly = []
+geopoly = ["vtab"]
 json = []
 memory-status = []
 normalize-sql = []
-page-vtab = []
+page-vtab = ["vtab"]
 preupdate-hook = []
 progress-callback = []
-rtree = []
+rtree = ["vtab"]
 serialize = []
 session = ["preupdate-hook"]
 shared-cache = ["multi-thread"]
 snapshot = []
 soundex = []
-stat-vtab = []
+stat-vtab = ["vtab"]
 stat4 = []
 trace = []
 utf-16 = []
+vtab = []
+wal = []
 
 [build-dependencies.sqlite]
 package = "squire-sqlite3-src"

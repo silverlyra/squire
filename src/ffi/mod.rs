@@ -9,7 +9,7 @@ mod value;
 pub use bind::{Bind, Index, Static, destructor};
 pub use connection::{Connected, Connection};
 #[cfg(feature = "mutex")]
-#[cfg_attr(docsrs, doc(cfg(feature = "mutex")))]
+#[cfg_attr(docsrs, doc(cfg(any(feature = "mutex", feature = "serialized"))))]
 pub use mutex::{Mutex, MutexGuard, MutexRef, StaticMutex};
-pub use statement::{Binding, Conclusion, Execute, Execution, Row, Statement};
+pub use statement::{Conclusion, Execute, Statement};
 pub use value::{Bytes, Column, Fetch, Type};
