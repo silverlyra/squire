@@ -116,7 +116,7 @@ impl Error {
 
     /// Returns a [parameter index resolution error](ParameterError::Resolve).
     pub fn resolve(message: impl Into<ErrorMessage>) -> Self {
-        unsafe { Error::new_unchecked(SQUIRE_ERROR_PARAMETER_BIND) }.attach(message.into())
+        unsafe { Error::new_unchecked(SQUIRE_ERROR_PARAMETER_RESOLVE) }.attach(message.into())
     }
 }
 

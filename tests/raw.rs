@@ -13,8 +13,7 @@ fn setup() -> Result<Connection> {
             "CREATE TABLE example (id INTEGER PRIMARY KEY AUTOINCREMENT, a TEXT NOT NULL, b INTEGER, c REAL) STRICT;",
             0,
         )?;
-        create.binding().ready().execute::<()>()?;
-
+        create.execute::<()>()?;
         create.close()?;
     }
 
@@ -32,22 +31,18 @@ fn round_trip() -> Result {
             0,
         )?;
 
-        let id = {
-            let mut binding = insert.binding();
+        let index = ffi::Index::INITIAL;
+        insert.bind(index, "hello 🌎!")?;
 
-            unsafe {
-                let index = ffi::Index::INITIAL;
-                binding.set(index, "hello 🌎!")?;
+        let index = index.next();
+        insert.bind(index, 12)?;
 
-                let index = index.next();
-                binding.set(index, 12)?;
+        let index = index.next();
+        insert.bind(index, 3.14)?;
 
-                let index = index.next();
-                binding.set(index, 3.14)?;
-            }
+        let id: Option<RowId> = insert.execute()?;
+        insert.close()?;
 
-            binding.ready().execute::<Option<RowId>>()?
-        };
         id.expect("inserted row").into_inner()
     };
 
@@ -58,28 +53,23 @@ fn round_trip() -> Result {
             0,
         )?;
 
-        {
-            let mut binding = select.binding();
+        let index = ffi::Index::new(1)?;
+        select.bind(index, id)?;
 
-            unsafe {
-                let index = ffi::Index::new(1)?;
-                binding.set(index, id)?;
-            }
+        let row = select.row()?;
+        assert!(row, "expected a row");
 
-            let mut exec = binding.ready();
+        let a: ffi::Bytes<'_, str> = unsafe { select.fetch(ffi::Column::new(0)) };
+        let b: i32 = unsafe { select.fetch(ffi::Column::new(1)) };
+        let c: f64 = unsafe { select.fetch(ffi::Column::new(2)) };
 
-            let row = exec.row()?.expect("a row");
+        let a = a.into_inner();
 
-            let a: ffi::Bytes<'_, str> = unsafe { row.fetch(ffi::Column::new(0)) };
-            let b: i32 = unsafe { row.fetch(ffi::Column::new(1)) };
-            let c: f64 = unsafe { row.fetch(ffi::Column::new(2)) };
+        assert_eq!("hello 🌎!", a);
+        assert_eq!(12, b);
+        assert_eq!(3.14, c);
 
-            let a = a.into_inner();
-
-            assert_eq!("hello 🌎!", a);
-            assert_eq!(12, b);
-            assert_eq!(3.14, c);
-        }
+        select.close()?;
     }
 
     Ok(())

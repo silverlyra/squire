@@ -177,11 +177,9 @@ where
     where
         B: Bind<'b>,
     {
-        unsafe {
-            self.statement
-                .internal_mut()
-                .bind(index, value.into_bind_value()?)
-        }
+        self.statement
+            .internal_mut()
+            .bind(index, value.into_bind_value()?)
     }
 
     pub fn ready<'b>(&'b mut self) -> Execution<'c, &'b mut Self> {

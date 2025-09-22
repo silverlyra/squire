@@ -128,7 +128,7 @@ impl<'c> Statement<'c> {
         }
     }
 
-    pub unsafe fn bind<'b, B>(&'b mut self, index: Index, value: B) -> Result<()>
+    pub fn bind<'b, B>(&'b mut self, index: Index, value: B) -> Result<()>
     where
         B: Bind<'b>,
     {
