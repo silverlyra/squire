@@ -8,13 +8,13 @@ use sqlite::{
 
 use super::statement::Statement;
 
-pub unsafe trait Fetch<'r> {
+pub trait Fetch<'r> {
     unsafe fn fetch<'c>(statement: &'r Statement<'c>, column: Column) -> Self
     where
         'c: 'r;
 }
 
-unsafe impl<'r> Fetch<'r> for i32 {
+impl<'r> Fetch<'r> for i32 {
     unsafe fn fetch<'c>(statement: &'r Statement<'c>, column: Column) -> Self
     where
         'c: 'r,
@@ -23,16 +23,7 @@ unsafe impl<'r> Fetch<'r> for i32 {
     }
 }
 
-unsafe impl<'r> Fetch<'r> for u32 {
-    unsafe fn fetch<'c>(statement: &'r Statement<'c>, column: Column) -> Self
-    where
-        'c: 'r,
-    {
-        unsafe { i64::fetch(statement, column) as u32 }
-    }
-}
-
-unsafe impl<'r> Fetch<'r> for i64 {
+impl<'r> Fetch<'r> for i64 {
     unsafe fn fetch<'c>(statement: &'r Statement<'c>, column: Column) -> Self
     where
         'c: 'r,
@@ -41,7 +32,7 @@ unsafe impl<'r> Fetch<'r> for i64 {
     }
 }
 
-unsafe impl<'r> Fetch<'r> for f64 {
+impl<'r> Fetch<'r> for f64 {
     unsafe fn fetch<'c>(statement: &'r Statement<'c>, column: Column) -> Self
     where
         'c: 'r,
@@ -68,7 +59,7 @@ impl<'r, T: ?Sized> Deref for Bytes<'r, T> {
     }
 }
 
-unsafe impl<'r> Fetch<'r> for Bytes<'r, str> {
+impl<'r> Fetch<'r> for Bytes<'r, str> {
     unsafe fn fetch<'c>(statement: &'r Statement<'c>, column: Column) -> Self
     where
         'c: 'r,
@@ -83,7 +74,7 @@ unsafe impl<'r> Fetch<'r> for Bytes<'r, str> {
     }
 }
 
-unsafe impl<'r> Fetch<'r> for Bytes<'r, [u8]> {
+impl<'r> Fetch<'r> for Bytes<'r, [u8]> {
     unsafe fn fetch<'c>(statement: &'r Statement<'c>, column: Column) -> Self
     where
         'c: 'r,
@@ -97,7 +88,7 @@ unsafe impl<'r> Fetch<'r> for Bytes<'r, [u8]> {
     }
 }
 
-unsafe impl<'r> Fetch<'r> for Type {
+impl<'r> Fetch<'r> for Type {
     unsafe fn fetch<'c>(statement: &'r Statement<'c>, column: Column) -> Self
     where
         'c: 'r,
@@ -127,8 +118,9 @@ impl Column {
         Self(value)
     }
 
+    /// Access the underlying SQLite datatype constant as a C [`int`](c_int).
     #[inline]
-    const fn value(&self) -> c_int {
+    pub const fn value(&self) -> c_int {
         self.0
     }
 }

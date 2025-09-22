@@ -45,6 +45,7 @@ unsafe impl<'c> Send for Statement<'c> {}
 unsafe impl<'c> Sync for Statement<'c> {}
 
 impl<'c> Statement<'c> {
+    /// Wrap a [`sqlite3_stmt`] prepared statement pointer.
     #[inline]
     #[must_use]
     pub const fn new(handle: *mut sqlite3_stmt) -> Option<Self> {
@@ -113,12 +114,12 @@ impl<'c> Statement<'c> {
 
     /// Return the highest (1-based) parameter index used by this [`Statement`].
     #[doc(alias = "sqlite3_bind_parameter_count")]
-    pub fn parameter_count(&self) -> isize {
-        unsafe { sqlite3_bind_parameter_count(self.as_ptr()) as isize }
+    pub fn parameter_count(&self) -> c_int {
+        unsafe { sqlite3_bind_parameter_count(self.as_ptr()) }
     }
 
     #[doc(alias = "sqlite3_bind_parameter_name")]
-    pub unsafe fn parameter_name(&self, index: Index) -> Option<&CStr> {
+    pub fn parameter_name(&self, index: Index) -> Option<&CStr> {
         let ptr = unsafe { sqlite3_bind_parameter_name(self.as_ptr(), index.value()) };
 
         if ptr.is_null() {

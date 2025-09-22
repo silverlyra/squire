@@ -41,9 +41,11 @@ use crate::ffi;
 pub type Result<T, C = ErrorMessage> = core::result::Result<T, Error<C>>;
 
 const SQUIRE_ERROR: i32 = 0x00c0;
-const SQUIRE_ERROR_PARAMETER: i32 = 0x00c1;
-const SQUIRE_ERROR_PARAMETER_BIND: i32 = 0x01c1;
-const SQUIRE_ERROR_PARAMETER_RESOLVE: i32 = 0x02c1;
+const SQUIRE_ERROR_FETCH: i32 = 0x00c1;
+const SQUIRE_ERROR_FETCH_RANGE: i32 = 0x01c1;
+const SQUIRE_ERROR_PARAMETER: i32 = 0x00c2;
+const SQUIRE_ERROR_PARAMETER_BIND: i32 = 0x01c2;
+const SQUIRE_ERROR_PARAMETER_RESOLVE: i32 = 0x02c2;
 
 /// An [error][return-codes] returned by a SQLite operation.
 ///
@@ -118,6 +120,10 @@ impl Error {
     pub fn resolve(message: impl Into<ErrorMessage>) -> Self {
         unsafe { Error::new_unchecked(SQUIRE_ERROR_PARAMETER_RESOLVE) }.attach(message.into())
     }
+
+    pub fn fetch(code: FetchError, message: impl Into<ErrorMessage>) -> Self {
+        unsafe { Error::new_unchecked(code as i32) }.attach(message.into())
+    }
 }
 
 impl<Context: ErrorContext> Error<Context> {
@@ -179,6 +185,7 @@ impl<Context: ErrorContext> Error<Context> {
             SQLITE_SCHEMA => ErrorCategory::Schema,
             SQLITE_TOOBIG => ErrorCategory::TooBig,
 
+            SQUIRE_ERROR_FETCH => ErrorCategory::Fetch,
             SQUIRE_ERROR_PARAMETER => ErrorCategory::Parameter,
 
             _ => ErrorCategory::Unknown,
@@ -287,6 +294,9 @@ impl<Context: ErrorContext> Error<Context> {
             SQLITE_READONLY_DBMOVED => Some(ErrorCode::ReadOnly(ReadOnlyError::DbMoved)),
             SQLITE_READONLY_CANTINIT => Some(ErrorCode::ReadOnly(ReadOnlyError::CantInit)),
             SQLITE_READONLY_DIRECTORY => Some(ErrorCode::ReadOnly(ReadOnlyError::Directory)),
+
+            // Squire column fetch errors
+            SQUIRE_ERROR_FETCH_RANGE => Some(ErrorCode::Fetch(FetchError::Range)),
 
             // Squire parameter errors
             SQUIRE_ERROR_PARAMETER_BIND => Some(ErrorCode::Parameter(ParameterError::Bind)),
@@ -430,6 +440,8 @@ impl<Context: ErrorContext> Error<Context> {
 
             // Squire errors
             SQUIRE_ERROR => Some("SQUIRE_ERROR"),
+            SQUIRE_ERROR_FETCH => Some("SQUIRE_ERROR_FETCH"),
+            SQUIRE_ERROR_FETCH_RANGE => Some("SQUIRE_ERROR_FETCH_RANGE"),
             SQUIRE_ERROR_PARAMETER => Some("SQUIRE_ERROR_PARAMETER"),
             SQUIRE_ERROR_PARAMETER_BIND => Some("SQUIRE_ERROR_PARAMETER_BIND"),
             SQUIRE_ERROR_PARAMETER_RESOLVE => Some("SQUIRE_ERROR_PARAMETER_RESOLVE"),
@@ -798,6 +810,14 @@ pub enum ErrorCategory {
     #[doc(alias = "SQLITE_NOTADB")]
     InvalidDatabase = SQLITE_NOTADB,
 
+    /// A column value stored in SQLite could not be read into a Rust type.
+    ///
+    /// (This [error category](ErrorCategory) is defined by Squire; not SQLite.
+    /// No SQLite [result codes][] correspond to `ErrorCategory::Parameter`.)
+    ///
+    /// [result codes]: https://sqlite.org/rescode.html
+    Fetch = SQUIRE_ERROR_FETCH,
+
     /// A parameter could not be [bound](crate::Bind); the [error
     /// message](ErrorMessage) gives more detail about the underlying error.
     ///
@@ -842,6 +862,14 @@ pub enum ErrorCode {
     /// Extended read-only error codes.
     ReadOnly(ReadOnlyError),
 
+    /// Extended [`ErrorCode::Fetch`] error codes.
+    ///
+    /// (This [error code](ErrorCode) is defined by Squire; not SQLite.
+    /// No SQLite [result codes][] correspond to `ErrorCode::Parameter`.)
+    ///
+    /// [result codes]: https://sqlite.org/rescode.html
+    Fetch(FetchError),
+
     /// Extended [`ErrorCode::Parameter`] error codes.
     ///
     /// (This [error code](ErrorCode) is defined by Squire; not SQLite.
@@ -866,6 +894,7 @@ impl ErrorCode {
             ErrorCode::Locked(err) => err as i32,
             ErrorCode::ReadOnly(err) => err as i32,
 
+            ErrorCode::Fetch(err) => err as i32,
             ErrorCode::Parameter(err) => err as i32,
         }
     }
@@ -884,6 +913,7 @@ impl ErrorCode {
             ErrorCode::Locked(_) => ErrorCategory::Locked,
             ErrorCode::ReadOnly(_) => ErrorCategory::ReadOnly,
 
+            ErrorCode::Fetch(_) => ErrorCategory::Fetch,
             ErrorCode::Parameter(_) => ErrorCategory::Parameter,
         }
     }
@@ -1252,6 +1282,21 @@ pub enum ReadOnlyError {
     /// create a journal file in the same directory as the database.
     #[doc(alias = "SQLITE_READONLY_DIRECTORY")]
     Directory = SQLITE_READONLY_DIRECTORY,
+}
+
+/// An error reading a SQLite column value into its Rust type.
+///
+/// (This [error category](ErrorCategory) is defined by Squire; not SQLite.
+/// No SQLite [result codes][] correspond to `FetchError`.)
+///
+/// [result codes]: https://sqlite.org/rescode.html
+#[derive(PartialEq, Eq, Copy, Clone, Debug)]
+#[repr(i32)]
+pub enum FetchError {
+    /// [Fetching](crate::Fetch) a column value failed; the value stored in
+    /// SQLite is out of the range the destination Rust type can represent
+    /// (e.g., fetching into a `u8` a value > 255).
+    Range = SQUIRE_ERROR_FETCH_RANGE,
 }
 
 /// An error passing prepared statement parameter(s) to SQLite.

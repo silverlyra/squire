@@ -9,12 +9,15 @@ pub use ffi::Index;
 
 /// A value which can be [bound as a parameter][bind] in SQLite [prepared
 /// statements](crate::Statement).
+///
+/// [bind]: https://sqlite.org/c3ref/bind_blob.html
 pub trait Bind<'b> {
     type Value: ffi::Bind<'b>;
 
     fn into_bind_value(self) -> Result<Self::Value>;
 }
 
+/// Defines [`Bind`] for a type that implements [`ffi::Bind`].
 macro_rules! identity {
     ($($t:ty),+) => {
         $(

@@ -26,9 +26,9 @@ const ENCODING_UTF8: c_uchar = SQLITE_UTF8 as c_uchar;
 /// A value which can be [bound as a parameter][bind] in SQLite [prepared
 /// statements](Statement).
 ///
-/// `squire::ffi::Bind` is the low-level `unsafe trait` whose implementations
-/// directly call a [`sqlite3_bind_*`][bind] function in the C API. To make your
-/// own user-defined types `Bind`able, implement [`squire::Bind`] instead.
+/// `squire::ffi::Bind` is the low-level `trait` whose implementations directly
+/// call a [`sqlite3_bind_*`][bind] function in the C API. To make your own
+/// user-defined types `Bind`able, implement [`squire::Bind`] instead.
 ///
 /// Squire implements `ffi::Bind` only for types that the [SQLite C API][bind]
 /// implements directly:
@@ -60,13 +60,13 @@ const ENCODING_UTF8: c_uchar = SQLITE_UTF8 as c_uchar;
     target_pointer_width = "64",
     doc = " - [`Reservation`] (via [`sqlite3_bind_zeroblob64`])"
 )]
-/// - [`None`] (via [`sqlite3_bind_null`])
+/// - [`None`](core::option) (via [`sqlite3_bind_null`])
 ///
 /// The lifetime parameter `'b` represents the lifetime of the binding operation,
 /// i.e., how long the statement reference passed to `bind` is valid for.
 ///
 /// [bind]: https://sqlite.org/c3ref/bind_blob.html
-pub unsafe trait Bind<'b> {
+pub trait Bind<'b> {
     /// Bind `self` as a SQLite prepared statement [parameter][bind].
     ///
     /// [bind]: https://sqlite.org/c3ref/bind_blob.html
@@ -88,21 +88,21 @@ macro_rules! bind {
 }
 
 /// [Binds](Bind) an [`i32`] via [`sqlite3_bind_int`].
-unsafe impl<'b> Bind<'b> for i32 {
+impl<'b> Bind<'b> for i32 {
     unsafe fn bind(self, statement: &'b Statement, index: Index) -> Result<()> {
         bind! { sqlite3_bind_int(statement, index, self) }
     }
 }
 
 /// [Binds](Bind) an [`i64`] via [`sqlite3_bind_int64`].
-unsafe impl<'b> Bind<'b> for i64 {
+impl<'b> Bind<'b> for i64 {
     unsafe fn bind(self, statement: &'b Statement, index: Index) -> Result<()> {
         bind! { sqlite3_bind_int64(statement, index, self) }
     }
 }
 
 /// [Binds](Bind) an [`f64`] via [`sqlite3_bind_double`].
-unsafe impl<'b> Bind<'b> for f64 {
+impl<'b> Bind<'b> for f64 {
     unsafe fn bind(self, statement: &'b Statement, index: Index) -> Result<()> {
         bind! { sqlite3_bind_double(statement, index, self) }
     }
@@ -122,7 +122,7 @@ unsafe impl<'b> Bind<'b> for f64 {
 /// prepared statement, wrap the `&str` in [`Static`].
 ///
 /// [clone]: https://sqlite.org/c3ref/c_static.html
-unsafe impl<'b> Bind<'b> for &str {
+impl<'b> Bind<'b> for &str {
     unsafe fn bind(self, statement: &'b Statement, index: Index) -> Result<()> {
         #[cfg(target_pointer_width = "32")]
         bind! { sqlite3_bind_text(statement, index, self.as_ptr() as *const i8, self.len() as c_int, SQLITE_TRANSIENT) }?;
@@ -148,7 +148,7 @@ unsafe impl<'b> Bind<'b> for &str {
 /// statement, wrap the `&[u8]` in [`Static`].
 ///
 /// [clone]: https://sqlite.org/c3ref/c_static.html
-unsafe impl<'b> Bind<'b> for &[u8] {
+impl<'b> Bind<'b> for &[u8] {
     unsafe fn bind(self, statement: &'b Statement, index: Index) -> Result<()> {
         #[cfg(target_pointer_width = "32")]
         bind! { sqlite3_bind_blob(statement, index, self.as_ptr() as *const c_void, self.len() as c_int, SQLITE_TRANSIENT) }
@@ -195,7 +195,7 @@ impl<'a, T: ?Sized> Static<'a, T> {
 /// without [cloning][] them.
 ///
 /// [cloning]: https://sqlite.org/c3ref/c_static.html
-unsafe impl<'b, 'a: 'b> Bind<'b> for Static<'a, str> {
+impl<'b, 'a: 'b> Bind<'b> for Static<'a, str> {
     unsafe fn bind(self, statement: &'b Statement, index: Index) -> Result<()> {
         #[cfg(target_pointer_width = "32")]
         bind! { sqlite3_bind_text(statement, index, self.as_ptr() as *const i8, self.0.len() as c_int, SQLITE_STATIC) }?;
@@ -220,7 +220,7 @@ unsafe impl<'b, 'a: 'b> Bind<'b> for Static<'a, str> {
 /// [cloning][] them.
 ///
 /// [cloning]: https://sqlite.org/c3ref/c_static.html
-unsafe impl<'b, 'a: 'b> Bind<'b> for Static<'a, [u8]> {
+impl<'b, 'a: 'b> Bind<'b> for Static<'a, [u8]> {
     unsafe fn bind(self, statement: &'b Statement, index: Index) -> Result<()> {
         #[cfg(target_pointer_width = "32")]
         bind! { sqlite3_bind_blob(statement, index, self.as_ptr() as *const c_void, self.0.len() as c_int, SQLITE_STATIC) }
@@ -243,7 +243,7 @@ unsafe impl<'b, 'a: 'b> Bind<'b> for Static<'a, [u8]> {
 /// bytes before `bind` returns.
 ///
 /// [clone]: https://sqlite.org/c3ref/c_static.html
-unsafe impl<'b> Bind<'b> for String {
+impl<'b> Bind<'b> for String {
     unsafe fn bind(self, statement: &'b Statement, index: Index) -> Result<()> {
         unsafe { self.as_str().bind(statement, index) }
     }
@@ -262,7 +262,7 @@ unsafe impl<'b> Bind<'b> for String {
 /// before `bind` returns.
 ///
 /// [clone]: https://sqlite.org/c3ref/c_static.html
-unsafe impl<'b> Bind<'b> for Vec<u8> {
+impl<'b> Bind<'b> for Vec<u8> {
     unsafe fn bind(self, statement: &'b Statement, index: Index) -> Result<()> {
         unsafe { self.as_slice().bind(statement, index) }
     }
@@ -282,7 +282,7 @@ unsafe impl<'b> Bind<'b> for Vec<u8> {
 /// and set every byte in the blob to `\0`.
 ///
 /// [clone]: https://sqlite.org/c3ref/c_static.html
-unsafe impl<'b> Bind<'b> for Reservation {
+impl<'b> Bind<'b> for Reservation {
     unsafe fn bind(self, statement: &'b Statement, index: Index) -> Result<()> {
         #[cfg(target_pointer_width = "32")]
         bind! { sqlite3_bind_zeroblob(statement, index, self.0 as c_int) }
@@ -294,7 +294,7 @@ unsafe impl<'b> Bind<'b> for Reservation {
 
 /// [Binds](Bind) an [`Option`]. Bind the `Some` value if the option is present,
 /// or bind `NULL` via [`sqlite3_bind_null`] if `None`.
-unsafe impl<'b, T> Bind<'b> for Option<T>
+impl<'b, T> Bind<'b> for Option<T>
 where
     T: Bind<'b>,
 {
@@ -349,6 +349,10 @@ impl Index {
         self.0.get()
     }
 
+    pub const fn iter(&self) -> Indexes {
+        Indexes::new(*self)
+    }
+
     /// Add `1` to this [`Index`].
     ///
     /// ```rust
@@ -361,6 +365,15 @@ impl Index {
     /// ```
     pub const fn next(&self) -> Self {
         Self(unsafe { NonZero::new_unchecked(self.0.get() + 1) })
+    }
+}
+
+impl IntoIterator for Index {
+    type Item = Index;
+    type IntoIter = Indexes;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.iter()
     }
 }
 
@@ -481,5 +494,29 @@ impl core::iter::Step for Index {
         let count = c_int::try_from(count).ok()?;
         let new_value = start.0.get().checked_sub(count)?;
         NonZero::new(new_value).map(Self)
+    }
+}
+
+pub struct Indexes {
+    current: Index,
+}
+
+impl Indexes {
+    const fn new(initial: Index) -> Self {
+        Self { current: initial }
+    }
+}
+
+impl Iterator for Indexes {
+    type Item = Index;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let current = self.current;
+        self.current = self.current.next();
+        Some(current)
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        (usize::MAX, None)
     }
 }

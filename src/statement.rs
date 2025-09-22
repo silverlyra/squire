@@ -1,4 +1,4 @@
-use core::marker::PhantomData;
+use core::{ffi::c_int, marker::PhantomData};
 use sqlite::{SQLITE_PREPARE_DONT_LOG, SQLITE_PREPARE_NO_VTAB, SQLITE_PREPARE_PERSISTENT, sqlite3};
 
 use crate::{
@@ -7,6 +7,7 @@ use crate::{
     error::{Error, ErrorLocation, ErrorMessage, Result},
     ffi,
     param::{Bind, Index, Parameters},
+    value::{Column, Fetch},
 };
 
 /// A [prepared statement][]
@@ -57,6 +58,11 @@ impl<'c> Statement<'c> {
         P: Parameters,
     {
         self.bind(parameters).map(Binding::done)
+    }
+
+    // Inspect the [parameters](StatementParameters) declared by this statement.
+    pub fn parameters<'s>(&'s self) -> StatementParameters<'c, 's> {
+        StatementParameters::new(self)
     }
 
     /// Access the [`ffi::Statement`] underlying this [`Statement`].
@@ -317,4 +323,114 @@ where
     const fn new(execution: &'r mut Execution<'c, S>) -> Self {
         Self { execution }
     }
+
+    pub fn fetch<'r, T: Fetch<'r>>(&'r self, column: Column) -> Result<T> {
+        let statement = unsafe { self.execution.inner.cursor() };
+        T::fetch(&Statement { inner: statement }, column)
+    }
+}
+
+#[derive(Debug)]
+pub struct StatementParameters<'c, 's>
+where
+    'c: 's,
+{
+    statement: &'s Statement<'c>,
+}
+
+impl<'c, 's> StatementParameters<'c, 's>
+where
+    'c: 's,
+{
+    const fn new(statement: &'s Statement<'c>) -> Self {
+        Self { statement }
+    }
+
+    pub fn name(&self, index: Index) -> Option<&str> {
+        self.statement
+            .internal_ref()
+            .parameter_name(index)
+            .map(|name| unsafe { str::from_utf8_unchecked(name.to_bytes()) })
+    }
+
+    pub fn index(&self, name: impl AsRef<str>) -> Option<Index> {
+        let name = name.as_ref();
+
+        for index in self.iter() {
+            if let Some(n) = self.name(index)
+                && name == n
+            {
+                return Some(index);
+            }
+        }
+
+        None
+    }
+
+    pub fn iter(&self) -> impl Iterator<Item = Index> {
+        StatementParameterIter::new(self)
+    }
+
+    pub fn len(&self) -> usize {
+        self.count() as usize
+    }
+
+    fn count(&self) -> c_int {
+        self.statement.internal_ref().parameter_count()
+    }
+
+    fn max(&self) -> Option<Index> {
+        Index::new(self.count()).ok()
+    }
+}
+
+#[derive(Copy, Clone, Debug)]
+#[repr(transparent)]
+struct StatementParameterIter {
+    state: StatementParameterIterState,
+}
+
+impl StatementParameterIter {
+    fn new<'c, 's>(parameters: &StatementParameters<'c, 's>) -> Self
+    where
+        'c: 's,
+    {
+        let state = match parameters.max() {
+            Some(max) => StatementParameterIterState::Next {
+                current: Index::INITIAL,
+                max,
+            },
+            None => StatementParameterIterState::Done,
+        };
+
+        Self { state }
+    }
+}
+
+impl Iterator for StatementParameterIter {
+    type Item = Index;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        match self.state {
+            StatementParameterIterState::Next { current, max } => {
+                self.state = if current < max {
+                    StatementParameterIterState::Next {
+                        current: current.next(),
+                        max,
+                    }
+                } else {
+                    StatementParameterIterState::Done
+                };
+
+                Some(current)
+            }
+            StatementParameterIterState::Done => None,
+        }
+    }
+}
+
+#[derive(Copy, Clone, Debug)]
+enum StatementParameterIterState {
+    Next { current: Index, max: Index },
+    Done,
 }

@@ -9,7 +9,8 @@ mod error;
 pub mod ffi;
 mod param;
 mod statement;
-pub mod types;
+mod types;
+mod value;
 
 pub use blob::Reservation;
 pub use connection::{Connection, ConnectionBuilder};
@@ -20,5 +21,6 @@ pub use error::{
     Result,
 };
 pub use param::{Bind, Index, Parameters};
-pub use statement::Statement;
+pub use statement::{Binding, Execution, PrepareOptions, Statement, StatementParameters};
 pub use types::RowId;
+pub use value::{Column, Fetch};
