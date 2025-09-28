@@ -2,11 +2,11 @@ use core::{ffi::c_int, marker::PhantomData};
 use sqlite::{SQLITE_PREPARE_DONT_LOG, SQLITE_PREPARE_NO_VTAB, SQLITE_PREPARE_PERSISTENT, sqlite3};
 
 use crate::{
-    RowId,
     connection::Connection,
     error::{Error, ErrorLocation, ErrorMessage, Result},
     ffi,
     param::{Bind, Index, Parameters},
+    types::RowId,
     value::{Column, Fetch},
 };
 
@@ -84,21 +84,17 @@ impl<'c> ffi::Connected for Statement<'c> {
     }
 }
 
-impl<'c> ffi::Execute<'c> for Statement<'c> {
-    unsafe fn as_statement_ptr(&self) -> *mut sqlite::sqlite3_stmt {
-        self.internal_ref().as_ptr()
-    }
-
-    unsafe fn cursor<'e>(&'e mut self) -> &'e mut ffi::Statement<'c>
+impl<'c> Execute<'c> for Statement<'c> {
+    fn cursor<'e>(&'e mut self) -> &'e mut Statement<'c>
     where
         'c: 'e,
         Self: 'e,
     {
-        self.internal_mut()
+        self
     }
 
     #[inline(always)]
-    unsafe fn reset(&mut self) -> Result<(), ()> {
+    fn reset(&mut self) -> Result<(), ()> {
         Ok(())
     }
 }
@@ -109,21 +105,17 @@ impl<'c, 's> ffi::Connected for &'s mut Statement<'c> {
     }
 }
 
-impl<'c, 's> ffi::Execute<'c> for &'s mut Statement<'c> {
-    unsafe fn as_statement_ptr(&self) -> *mut sqlite::sqlite3_stmt {
-        self.internal_ref().as_ptr()
-    }
-
-    unsafe fn cursor<'e>(&'e mut self) -> &'e mut ffi::Statement<'c>
+impl<'c, 's> Execute<'c> for &'s mut Statement<'c> {
+    fn cursor<'e>(&'e mut self) -> &'e mut Statement<'c>
     where
         'c: 'e,
         Self: 'e,
     {
-        self.internal_mut()
+        self
     }
 
     #[inline(always)]
-    unsafe fn reset(&mut self) -> Result<(), ()> {
+    fn reset(&mut self) -> Result<(), ()> {
         unsafe { self.internal_mut().reset() }
     }
 }
@@ -206,23 +198,19 @@ where
     }
 }
 
-impl<'c, 's> ffi::Execute<'c> for Binding<'c, 's>
+impl<'c, 's> Execute<'c> for Binding<'c, 's>
 where
     'c: 's,
 {
-    unsafe fn as_statement_ptr(&self) -> *mut sqlite::sqlite3_stmt {
-        self.statement.internal_ref().as_ptr()
-    }
-
-    unsafe fn cursor<'e>(&'e mut self) -> &'e mut ffi::Statement<'c>
+    fn cursor<'e>(&'e mut self) -> &'e mut Statement<'c>
     where
         'c: 'e,
         Self: 'e,
     {
-        self.statement.internal_mut()
+        &mut self.statement
     }
 
-    unsafe fn reset(&mut self) -> Result<(), ()> {
+    fn reset(&mut self) -> Result<(), ()> {
         let inner = self.statement.internal_mut();
 
         inner.clear()?;
@@ -236,34 +224,39 @@ impl<'c, 's, 'b> ffi::Connected for &'b mut Binding<'c, 's> {
     }
 }
 
-impl<'c, 's, 'b> ffi::Execute<'c> for &'b mut Binding<'c, 's>
+impl<'c, 's, 'b> Execute<'c> for &'b mut Binding<'c, 's>
 where
     'c: 's,
     's: 'b,
 {
-    unsafe fn as_statement_ptr(&self) -> *mut sqlite::sqlite3_stmt {
-        self.statement.internal_ref().as_ptr()
-    }
-
-    unsafe fn cursor<'e>(&'e mut self) -> &'e mut ffi::Statement<'c>
+    fn cursor<'e>(&'e mut self) -> &'e mut Statement<'c>
     where
         'c: 'e,
         Self: 'e,
     {
-        self.statement.internal_mut()
+        &mut self.statement
     }
 
-    unsafe fn reset(&mut self) -> Result<(), ()> {
+    fn reset(&mut self) -> Result<(), ()> {
         let inner = self.statement.internal_mut();
         unsafe { inner.reset() }
     }
+}
+
+pub trait Execute<'c>: ffi::Connected {
+    fn cursor<'e>(&'e mut self) -> &'e mut Statement<'c>
+    where
+        'c: 'e,
+        Self: 'e;
+
+    fn reset(&mut self) -> Result<(), ()>;
 }
 
 #[derive(Debug)]
 #[repr(transparent)]
 pub struct Execution<'c, S>
 where
-    S: ffi::Execute<'c>,
+    S: Execute<'c>,
 {
     inner: S,
     _connection: PhantomData<&'c Connection>,
@@ -271,7 +264,7 @@ where
 
 impl<'c, S> Execution<'c, S>
 where
-    S: ffi::Execute<'c>,
+    S: Execute<'c>,
 {
     #[inline]
     const fn new(inner: S) -> Self {
@@ -282,25 +275,25 @@ where
     }
 
     pub fn row(&mut self) -> Result<Option<Row<'c, '_, S>>> {
-        let more = unsafe { self.inner.cursor() }.row()?;
+        let more = self.inner.cursor().internal_mut().row()?;
         Ok(if more { Some(Row::new(self)) } else { None })
     }
 
     pub fn run(mut self) -> Result<isize> {
-        unsafe { self.inner.cursor().execute() }
+        self.inner.cursor().internal_mut().execute()
     }
 
     pub fn insert(mut self) -> Result<Option<RowId>> {
-        unsafe { self.inner.cursor().execute() }
+        self.inner.cursor().internal_mut().execute()
     }
 }
 
 impl<'c, S> Drop for Execution<'c, S>
 where
-    S: ffi::Execute<'c>,
+    S: Execute<'c>,
 {
     fn drop(&mut self) {
-        let _ = unsafe { self.inner.reset() };
+        let _ = self.inner.reset();
     }
 }
 
@@ -308,7 +301,7 @@ where
 #[repr(transparent)]
 pub struct Row<'c, 'r, S>
 where
-    S: ffi::Execute<'c>,
+    S: Execute<'c>,
     'c: 'r,
 {
     execution: &'r mut Execution<'c, S>,
@@ -316,7 +309,7 @@ where
 
 impl<'c, 'r, S> Row<'c, 'r, S>
 where
-    S: ffi::Execute<'c>,
+    S: Execute<'c>,
     'c: 'r,
 {
     #[inline]
@@ -324,9 +317,12 @@ where
         Self { execution }
     }
 
-    pub fn fetch<'r, T: Fetch<'r>>(&'r self, column: Column) -> Result<T> {
-        let statement = unsafe { self.execution.inner.cursor() };
-        T::fetch(&Statement { inner: statement }, column)
+    pub fn fetch<'a, T: Fetch<'r>>(&'a mut self, column: Column) -> Result<T>
+    where
+        'a: 'r,
+    {
+        let statement = self.execution.inner.cursor();
+        T::fetch(statement, column)
     }
 }
 
