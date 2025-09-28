@@ -689,8 +689,8 @@ impl ErrorLocation {
 #[non_exhaustive]
 #[repr(i32)]
 pub enum ErrorCategory {
-    /// A generic error code that returned by SQLite when no other more specific
-    /// error code is available.
+    /// A generic error code that SQLite returns when no specific error
+    /// code is available.
     #[doc(alias = "SQLITE_ERROR")]
     Unknown = SQLITE_ERROR,
 

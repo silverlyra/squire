@@ -119,14 +119,38 @@ where
     }
 }
 
-pub trait Parameters {
+pub trait Parameters<'s> {
     type Indexes: Copy + Sized;
 
     fn resolve<'c>(statement: &Statement<'c>) -> Option<Self::Indexes>;
 
-    fn bind<'c, 's>(
-        self,
-        statement: &'s mut Statement<'c>,
-        indexes: Self::Indexes,
-    ) -> Result<Binding<'c, 's>>;
+    fn bind<'c>(self, binding: &mut Binding<'c, 's>, indexes: Self::Indexes) -> Result<()>
+    where
+        'c: 's;
+}
+
+impl<'s, T> Parameters<'s> for T
+where
+    T: Bind<'s>,
+{
+    type Indexes = ();
+
+    #[inline(always)]
+    fn resolve<'c>(_statement: &Statement<'c>) -> Option<Self::Indexes> {
+        Some(())
+    }
+
+    fn bind<'c>(self, binding: &mut Binding<'c, 's>, _indexes: Self::Indexes) -> Result<()>
+    where
+        'c: 's,
+    {
+        binding.set(Index::INITIAL, self)?;
+        Ok(())
+    }
+}
+
+macro_rules! parameter_tuples {
+    ($i:literal => $t:ident) => {};
+
+    ($($ih:literal => $th:ident),*, $it:literal => $tt:ident) => {};
 }

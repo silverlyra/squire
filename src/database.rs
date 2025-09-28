@@ -25,7 +25,7 @@ where
             Endpoint::Path(location) => location.as_ref(),
             Endpoint::Uri(location) => location.as_ref(),
             Endpoint::Memory(Some(location)) => location.as_ref(),
-            Endpoint::Memory(None) => EMPTY,
+            Endpoint::Memory(None) => c"",
         }
     }
 
@@ -37,8 +37,6 @@ where
         }
     }
 }
-
-const EMPTY: &'static CStr = c"";
 
 #[derive(PartialEq, Eq, Copy, Clone, Debug)]
 pub struct Database<L = CString>
@@ -52,6 +50,17 @@ impl Database<&'static CStr> {
     pub const fn memory() -> Self {
         Self {
             endpoint: Endpoint::Memory(None),
+        }
+    }
+
+    pub fn named<L>(self, name: impl IntoLocation<Location = L>) -> Database<L>
+    where
+        L: AsRef<CStr> + Clone + fmt::Debug,
+    {
+        debug_assert!(matches!(self.endpoint(), &Endpoint::Memory(_)));
+
+        Database {
+            endpoint: Endpoint::Memory(Some(name.into_location())),
         }
     }
 }

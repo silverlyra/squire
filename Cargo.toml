@@ -60,13 +60,12 @@ soundex = ["sqlite/soundex"]
 stat-vtab = ["sqlite/stat-vtab"]
 stat4 = ["sqlite/stat4"]
 trace = ["sqlite/trace"]
+utf-16 = ["sqlite/utf-16"]
 
 nightly = ["lang-iat", "lang-step-trait"]
 lang-iat = []
 lang-rustc-scalar-valid-range = []
 lang-step-trait = []
-
-utf-16 = ["sqlite/utf-16"]
 
 url = ["dep:url"]
 widestring = ["utf-16", "dep:widestring"]
@@ -76,6 +75,10 @@ package = "squire-sqlite3-sys"
 path = "crates/sys"
 version = "0.0.1-alpha.1"
 default-features = false
+
+[dependencies.fallible-iterator]
+version = "^0.3"
+optional = true
 
 [dependencies.serde_json]
 version = "^1.0"

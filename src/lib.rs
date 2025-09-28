@@ -8,6 +8,7 @@ mod database;
 mod error;
 pub mod ffi;
 mod param;
+mod row;
 mod statement;
 mod types;
 mod value;

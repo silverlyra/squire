@@ -6,8 +6,9 @@ use crate::{
     error::{Error, ErrorLocation, ErrorMessage, Result},
     ffi,
     param::{Bind, Index, Parameters},
+    row::Row,
     types::RowId,
-    value::{Column, Fetch},
+    value::Column,
 };
 
 /// A [prepared statement][]
@@ -46,18 +47,26 @@ impl<'c> Statement<'c> {
 
     pub fn bind<'s, P>(&'s mut self, parameters: P) -> Result<Binding<'c, 's>>
     where
-        P: Parameters,
+        P: Parameters<'s>,
     {
         let indexes =
             P::resolve(self).ok_or(Error::resolve("cannot resolve bind parameter indexes"))?;
-        parameters.bind(self, indexes)
+
+        let mut binding = self.binding();
+        parameters.bind(&mut binding, indexes)?;
+        Ok(binding)
     }
 
     pub fn query<'s, P>(&'s mut self, parameters: P) -> Result<Execution<'c, Binding<'c, 's>>>
     where
-        P: Parameters,
+        P: Parameters<'s>,
     {
         self.bind(parameters).map(Binding::done)
+    }
+
+    // Inspect the [columns](StatementColumns) returned by this statement.
+    pub fn columns<'s>(&'s self) -> StatementColumns<'c, 's> {
+        StatementColumns::new(self)
     }
 
     // Inspect the [parameters](StatementParameters) declared by this statement.
@@ -171,9 +180,9 @@ impl<'c, 's> Binding<'c, 's>
 where
     'c: 's,
 {
-    pub fn set<'b, B>(&'b mut self, index: Index, value: B) -> Result<()>
+    pub fn set<B>(&mut self, index: Index, value: B) -> Result<()>
     where
-        B: Bind<'b>,
+        B: Bind<'s>,
     {
         self.statement
             .internal_mut()
@@ -275,16 +284,45 @@ where
     }
 
     pub fn row(&mut self) -> Result<Option<Row<'c, '_, S>>> {
-        let more = self.inner.cursor().internal_mut().row()?;
+        let more = self.cursor().internal_mut().row()?;
         Ok(if more { Some(Row::new(self)) } else { None })
     }
 
     pub fn run(mut self) -> Result<isize> {
-        self.inner.cursor().internal_mut().execute()
+        self.cursor().internal_mut().execute()
     }
 
     pub fn insert(mut self) -> Result<Option<RowId>> {
-        self.inner.cursor().internal_mut().execute()
+        self.cursor().internal_mut().execute()
+    }
+}
+
+impl<'c, S> ffi::Connected for Execution<'c, S>
+where
+    S: Execute<'c>,
+{
+    #[inline]
+    fn as_connection_ptr(&self) -> *mut sqlite3 {
+        self.inner.as_connection_ptr()
+    }
+}
+
+impl<'c, S> Execute<'c> for Execution<'c, S>
+where
+    S: Execute<'c>,
+{
+    #[inline]
+    fn cursor<'e>(&'e mut self) -> &'e mut Statement<'c>
+    where
+        'c: 'e,
+        Self: 'e,
+    {
+        self.inner.cursor()
+    }
+
+    #[inline]
+    fn reset(&mut self) -> Result<(), ()> {
+        self.inner.reset()
     }
 }
 
@@ -298,31 +336,91 @@ where
 }
 
 #[derive(Debug)]
-#[repr(transparent)]
-pub struct Row<'c, 'r, S>
+pub struct StatementColumns<'c, 's>
 where
-    S: Execute<'c>,
-    'c: 'r,
+    'c: 's,
 {
-    execution: &'r mut Execution<'c, S>,
+    statement: &'s Statement<'c>,
 }
 
-impl<'c, 'r, S> Row<'c, 'r, S>
+impl<'c, 's> StatementColumns<'c, 's>
 where
-    S: Execute<'c>,
-    'c: 'r,
+    'c: 's,
 {
-    #[inline]
-    const fn new(execution: &'r mut Execution<'c, S>) -> Self {
-        Self { execution }
+    const fn new(statement: &'s Statement<'c>) -> Self {
+        Self { statement }
     }
 
-    pub fn fetch<'a, T: Fetch<'r>>(&'a mut self, column: Column) -> Result<T>
-    where
-        'a: 'r,
-    {
-        let statement = self.execution.inner.cursor();
-        T::fetch(statement, column)
+    pub fn name(&self, column: Column) -> Option<&str> {
+        self.statement
+            .internal_ref()
+            .column_name(column)
+            .map(|name| unsafe { str::from_utf8_unchecked(name.to_bytes()) })
+    }
+
+    pub fn index(&self, name: impl AsRef<str>) -> Option<Column> {
+        let name = name.as_ref();
+
+        for index in self.iter() {
+            if let Some(n) = self.name(index)
+                && name == n
+            {
+                return Some(index);
+            }
+        }
+
+        None
+    }
+
+    pub fn iter(&self) -> impl Iterator<Item = Column> {
+        StatementColumnIter::new(self.count())
+    }
+
+    pub fn len(&self) -> usize {
+        self.count() as usize
+    }
+
+    fn count(&self) -> c_int {
+        self.statement.internal_ref().column_count()
+    }
+}
+
+impl<'c, 's> IntoIterator for StatementColumns<'c, 's>
+where
+    'c: 's,
+{
+    type Item = Column;
+    type IntoIter = StatementColumnIter;
+
+    fn into_iter(self) -> Self::IntoIter {
+        StatementColumnIter::new(self.count())
+    }
+}
+
+#[derive(Debug)]
+pub struct StatementColumnIter {
+    current: c_int,
+    count: c_int,
+}
+
+impl StatementColumnIter {
+    const fn new(count: c_int) -> Self {
+        Self { current: 0, count }
+    }
+}
+
+impl Iterator for StatementColumnIter {
+    type Item = Column;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let current = self.current;
+
+        if current < self.count {
+            self.current = self.current + 1;
+            Some(Column::new(current))
+        } else {
+            None
+        }
     }
 }
 
@@ -380,9 +478,21 @@ where
     }
 }
 
+impl<'c, 's> IntoIterator for StatementParameters<'c, 's>
+where
+    'c: 's,
+{
+    type Item = Index;
+    type IntoIter = StatementParameterIter;
+
+    fn into_iter(self) -> Self::IntoIter {
+        StatementParameterIter::new(&self)
+    }
+}
+
 #[derive(Copy, Clone, Debug)]
 #[repr(transparent)]
-struct StatementParameterIter {
+pub struct StatementParameterIter {
     state: StatementParameterIterState,
 }
 

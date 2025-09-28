@@ -10,9 +10,9 @@ use sqlite::sqlite3_changes;
 use sqlite::sqlite3_changes64;
 use sqlite::{
     SQLITE_DONE, SQLITE_OK, SQLITE_ROW, sqlite3, sqlite3_bind_parameter_count,
-    sqlite3_bind_parameter_name, sqlite3_clear_bindings, sqlite3_column_count, sqlite3_data_count,
-    sqlite3_db_handle, sqlite3_finalize, sqlite3_prepare_v3, sqlite3_reset, sqlite3_step,
-    sqlite3_stmt,
+    sqlite3_bind_parameter_name, sqlite3_clear_bindings, sqlite3_column_count, sqlite3_column_name,
+    sqlite3_data_count, sqlite3_db_handle, sqlite3_finalize, sqlite3_prepare_v3, sqlite3_reset,
+    sqlite3_step, sqlite3_stmt,
 };
 
 use super::{
@@ -107,6 +107,17 @@ impl<'c> Statement<'c> {
         unsafe { self.finalize() }
     }
 
+    #[doc(alias = "sqlite3_column_name")]
+    pub fn column_name(&self, index: Column) -> Option<&CStr> {
+        let ptr = unsafe { sqlite3_column_name(self.as_ptr(), index.value()) };
+
+        if ptr.is_null() {
+            None
+        } else {
+            Some(unsafe { CStr::from_ptr(ptr) })
+        }
+    }
+
     #[doc(alias = "sqlite3_column_count")]
     pub fn column_count(&self) -> c_int {
         unsafe { sqlite3_column_count(self.as_ptr()) }
@@ -129,9 +140,10 @@ impl<'c> Statement<'c> {
         }
     }
 
-    pub fn bind<'b, B>(&'b mut self, index: Index, value: B) -> Result<()>
+    pub fn bind<'b, B>(&mut self, index: Index, value: B) -> Result<()>
     where
         B: Bind<'b>,
+        'c: 'b,
     {
         unsafe { value.bind(self, index) }
     }

@@ -62,15 +62,19 @@ const ENCODING_UTF8: c_uchar = SQLITE_UTF8 as c_uchar;
 )]
 /// - [`None`](core::option) (via [`sqlite3_bind_null`])
 ///
-/// The lifetime parameter `'b` represents the lifetime of the binding operation,
-/// i.e., how long the statement reference passed to `bind` is valid for.
+/// The lifetime parameter `'b` represents the lifetime for which SQLite may
+/// access the bound data. For values using SQLITE_TRANSIENT, this doesn't
+/// matter as SQLite copies immediately. For SQLITE_STATIC values, the data
+/// must outlive this lifetime.
 ///
 /// [bind]: https://sqlite.org/c3ref/bind_blob.html
 pub trait Bind<'b> {
     /// Bind `self` as a SQLite prepared statement [parameter][bind].
     ///
     /// [bind]: https://sqlite.org/c3ref/bind_blob.html
-    unsafe fn bind(self, statement: &'b Statement, index: Index) -> Result<()>;
+    unsafe fn bind<'c>(self, statement: &Statement<'c>, index: Index) -> Result<()>
+    where
+        'c: 'b;
 }
 
 /// Call a `sqlite3_bind_…` function and handle any possible [`Error`].
@@ -89,21 +93,30 @@ macro_rules! bind {
 
 /// [Binds](Bind) an [`i32`] via [`sqlite3_bind_int`].
 impl<'b> Bind<'b> for i32 {
-    unsafe fn bind(self, statement: &'b Statement, index: Index) -> Result<()> {
+    unsafe fn bind<'c>(self, statement: &Statement<'c>, index: Index) -> Result<()>
+    where
+        'c: 'b,
+    {
         bind! { sqlite3_bind_int(statement, index, self) }
     }
 }
 
 /// [Binds](Bind) an [`i64`] via [`sqlite3_bind_int64`].
 impl<'b> Bind<'b> for i64 {
-    unsafe fn bind(self, statement: &'b Statement, index: Index) -> Result<()> {
+    unsafe fn bind<'c>(self, statement: &Statement<'c>, index: Index) -> Result<()>
+    where
+        'c: 'b,
+    {
         bind! { sqlite3_bind_int64(statement, index, self) }
     }
 }
 
 /// [Binds](Bind) an [`f64`] via [`sqlite3_bind_double`].
 impl<'b> Bind<'b> for f64 {
-    unsafe fn bind(self, statement: &'b Statement, index: Index) -> Result<()> {
+    unsafe fn bind<'c>(self, statement: &Statement<'c>, index: Index) -> Result<()>
+    where
+        'c: 'b,
+    {
         bind! { sqlite3_bind_double(statement, index, self) }
     }
 }
@@ -123,7 +136,10 @@ impl<'b> Bind<'b> for f64 {
 ///
 /// [clone]: https://sqlite.org/c3ref/c_static.html
 impl<'b> Bind<'b> for &str {
-    unsafe fn bind(self, statement: &'b Statement, index: Index) -> Result<()> {
+    unsafe fn bind<'c>(self, statement: &Statement<'c>, index: Index) -> Result<()>
+    where
+        'c: 'b,
+    {
         #[cfg(target_pointer_width = "32")]
         bind! { sqlite3_bind_text(statement, index, self.as_ptr() as *const i8, self.len() as c_int, SQLITE_TRANSIENT) }?;
 
@@ -149,7 +165,10 @@ impl<'b> Bind<'b> for &str {
 ///
 /// [clone]: https://sqlite.org/c3ref/c_static.html
 impl<'b> Bind<'b> for &[u8] {
-    unsafe fn bind(self, statement: &'b Statement, index: Index) -> Result<()> {
+    unsafe fn bind<'c>(self, statement: &Statement<'c>, index: Index) -> Result<()>
+    where
+        'c: 'b,
+    {
         #[cfg(target_pointer_width = "32")]
         bind! { sqlite3_bind_blob(statement, index, self.as_ptr() as *const c_void, self.len() as c_int, SQLITE_TRANSIENT) }
 
@@ -196,7 +215,10 @@ impl<'a, T: ?Sized> Static<'a, T> {
 ///
 /// [cloning]: https://sqlite.org/c3ref/c_static.html
 impl<'b, 'a: 'b> Bind<'b> for Static<'a, str> {
-    unsafe fn bind(self, statement: &'b Statement, index: Index) -> Result<()> {
+    unsafe fn bind<'c>(self, statement: &Statement<'c>, index: Index) -> Result<()>
+    where
+        'c: 'b,
+    {
         #[cfg(target_pointer_width = "32")]
         bind! { sqlite3_bind_text(statement, index, self.as_ptr() as *const i8, self.0.len() as c_int, SQLITE_STATIC) }?;
 
@@ -221,7 +243,10 @@ impl<'b, 'a: 'b> Bind<'b> for Static<'a, str> {
 ///
 /// [cloning]: https://sqlite.org/c3ref/c_static.html
 impl<'b, 'a: 'b> Bind<'b> for Static<'a, [u8]> {
-    unsafe fn bind(self, statement: &'b Statement, index: Index) -> Result<()> {
+    unsafe fn bind<'c>(self, statement: &Statement<'c>, index: Index) -> Result<()>
+    where
+        'c: 'b,
+    {
         #[cfg(target_pointer_width = "32")]
         bind! { sqlite3_bind_blob(statement, index, self.as_ptr() as *const c_void, self.0.len() as c_int, SQLITE_STATIC) }
 
@@ -244,7 +269,10 @@ impl<'b, 'a: 'b> Bind<'b> for Static<'a, [u8]> {
 ///
 /// [clone]: https://sqlite.org/c3ref/c_static.html
 impl<'b> Bind<'b> for String {
-    unsafe fn bind(self, statement: &'b Statement, index: Index) -> Result<()> {
+    unsafe fn bind<'c>(self, statement: &Statement<'c>, index: Index) -> Result<()>
+    where
+        'c: 'b,
+    {
         unsafe { self.as_str().bind(statement, index) }
     }
 }
@@ -263,7 +291,10 @@ impl<'b> Bind<'b> for String {
 ///
 /// [clone]: https://sqlite.org/c3ref/c_static.html
 impl<'b> Bind<'b> for Vec<u8> {
-    unsafe fn bind(self, statement: &'b Statement, index: Index) -> Result<()> {
+    unsafe fn bind<'c>(self, statement: &Statement<'c>, index: Index) -> Result<()>
+    where
+        'c: 'b,
+    {
         unsafe { self.as_slice().bind(statement, index) }
     }
 }
@@ -283,7 +314,10 @@ impl<'b> Bind<'b> for Vec<u8> {
 ///
 /// [clone]: https://sqlite.org/c3ref/c_static.html
 impl<'b> Bind<'b> for Reservation {
-    unsafe fn bind(self, statement: &'b Statement, index: Index) -> Result<()> {
+    unsafe fn bind<'c>(self, statement: &Statement<'c>, index: Index) -> Result<()>
+    where
+        'c: 'b,
+    {
         #[cfg(target_pointer_width = "32")]
         bind! { sqlite3_bind_zeroblob(statement, index, self.0 as c_int) }
 
@@ -298,7 +332,10 @@ impl<'b, T> Bind<'b> for Option<T>
 where
     T: Bind<'b>,
 {
-    unsafe fn bind(self, statement: &'b Statement, index: Index) -> Result<()> {
+    unsafe fn bind<'c>(self, statement: &Statement<'c>, index: Index) -> Result<()>
+    where
+        'c: 'b,
+    {
         if let Some(value) = self {
             unsafe { value.bind(statement, index) }
         } else {
@@ -343,7 +380,7 @@ impl Index {
         }
     }
 
-    /// Access the underlying column index value as a C [`int`](c_int).
+    /// Access the underlying parameter index value as a C [`int`](c_int).
     #[inline]
     pub const fn value(&self) -> c_int {
         self.0.get()

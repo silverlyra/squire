@@ -114,20 +114,79 @@ impl<'r> Fetch<'r> for Type {
 pub struct Column(c_int);
 
 impl Column {
+    /// The first numbered column index (`0`).
+    ///
+    /// ```rust
+    /// # use squire::ffi::Column;
+    /// let first = Column::INITIAL;
+    /// assert_eq!(usize::from(first), 0);
+    /// ```
+    pub const INITIAL: Self = Self(0);
+
     pub const fn new(value: c_int) -> Self {
         Self(value)
     }
 
-    /// Access the underlying SQLite datatype constant as a C [`int`](c_int).
+    /// Access the underlying SQLite column index as a C [`int`](c_int).
     #[inline]
     pub const fn value(&self) -> c_int {
         self.0
+    }
+
+    /// Add `1` to this [column index](Self).
+    ///
+    /// ```rust
+    /// # use squire::ffi::Column;
+    /// let first = Column::INITIAL;
+    /// assert_eq!(usize::from(first), 0);
+    ///
+    /// let second = first.next();
+    /// assert_eq!(usize::from(second), 1);
+    /// ```
+    pub const fn next(&self) -> Self {
+        Self(self.value() + 1)
     }
 }
 
 impl From<i32> for Column {
     fn from(value: i32) -> Self {
         Self::new(value as c_int)
+    }
+}
+
+impl From<Column> for isize {
+    fn from(index: Column) -> Self {
+        index.value() as Self
+    }
+}
+
+impl From<Column> for usize {
+    fn from(index: Column) -> Self {
+        index.value() as Self
+    }
+}
+
+#[cfg(feature = "lang-step-trait")]
+impl core::iter::Step for Column {
+    fn steps_between(start: &Self, end: &Self) -> (usize, Option<usize>) {
+        if start.0 <= end.0 {
+            let steps = (end.0 - start.0) as usize;
+            (steps, Some(steps))
+        } else {
+            (0, None)
+        }
+    }
+
+    fn forward_checked(start: Self, count: usize) -> Option<Self> {
+        let count = c_int::try_from(count).ok()?;
+        let new_value = start.0.checked_add(count)?;
+        Some(Self(new_value))
+    }
+
+    fn backward_checked(start: Self, count: usize) -> Option<Self> {
+        let count = c_int::try_from(count).ok()?;
+        let new_value = start.0.checked_sub(count)?;
+        Some(Self(new_value))
     }
 }
 
