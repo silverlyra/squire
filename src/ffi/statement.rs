@@ -140,7 +140,7 @@ impl<'c> Statement<'c> {
         }
     }
 
-    pub fn bind<'b, B>(&mut self, index: Index, value: B) -> Result<()>
+    pub unsafe fn bind<'b, B>(&self, index: Index, value: B) -> Result<()>
     where
         B: Bind<'b>,
         'c: 'b,
@@ -162,7 +162,7 @@ impl<'c> Statement<'c> {
     ///
     /// [step]: https://sqlite.org/c3ref/step.html
     #[doc(alias = "sqlite3_step")]
-    pub fn row(&mut self) -> Result<bool> {
+    pub unsafe fn row(&self) -> Result<bool> {
         let result = unsafe { sqlite3_step(self.as_ptr()) };
 
         if result == SQLITE_ROW {
@@ -187,7 +187,7 @@ impl<'c> Statement<'c> {
     /// - an [`Error`] if [`sqlite3_step`][step] returns an error result code
     ///
     /// [step]: https://sqlite.org/c3ref/step.html
-    pub fn execute<C: Conclusion>(&mut self) -> Result<C> {
+    pub unsafe fn execute<C: Conclusion>(&self) -> Result<C> {
         let result = unsafe { sqlite3_step(self.as_ptr()) };
 
         if result == SQLITE_DONE {

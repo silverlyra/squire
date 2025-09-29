@@ -1,27 +1,29 @@
 use crate::{
     error::Result,
     ffi::Column,
-    statement::{Execute, Execution},
+    statement::{Binding, Execute, Execution},
     value::Fetch,
 };
 
 #[derive(Debug)]
 #[repr(transparent)]
-pub struct Row<'c, 'r, S>
+pub struct Row<'c, 's, 'r, S = Binding<'c, 's>>
 where
-    S: Execute<'c>,
-    'c: 'r,
+    S: Execute<'c, 's>,
+    'c: 's,
+    's: 'r,
 {
-    execution: &'r mut Execution<'c, S>,
+    execution: &'r mut Execution<'c, 's, S>,
 }
 
-impl<'c, 'r, S> Row<'c, 'r, S>
+impl<'c, 's, 'r, S> Row<'c, 's, 'r, S>
 where
-    S: Execute<'c>,
-    'c: 'r,
+    S: Execute<'c, 's>,
+    'c: 's,
+    's: 'r,
 {
     #[inline]
-    pub(crate) const fn new(execution: &'r mut Execution<'c, S>) -> Self {
+    pub(crate) const fn new(execution: &'r mut Execution<'c, 's, S>) -> Self {
         Self { execution }
     }
 

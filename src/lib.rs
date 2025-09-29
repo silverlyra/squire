@@ -4,7 +4,7 @@
 
 mod bind;
 mod blob;
-// mod column;
+mod column;
 mod connection;
 mod database;
 mod error;
@@ -17,6 +17,7 @@ mod value;
 
 pub use bind::{Bind, Index};
 pub use blob::Reservation;
+pub use column::{Column, Columns};
 pub use connection::{Connection, ConnectionBuilder};
 pub use database::{Database, IntoLocation};
 pub use error::{
@@ -24,7 +25,6 @@ pub use error::{
     ErrorCategory, ErrorCode, GeneralError, IoError, LockedError, ParameterError, ReadOnlyError,
     Result,
 };
-pub use ffi::Column;
 pub use param::Parameters;
 pub use statement::{Binding, Execution, PrepareOptions, Statement, StatementParameters};
 pub use types::RowId;

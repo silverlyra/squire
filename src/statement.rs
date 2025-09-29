@@ -27,6 +27,14 @@ impl<'c> Statement<'c> {
         Self { inner }
     }
 
+    /// Compile SQL `query` text into a [prepared statement](Self) that SQLite
+    /// can execute.
+    ///
+    /// See [`PrepareOptions`] for the flags `prepare` understands. By default,
+    /// SQLite will prepare the statement _transiently_, using limited memory
+    /// that SQLite uses for short-lived operations (“lookaside allocator”). Use
+    /// [`PrepareOptions::persistent()`] if the statement will be executed again
+    /// over the program run.
     #[must_use]
     pub fn prepare(
         connection: &'c Connection,
@@ -57,19 +65,19 @@ impl<'c> Statement<'c> {
         Ok(binding)
     }
 
-    pub fn query<'s, P>(&'s mut self, parameters: P) -> Result<Execution<'c, Binding<'c, 's>>>
+    pub fn query<'s, P>(&'s mut self, parameters: P) -> Result<Execution<'c, 's>>
     where
         P: Parameters<'s>,
     {
         self.bind(parameters).map(Binding::done)
     }
 
-    // Inspect the [columns](StatementColumns) returned by this statement.
+    /// Inspect the [columns](StatementColumns) returned by this statement.
     pub fn columns<'s>(&'s self) -> StatementColumns<'c, 's> {
         StatementColumns::new(self)
     }
 
-    // Inspect the [parameters](StatementParameters) declared by this statement.
+    /// Inspect the [parameters](StatementParameters) declared by this statement.
     pub fn parameters<'s>(&'s self) -> StatementParameters<'c, 's> {
         StatementParameters::new(self)
     }
@@ -93,11 +101,41 @@ impl<'c> ffi::Connected for Statement<'c> {
     }
 }
 
-impl<'c> Execute<'c> for Statement<'c> {
-    fn cursor<'e>(&'e mut self) -> &'e mut Statement<'c>
+impl<'c, 's> ffi::Connected for &'s mut Statement<'c> {
+    fn as_connection_ptr(&self) -> *mut sqlite3 {
+        unsafe { self.internal_ref().connection_ptr() }
+    }
+}
+
+pub trait Execute<'c, 's>: ffi::Connected
+where
+    'c: 's,
+{
+    fn cursor<'e>(&'e self) -> &'e Statement<'c>
     where
-        'c: 'e,
-        Self: 'e,
+        's: 'e;
+
+    fn cursor_mut<'e>(&'e mut self) -> &'e mut Statement<'c>
+    where
+        's: 'e;
+
+    fn reset(&mut self) -> Result<(), ()>;
+}
+
+impl<'c, 's> Execute<'c, 's> for Statement<'c>
+where
+    'c: 's,
+{
+    fn cursor<'e>(&'e self) -> &'e Statement<'c>
+    where
+        's: 'e,
+    {
+        self
+    }
+
+    fn cursor_mut<'e>(&'e mut self) -> &'e mut Statement<'c>
+    where
+        's: 'e,
     {
         self
     }
@@ -108,17 +146,17 @@ impl<'c> Execute<'c> for Statement<'c> {
     }
 }
 
-impl<'c, 's> ffi::Connected for &'s mut Statement<'c> {
-    fn as_connection_ptr(&self) -> *mut sqlite3 {
-        unsafe { self.internal_ref().connection_ptr() }
-    }
-}
-
-impl<'c, 's> Execute<'c> for &'s mut Statement<'c> {
-    fn cursor<'e>(&'e mut self) -> &'e mut Statement<'c>
+impl<'c, 's> Execute<'c, 's> for &'s mut Statement<'c> {
+    fn cursor<'e>(&'e self) -> &'e Statement<'c>
     where
-        'c: 'e,
-        Self: 'e,
+        's: 'e,
+    {
+        self
+    }
+
+    fn cursor_mut<'e>(&'e mut self) -> &'e mut Statement<'c>
+    where
+        's: 'e,
     {
         self
     }
@@ -130,7 +168,7 @@ impl<'c, 's> Execute<'c> for &'s mut Statement<'c> {
 }
 
 /// Controls the behavior of [preparing](Statement::prepare()) a [`Statement`].
-#[derive(PartialEq, Eq, Clone, Copy)]
+#[derive(PartialEq, Eq, Default, Clone, Copy)]
 pub struct PrepareOptions(u32);
 
 impl PrepareOptions {
@@ -184,16 +222,18 @@ where
     where
         B: Bind<'s>,
     {
-        self.statement
-            .internal_mut()
-            .bind(index, value.into_bind_value()?)
+        unsafe {
+            self.statement
+                .internal_mut()
+                .bind(index, value.into_bind_value()?)
+        }
     }
 
-    pub fn ready<'b>(&'b mut self) -> Execution<'c, &'b mut Self> {
+    pub fn ready<'b>(&'b mut self) -> Execution<'c, 's, &'b mut Self> {
         Execution::new(self)
     }
 
-    pub fn done(self) -> Execution<'c, Self> {
+    pub fn done(self) -> Execution<'c, 's> {
         Execution::new(self)
     }
 }
@@ -207,14 +247,20 @@ where
     }
 }
 
-impl<'c, 's> Execute<'c> for Binding<'c, 's>
+impl<'c, 's> Execute<'c, 's> for Binding<'c, 's>
 where
     'c: 's,
 {
-    fn cursor<'e>(&'e mut self) -> &'e mut Statement<'c>
+    fn cursor<'e>(&'e self) -> &'e Statement<'c>
     where
-        'c: 'e,
-        Self: 'e,
+        's: 'e,
+    {
+        &self.statement
+    }
+
+    fn cursor_mut<'e>(&'e mut self) -> &'e mut Statement<'c>
+    where
+        's: 'e,
     {
         &mut self.statement
     }
@@ -233,73 +279,83 @@ impl<'c, 's, 'b> ffi::Connected for &'b mut Binding<'c, 's> {
     }
 }
 
-impl<'c, 's, 'b> Execute<'c> for &'b mut Binding<'c, 's>
+impl<'c, 's, 'b> Execute<'c, 's> for &'b mut Binding<'c, 's>
 where
     'c: 's,
     's: 'b,
 {
-    fn cursor<'e>(&'e mut self) -> &'e mut Statement<'c>
+    fn cursor<'e>(&'e self) -> &'e Statement<'c>
     where
-        'c: 'e,
-        Self: 'e,
+        's: 'e,
+    {
+        &self.statement
+    }
+
+    fn cursor_mut<'e>(&'e mut self) -> &'e mut Statement<'c>
+    where
+        's: 'e,
     {
         &mut self.statement
     }
 
     fn reset(&mut self) -> Result<(), ()> {
         let inner = self.statement.internal_mut();
+
         unsafe { inner.reset() }
     }
 }
 
-pub trait Execute<'c>: ffi::Connected {
-    fn cursor<'e>(&'e mut self) -> &'e mut Statement<'c>
-    where
-        'c: 'e,
-        Self: 'e;
-
-    fn reset(&mut self) -> Result<(), ()>;
-}
-
 #[derive(Debug)]
 #[repr(transparent)]
-pub struct Execution<'c, S>
+pub struct Execution<'c, 's, S = Binding<'c, 's>>
 where
-    S: Execute<'c>,
+    S: Execute<'c, 's>,
+    'c: 's,
 {
     inner: S,
-    _connection: PhantomData<&'c Connection>,
+    _lifetime: PhantomData<&'s mut Statement<'c>>,
 }
 
-impl<'c, S> Execution<'c, S>
+impl<'c, 's, S> Execution<'c, 's, S>
 where
-    S: Execute<'c>,
+    S: Execute<'c, 's>,
+    'c: 's,
 {
     #[inline]
     const fn new(inner: S) -> Self {
         Self {
             inner,
-            _connection: PhantomData,
+            _lifetime: PhantomData,
         }
     }
 
-    pub fn row(&mut self) -> Result<Option<Row<'c, '_, S>>> {
-        let more = self.cursor().internal_mut().row()?;
+    pub fn row(&mut self) -> Result<Option<Row<'c, 's, '_, S>>> {
+        let more = unsafe { self.cursor().internal_ref().row() }?;
         Ok(if more { Some(Row::new(self)) } else { None })
     }
 
-    pub fn run(mut self) -> Result<isize> {
-        self.cursor().internal_mut().execute()
+    pub fn run(self) -> Result<isize> {
+        unsafe { self.cursor().internal_ref().execute() }
     }
 
-    pub fn insert(mut self) -> Result<Option<RowId>> {
-        self.cursor().internal_mut().execute()
+    pub fn insert(self) -> Result<Option<RowId>> {
+        unsafe { self.cursor().internal_ref().execute() }
+    }
+
+    #[inline]
+    pub(crate) fn cursor<'e>(&'e self) -> &'e Statement<'c>
+    where
+        'c: 'e,
+        Self: 'e,
+    {
+        self.inner.cursor()
     }
 }
 
-impl<'c, S> ffi::Connected for Execution<'c, S>
+impl<'c, 's, S> ffi::Connected for Execution<'c, 's, S>
 where
-    S: Execute<'c>,
+    S: Execute<'c, 's>,
+    'c: 's,
 {
     #[inline]
     fn as_connection_ptr(&self) -> *mut sqlite3 {
@@ -307,28 +363,10 @@ where
     }
 }
 
-impl<'c, S> Execute<'c> for Execution<'c, S>
+impl<'c, 's, S> Drop for Execution<'c, 's, S>
 where
-    S: Execute<'c>,
-{
-    #[inline]
-    fn cursor<'e>(&'e mut self) -> &'e mut Statement<'c>
-    where
-        'c: 'e,
-        Self: 'e,
-    {
-        self.inner.cursor()
-    }
-
-    #[inline]
-    fn reset(&mut self) -> Result<(), ()> {
-        self.inner.reset()
-    }
-}
-
-impl<'c, S> Drop for Execution<'c, S>
-where
-    S: Execute<'c>,
+    S: Execute<'c, 's>,
+    'c: 's,
 {
     fn drop(&mut self) {
         let _ = self.inner.reset();

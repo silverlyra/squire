@@ -8,12 +8,12 @@ fn setup() -> Result<Connection> {
     let connection = Connection::open(Database::memory())?;
 
     {
-        let (mut create, _) = ffi::Statement::prepare(
+        let (create, _) = ffi::Statement::prepare(
             connection.internal_ref(),
             "CREATE TABLE example (id INTEGER PRIMARY KEY AUTOINCREMENT, a TEXT NOT NULL, b INTEGER, c REAL) STRICT;",
             0,
         )?;
-        create.execute::<()>()?;
+        unsafe { create.execute::<()>() }?;
         create.close()?;
     }
 
@@ -25,38 +25,38 @@ fn round_trip() -> Result {
     let connection = setup()?;
 
     let id = {
-        let (mut insert, _) = ffi::Statement::prepare(
+        let (insert, _) = ffi::Statement::prepare(
             connection.internal_ref(),
             "INSERT INTO example (a, b, c) VALUES (?, ?, ?);",
             0,
         )?;
 
         let index = ffi::Index::INITIAL;
-        insert.bind(index, "hello 🌎!")?;
+        unsafe { insert.bind(index, "hello 🌎!") }?;
 
         let index = index.next();
-        insert.bind(index, 12)?;
+        unsafe { insert.bind(index, 12) }?;
 
         let index = index.next();
-        insert.bind(index, 3.14)?;
+        unsafe { insert.bind(index, 3.14) }?;
 
-        let id: Option<RowId> = insert.execute()?;
+        let id: Option<RowId> = unsafe { insert.execute() }?;
         insert.close()?;
 
         id.expect("inserted row").into_inner()
     };
 
     {
-        let (mut select, _) = ffi::Statement::prepare(
+        let (select, _) = ffi::Statement::prepare(
             connection.internal_ref(),
             "SELECT a, b, c FROM example WHERE id = ?;",
             0,
         )?;
 
         let index = ffi::Index::new(1)?;
-        select.bind(index, id)?;
+        unsafe { select.bind(index, id) }?;
 
-        let row = select.row()?;
+        let row = unsafe { select.row() }?;
         assert!(row, "expected a row");
 
         let a: ffi::Bytes<'_, str> = unsafe { select.fetch(ffi::Column::new(0)) };
