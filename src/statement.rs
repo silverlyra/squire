@@ -3,15 +3,17 @@ use sqlite::{SQLITE_PREPARE_DONT_LOG, SQLITE_PREPARE_NO_VTAB, SQLITE_PREPARE_PER
 
 use crate::{
     bind::{Bind, Index},
+    column::{Column, Columns},
     connection::Connection,
     error::{Error, ErrorLocation, ErrorMessage, Result},
-    ffi::{self, Column},
+    ffi,
     param::Parameters,
     row::Row,
     types::RowId,
 };
 
-/// A [prepared statement][]
+/// A [prepared statement][]; an SQL statement that SQLite has compiled and made
+/// ready to [bind](Self::bind()) and [execute](Execution).
 ///
 /// [prepared statement]: https://sqlite.org/c3ref/stmt.html
 #[derive(Debug)]
@@ -64,12 +66,25 @@ impl<'c> Statement<'c> {
         parameters.bind(&mut binding, indexes)?;
         Ok(binding)
     }
-
     pub fn query<'s, P>(&'s mut self, parameters: P) -> Result<Execution<'c, 's>>
     where
         P: Parameters<'s>,
     {
         self.bind(parameters).map(Binding::done)
+    }
+
+    pub fn execute<P>(&mut self, parameters: P) -> Result<isize>
+    where
+        P: for<'a> Parameters<'a>,
+    {
+        self.query(parameters)?.run()
+    }
+
+    pub fn insert<P>(&mut self, parameters: P) -> Result<Option<RowId>>
+    where
+        P: for<'a> Parameters<'a>,
+    {
+        self.query(parameters)?.insert()
     }
 
     /// Inspect the [columns](StatementColumns) returned by this statement.
@@ -332,6 +347,21 @@ where
     pub fn row(&mut self) -> Result<Option<Row<'c, 's, '_, S>>> {
         let more = unsafe { self.cursor().internal_ref().row() }?;
         Ok(if more { Some(Row::new(self)) } else { None })
+    }
+
+    pub fn next<C>(mut self) -> Result<Option<C>>
+    where
+        C: for<'r> Columns<'r>,
+    {
+        if let Some(indexes) = C::resolve(self.cursor()) {
+            match self.row() {
+                Ok(Some(mut row)) => Ok(Some(row.unpack(indexes)?)),
+                Ok(None) => Ok(None),
+                Err(err) => Err(err),
+            }
+        } else {
+            Err(Error::resolve("failed to resolve column indexes"))
+        }
     }
 
     pub fn run(self) -> Result<isize> {

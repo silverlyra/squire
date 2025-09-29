@@ -3,6 +3,7 @@ use crate::{
     error::{Error, FetchError, Result},
     ffi::{self, Fetch as _},
     statement::Statement,
+    types::RowId,
 };
 
 pub trait Fetch<'r>: Sized {
@@ -116,5 +117,22 @@ impl<'r> Fetch<'r> for bool {
 
     fn from_column_value(value: Self::Value) -> Result<Self> {
         Ok(if value != 0 { true } else { false })
+    }
+}
+
+impl<'r> Fetch<'r> for RowId {
+    type Value = i64;
+
+    fn from_column_value(value: Self::Value) -> Result<Self> {
+        RowId::new(value)
+            .ok_or_else(|| Error::fetch(FetchError::Range, "SQLite row ID cannot be 0"))
+    }
+}
+
+impl<'r> Fetch<'r> for String {
+    type Value = ffi::Bytes<'r, str>;
+
+    fn from_column_value(value: Self::Value) -> Result<Self> {
+        Ok(value.to_owned())
     }
 }

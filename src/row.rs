@@ -1,6 +1,6 @@
 use crate::{
+    column::{Column, Columns},
     error::Result,
-    ffi::Column,
     statement::{Binding, Execute, Execution},
     value::Fetch,
 };
@@ -33,5 +33,13 @@ where
     {
         let statement = self.execution.cursor();
         T::fetch(statement, column)
+    }
+
+    pub fn unpack<'a, T: Columns<'r>>(&'a mut self, indexes: T::Indexes) -> Result<T>
+    where
+        'a: 'r,
+    {
+        let statement = self.execution.cursor();
+        T::fetch(statement, indexes)
     }
 }

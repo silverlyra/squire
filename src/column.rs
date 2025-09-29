@@ -7,7 +7,7 @@ pub trait Columns<'r>: Sized {
 
     fn resolve<'c>(statement: &Statement<'c>) -> Option<Self::Indexes>;
 
-    fn fetch<'c>(statement: &'r mut Statement<'c>, indexes: Self::Indexes) -> Result<Self>
+    fn fetch<'c>(statement: &'r Statement<'c>, indexes: Self::Indexes) -> Result<Self>
     where
         'c: 'r;
 }
@@ -23,7 +23,7 @@ where
         Some(())
     }
 
-    fn fetch<'c>(statement: &'r mut Statement<'c>, _indexes: Self::Indexes) -> Result<Self>
+    fn fetch<'c>(statement: &'r Statement<'c>, _indexes: Self::Indexes) -> Result<Self>
     where
         'c: 'r,
     {
@@ -45,7 +45,7 @@ macro_rules! tuple {
                 Some(())
             }
 
-            fn fetch<'c>(statement: &'r mut Statement<'c>, _indexes: Self::Indexes) -> Result<Self>
+            fn fetch<'c>(statement: &'r Statement<'c>, _indexes: Self::Indexes) -> Result<Self>
             where
                 'c: 'r,
             {
@@ -69,7 +69,7 @@ macro_rules! tuple {
                 Some(())
             }
 
-            fn fetch<'c>(statement: &'r mut Statement<'c>, _indexes: Self::Indexes) -> Result<Self>
+            fn fetch<'c>(statement: &'r Statement<'c>, _indexes: Self::Indexes) -> Result<Self>
             where
                 'c: 'r,
             {

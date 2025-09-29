@@ -33,6 +33,21 @@ where
         Ok(())
     }
 }
+impl<'s> Parameters<'s> for () {
+    type Indexes = ();
+
+    #[inline(always)]
+    fn resolve<'c>(_statement: &Statement<'c>) -> Option<Self::Indexes> {
+        Some(())
+    }
+
+    fn bind<'c>(self, _binding: &mut Binding<'c, 's>, _indexes: Self::Indexes) -> Result<()>
+    where
+        'c: 's,
+    {
+        Ok(())
+    }
+}
 
 /// Implement [`Parameters`] for a tuple type.
 macro_rules! tuple {

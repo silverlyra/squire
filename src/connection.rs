@@ -6,9 +6,13 @@ use sqlite::{
     SQLITE_OPEN_READONLY, SQLITE_OPEN_READWRITE, SQLITE_OPEN_URI,
 };
 
-use crate::database::{Database, Endpoint, IntoLocation};
-use crate::error::Result;
-use crate::ffi;
+use crate::{
+    database::{Database, Endpoint, IntoLocation},
+    error::{ErrorLocation, ErrorMessage, Result},
+    ffi,
+    param::Parameters,
+    statement::{PrepareOptions, Statement},
+};
 
 #[derive(Debug)]
 pub struct Connection {
@@ -48,6 +52,24 @@ impl Connection {
         L: AsRef<CStr> + Clone + fmt::Debug,
     {
         ConnectionBuilder::new(database.to_owned().into_endpoint())
+    }
+
+    #[must_use]
+    pub fn prepare(
+        &self,
+        query: impl AsRef<str>,
+    ) -> Result<Statement<'_>, (ErrorMessage, Option<ErrorLocation>)> {
+        Statement::prepare(self, query, PrepareOptions::transient())
+    }
+
+    #[must_use]
+    pub fn execute<P: for<'a> Parameters<'a>>(
+        &self,
+        query: impl AsRef<str>,
+        parameters: P,
+    ) -> Result<isize, (ErrorMessage, Option<ErrorLocation>)> {
+        let changes = self.prepare(query)?.query(parameters)?.run()?;
+        Ok(changes)
     }
 
     pub fn close(self) -> Result<(), ()> {
@@ -94,6 +116,8 @@ where
         }
     }
 
+    /// Open a [`Connection`] using the configuration set on this
+    /// [builder](Self).
     pub fn open(&self) -> Result<Connection> {
         let vfs = match &self.vfs {
             Some(vfs) => Some(vfs.as_ref()),

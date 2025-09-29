@@ -2,6 +2,7 @@ use crate::{
     blob::Reservation,
     error::{Error, Result},
     ffi,
+    types::RowId,
 };
 
 pub use ffi::Index;
@@ -113,6 +114,14 @@ impl<'b> Bind<'b> for bool {
 }
 
 identity!(&str, String, &[u8], Vec<u8>, Reservation);
+
+impl<'b> Bind<'b> for RowId {
+    type Value = i64;
+
+    fn into_bind_value(self) -> Result<Self::Value> {
+        Ok(self.into_inner())
+    }
+}
 
 impl<'a, 'b> Bind<'b> for ffi::Static<'a, str>
 where
