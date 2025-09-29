@@ -5,11 +5,10 @@ use crate::{
     bind::{Bind, Index},
     connection::Connection,
     error::{Error, ErrorLocation, ErrorMessage, Result},
-    ffi,
+    ffi::{self, Column},
     param::Parameters,
     row::Row,
     types::RowId,
-    value::Column,
 };
 
 /// A [prepared statement][]

@@ -1,7 +1,8 @@
 use crate::{
     error::Result,
+    ffi::Column,
     statement::{Execute, Execution},
-    value::{Column, Fetch},
+    value::Fetch,
 };
 
 #[derive(Debug)]
