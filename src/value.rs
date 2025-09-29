@@ -1,10 +1,8 @@
 use crate::{
     error::{Error, FetchError, Result},
-    ffi::{self, Fetch as _},
+    ffi::{self, Column, Fetch as _},
     statement::Statement,
 };
-
-pub use ffi::Column;
 
 pub trait Fetch<'r>: Sized {
     type Value: ffi::Fetch<'r>;
@@ -64,11 +62,58 @@ macro_rules! primitive {
     };
 }
 
+identity!(f64);
 primitive!(i32 :> i8);
 primitive!(i32 :> u8);
 primitive!(i32 :> i16);
 primitive!(i32 :> u16);
 identity!(i32);
 primitive!(i64 :> u32);
+#[cfg(target_pointer_width = "32")]
+primitive!(i32 :> isize);
+#[cfg(target_pointer_width = "64")]
+primitive!(i64 :> isize);
+primitive!(i64 :> usize);
 identity!(i64);
 primitive!(i64 :> u64);
+
+/// Read the column as an [`f64`] with
+/// [`sqlite3_column_double`](sqlite::sqlite3_column_double), and cast to
+/// [`f32`] with `value as f32`.
+///
+/// If the value overflows an `f32` (a previously [finite](f64::is_finite())
+/// `f64` became [infinite](f32::is_infinite())), returns a [range
+/// error](FetchError::Range).
+impl<'r> Fetch<'r> for f32 {
+    type Value = f64;
+
+    #[inline]
+    fn from_column_value(value: Self::Value) -> Result<Self> {
+        let result = value as f32;
+
+        // Check if a finite value became infinite (overflow)
+        if value.is_finite() && result.is_infinite() {
+            Err(Error::fetch(
+                FetchError::Range,
+                format!("f64 value {} overflows f32 range", value),
+            ))
+        } else {
+            Ok(result)
+        }
+    }
+}
+
+/// Read the column as an [`i32`] with
+/// [`sqlite3_column_int`](sqlite::sqlite3_column_int); any nonzero value is
+/// `true`, and `0` is `false`.
+///
+/// **Note** that when applied to a column of a different data type, such as the
+/// text `'true'`, SQLite may simply return `0`, which Squire interprets as
+/// `false`.
+impl<'r> Fetch<'r> for bool {
+    type Value = i32;
+
+    fn from_column_value(value: Self::Value) -> Result<Self> {
+        Ok(if value != 0 { true } else { false })
+    }
+}

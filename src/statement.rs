@@ -2,10 +2,11 @@ use core::{ffi::c_int, marker::PhantomData};
 use sqlite::{SQLITE_PREPARE_DONT_LOG, SQLITE_PREPARE_NO_VTAB, SQLITE_PREPARE_PERSISTENT, sqlite3};
 
 use crate::{
+    bind::{Bind, Index},
     connection::Connection,
     error::{Error, ErrorLocation, ErrorMessage, Result},
     ffi,
-    param::{Bind, Index, Parameters},
+    param::Parameters,
     row::Row,
     types::RowId,
     value::Column,

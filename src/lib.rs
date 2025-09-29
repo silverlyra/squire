@@ -2,7 +2,9 @@
 #![cfg_attr(feature = "lang-rustc-scalar-valid-range", feature(rustc_attrs))]
 #![cfg_attr(feature = "lang-step-trait", feature(step_trait))]
 
+mod bind;
 mod blob;
+mod column;
 mod connection;
 mod database;
 mod error;
@@ -13,7 +15,9 @@ mod statement;
 mod types;
 mod value;
 
+pub use bind::{Bind, Index};
 pub use blob::Reservation;
+pub use column::Column;
 pub use connection::{Connection, ConnectionBuilder};
 pub use database::{Database, IntoLocation};
 pub use error::{
@@ -21,7 +25,7 @@ pub use error::{
     ErrorCategory, ErrorCode, GeneralError, IoError, LockedError, ParameterError, ReadOnlyError,
     Result,
 };
-pub use param::{Bind, Index, Parameters};
+pub use param::Parameters;
 pub use statement::{Binding, Execution, PrepareOptions, Statement, StatementParameters};
 pub use types::RowId;
-pub use value::{Column, Fetch};
+pub use value::Fetch;

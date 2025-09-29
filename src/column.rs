@@ -1,22 +1,20 @@
-use crate::{
-    bind::{Bind, Index},
-    error::Result,
-    statement::{Binding, Statement},
-};
+use crate::{error::Result, statement::Statement, value::Fetch};
 
-pub trait Parameters<'s> {
+pub use crate::ffi::Column;
+
+pub trait Columns<'r>: Sized {
     type Indexes: Copy + Sized;
 
     fn resolve<'c>(statement: &Statement<'c>) -> Option<Self::Indexes>;
 
-    fn bind<'c>(self, binding: &mut Binding<'c, 's>, indexes: Self::Indexes) -> Result<()>
+    fn fetch<'c>(statement: &'r mut Statement<'c>, indexes: Self::Indexes) -> Result<Self>
     where
-        'c: 's;
+        'c: 'r;
 }
 
-impl<'s, T> Parameters<'s> for T
+impl<'r, T> Columns<'r> for T
 where
-    T: Bind<'s>,
+    T: Fetch<'r>,
 {
     type Indexes = ();
 
@@ -25,21 +23,20 @@ where
         Some(())
     }
 
-    fn bind<'c>(self, binding: &mut Binding<'c, 's>, _indexes: Self::Indexes) -> Result<()>
+    fn fetch<'c>(statement: &'r mut Statement<'c>, _indexes: Self::Indexes) -> Result<Self>
     where
-        'c: 's,
+        'c: 'r,
     {
-        binding.set(Index::INITIAL, self)?;
-        Ok(())
+        <Self as Fetch<'r>>::fetch(statement, Column::INITIAL)
     }
 }
 
-/// Implement [`Parameters`] for a tuple type.
+/// Implement [`Columns`] for a tuple type.
 macro_rules! tuple {
     ($i:ident: $t:ident) => {
-        impl<'s, $t> Parameters<'s> for ($t,)
+        impl<'r, $t> Columns<'r> for ($t,)
         where
-            $t: Bind<'s>,
+            $t: Fetch<'r>,
         {
             type Indexes = ();
 
@@ -48,22 +45,22 @@ macro_rules! tuple {
                 Some(())
             }
 
-            fn bind<'c>(self, binding: &mut Binding<'c, 's>, _indexes: Self::Indexes) -> Result<()>
+            fn fetch<'c>(statement: &'r mut Statement<'c>, _indexes: Self::Indexes) -> Result<Self>
             where
-                'c: 's,
+                'c: 'r,
             {
-                let ($i,) = self;
-                binding.set(Index::INITIAL, $i)?;
-                Ok(())
+                let column = Column::INITIAL;
+                let $i = <$t as Fetch<'r>>::fetch(statement, column)?;
+                Ok(($i,))
             }
         }
     };
 
     ($ih:ident: $th:ident, $($it:ident: $tt:ident),+) => {
-        impl<'s, $th, $($tt),+> Parameters<'s> for ($th, $($tt),+)
+        impl<'r, $th, $($tt),+> Columns<'r> for ($th, $($tt),+)
         where
-            $th: Bind<'s>,
-            $($tt: Bind<'s>),+
+            $th: Fetch<'r>,
+            $($tt: Fetch<'r>),+
         {
             type Indexes = ();
 
@@ -72,21 +69,19 @@ macro_rules! tuple {
                 Some(())
             }
 
-            fn bind<'c>(self, binding: &mut Binding<'c, 's>, _indexes: Self::Indexes) -> Result<()>
+            fn fetch<'c>(statement: &'r mut Statement<'c>, _indexes: Self::Indexes) -> Result<Self>
             where
-                'c: 's,
+                'c: 'r,
             {
-                let ($ih, $($it),+) = self;
-
-                let index = Index::INITIAL;
-                binding.set(index, $ih)?;
+                let column = Column::INITIAL;
+                let $ih = <$th as Fetch<'r>>::fetch(statement, column)?;
 
                 $(
-                    let index = index.next();
-                    binding.set(index, $it)?;
+                    let column = column.next();
+                    let $it = <$tt as Fetch<'r>>::fetch(statement, column)?;
                 )*
 
-                Ok(())
+                Ok(($ih, $($it),+))
             }
         }
     };

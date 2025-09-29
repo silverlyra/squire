@@ -339,8 +339,19 @@ where
         if let Some(value) = self {
             unsafe { value.bind(statement, index) }
         } else {
-            bind! { sqlite3_bind_null(statement, index,) }
+            unsafe { Null.bind(statement, index) }
         }
+    }
+}
+
+pub(crate) struct Null;
+
+impl<'b> Bind<'b> for Null {
+    unsafe fn bind<'c>(self, statement: &Statement<'c>, index: Index) -> Result<()>
+    where
+        'c: 'b,
+    {
+        bind! { sqlite3_bind_null(statement, index,) }
     }
 }
 
@@ -380,6 +391,10 @@ impl Index {
         }
     }
 
+    pub const unsafe fn new_unchecked(value: c_int) -> Self {
+        Self(unsafe { NonZero::new_unchecked(value) })
+    }
+
     /// Access the underlying parameter index value as a C [`int`](c_int).
     #[inline]
     pub const fn value(&self) -> c_int {
@@ -401,7 +416,7 @@ impl Index {
     /// assert_eq!(usize::from(second), 2);
     /// ```
     pub const fn next(&self) -> Self {
-        Self(unsafe { NonZero::new_unchecked(self.0.get() + 1) })
+        unsafe { Self::new_unchecked(self.value() + 1) }
     }
 }
 

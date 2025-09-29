@@ -106,6 +106,24 @@ impl<'r> Fetch<'r> for Type {
     }
 }
 
+impl<'r, T> Fetch<'r> for Option<T>
+where
+    T: Fetch<'r>,
+{
+    unsafe fn fetch<'c>(statement: &'r Statement<'c>, column: Column) -> Self
+    where
+        'c: 'r,
+    {
+        let column_type = unsafe { Type::fetch(statement, column) };
+
+        if column_type.has_value() {
+            Some(unsafe { T::fetch(statement, column) })
+        } else {
+            None
+        }
+    }
+}
+
 /// A SQLite column index, used for [reading values][] out of queried rows.
 ///
 /// [reading values]: https://sqlite.org/c3ref/column_blob.html
@@ -203,4 +221,16 @@ pub enum Type {
     Blob = SQLITE_BLOB,
     #[doc(alias = "SQLITE_NULL")]
     Null = SQLITE_NULL,
+}
+
+impl Type {
+    /// `true` unless this [`Type`] is [`NULL`](Self::Null); `false` for `NULL`.
+    pub const fn has_value(&self) -> bool {
+        !self.is_null()
+    }
+
+    /// `true` if this [`Type`] is [`NULL`](Self::Null); `false` otherwise.
+    pub const fn is_null(&self) -> bool {
+        matches!(self, Self::Null)
+    }
 }
