@@ -1,6 +1,6 @@
 [package]
 name = "squire"
-version = "0.0.1-alpha.2"
+version = "0.0.1-alpha.3"
 edition = "2024"
 description = "Safe and idiomatic SQLite bindings"
 readme = "Readme.md"
@@ -73,7 +73,7 @@ widestring = ["utf-16", "dep:widestring"]
 [dependencies.sqlite]
 package = "squire-sqlite3-sys"
 path = "crates/sys"
-version = "0.0.1-alpha.1"
+version = "0.0.1-alpha.3"
 default-features = false
 
 [dependencies.fallible-iterator]
@@ -98,7 +98,10 @@ name = "raw"
 [package.metadata.docs.rs]
 features = ["bundled", "full", "serialized"]
 no-default-features = true
+
 rustdoc-args = ["--cfg", "docsrs"]
+
+default-target = "x86_64-unknown-linux-gnu"
 targets = [
     "aarch64-apple-darwin",
     "aarch64-unknown-linux-gnu",
