@@ -1,7 +1,7 @@
 [package]
 name = "squire-sqlite3-sys"
 description = "External FFI bindings for the SQLite C API"
-version = "0.0.1-alpha.1"
+version = "0.0.1-alpha.2"
 edition = "2024"
 links = "sqlite3"
 readme = "Readme.md"
@@ -29,7 +29,6 @@ serialized = []
 
 core = [
     "json",
-    "metadata",
     "vtab",
     "wal"
 ]
@@ -49,6 +48,7 @@ full = [
     "extensions",
     "fts3",
     "memory-status",
+    "metadata",
     "normalize-sql",
     "preupdate-hook",
     "progress-callback",
@@ -92,7 +92,7 @@ wal = []
 [build-dependencies.sqlite]
 package = "squire-sqlite3-src"
 path = "../../../ext/squire-src"
-version = "3.50.4-alpha.1"
+version = "3.50.4-alpha.2"
 optional = true
 
 [build-dependencies.bindgen]

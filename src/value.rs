@@ -124,8 +124,10 @@ impl<'r> Fetch<'r> for RowId {
     type Value = i64;
 
     fn from_column_value(value: Self::Value) -> Result<Self> {
-        RowId::new(value)
-            .ok_or_else(|| Error::fetch(FetchError::Range, "SQLite row ID cannot be 0"))
+        RowId::new(value).ok_or_else(
+            #[cold]
+            || Error::fetch(FetchError::Range, "SQLite row ID cannot be 0"),
+        )
     }
 }
 

@@ -63,9 +63,7 @@ const ENCODING_UTF8: c_uchar = SQLITE_UTF8 as c_uchar;
 /// - [`None`](core::option) (via [`sqlite3_bind_null`])
 ///
 /// The lifetime parameter `'b` represents the lifetime for which SQLite may
-/// access the bound data. For values using SQLITE_TRANSIENT, this doesn't
-/// matter as SQLite copies immediately. For SQLITE_STATIC values, the data
-/// must outlive this lifetime.
+/// access the bound data.
 ///
 /// [bind]: https://sqlite.org/c3ref/bind_blob.html
 pub trait Bind<'b> {
