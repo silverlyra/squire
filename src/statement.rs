@@ -66,6 +66,7 @@ impl<'c> Statement<'c> {
         parameters.bind(&mut binding, indexes)?;
         Ok(binding)
     }
+
     pub fn query<'s, P>(&'s mut self, parameters: P) -> Result<Execution<'c, 's>>
     where
         P: Parameters<'s>,
