@@ -72,4 +72,4 @@ jobs:
         if: matrix.channel == 'nightly'
       - name: Run tests (minimal features)
         run: >-
-          cargo test --no-default-features
+          cargo test --no-default-features --features bundled,single-thread

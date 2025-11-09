@@ -101,11 +101,18 @@ version = "^1.0.2"
 optional = true
 
 [[test]]
-name = "raw"
+name = "columns"
+required-features = ["derive"]
 
 [[test]]
 name = "parameters"
 required-features = ["derive"]
+
+[[test]]
+name = "query"
+
+[[test]]
+name = "raw"
 
 [package.metadata.docs.rs]
 features = ["bundled", "full", "serialized"]

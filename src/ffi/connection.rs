@@ -2,8 +2,9 @@ use core::{ffi::CStr, ptr};
 
 use sqlite::{SQLITE_OK, SQLITE_OPEN_EXRESCODE, sqlite3, sqlite3_close, sqlite3_open_v2};
 
+use super::call::call;
 #[cfg(feature = "mutex")]
-use super::{call::call, mutex::MutexRef};
+use super::mutex::MutexRef;
 use crate::error::{Error, Result};
 
 /// A thin wrapper around a [`sqlite3`] connection pointer.
