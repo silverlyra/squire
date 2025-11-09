@@ -11,6 +11,7 @@ mod database;
 mod error;
 pub mod ffi;
 mod param;
+mod query;
 mod row;
 mod statement;
 mod types;
@@ -32,4 +33,4 @@ pub use types::RowId;
 pub use value::Fetch;
 
 #[cfg(feature = "derive")]
-pub use squire_derive::Parameters;
+pub use squire_derive::{Columns, Parameters};

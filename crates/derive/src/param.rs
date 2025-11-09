@@ -3,68 +3,197 @@ use std::{
     num::NonZero,
 };
 
-use darling::{FromDeriveInput, FromField, FromMeta, Result, ast, util::Flag};
+use darling::{FromDeriveInput, FromField, Result, ast, util::Flag};
 use proc_macro2::TokenStream;
 use quote::quote;
-use syn::{Generics, Ident, Path, Type, parse_quote};
+use syn::{Expr, Generics, Ident, Type, parse_quote};
+
+use crate::common::{
+    BindingMode, FieldIdentity, With, assume_array_init, impl_generics_with_lifetime,
+    process_fields,
+};
 
 #[derive(FromDeriveInput, Debug)]
 #[darling(
     attributes(squire),
     supports(struct_named, struct_newtype, struct_tuple)
 )]
-pub struct Parameters {
+pub struct ParametersDerive {
     ident: Ident,
     generics: Generics,
-    data: ast::Data<(), Field>,
+    data: ast::Data<(), ParametersField>,
 
     named: Flag,
     sequential: Flag,
 }
 
-impl Parameters {
+impl ParametersDerive {
     pub fn derive(self) -> Result<TokenStream> {
-        let ident = self.ident;
+        // Step 1: Extract and validate fields
+        let (fields, style) = self.extract_fields()?;
 
+        // Step 2: Determine binding mode from flags and struct style
+        let binding_mode = BindingMode::from_flags_and_style(&self.named, &self.sequential, style)?;
+
+        // Step 3: Build metadata for each field
+        let field_metas = process_fields(&fields, |i, field| field.build_meta(i, binding_mode))?;
+
+        // Step 4: Build the trait implementation
+        let meta = ParametersMeta {
+            ident: self.ident,
+            generics: self.generics,
+            fields: field_metas,
+            binding_mode,
+            style,
+        };
+
+        meta.generate_impl()
+    }
+
+    fn extract_fields(&self) -> Result<(Vec<&ParametersField>, ast::Style)> {
+        match &self.data {
+            ast::Data::Struct(contents) => match contents.style {
+                ast::Style::Struct | ast::Style::Tuple => {
+                    let fields = contents
+                        .fields
+                        .iter()
+                        .filter(|field| !field.skip.is_present())
+                        .collect();
+                    Ok((fields, contents.style))
+                }
+                ast::Style::Unit => Err(darling::Error::unsupported_shape("unit struct")),
+            },
+            ast::Data::Enum(_) => Err(darling::Error::unsupported_shape("enum")),
+        }
+    }
+}
+
+#[derive(FromField, Debug)]
+#[darling(attributes(squire))]
+struct ParametersField {
+    ident: Option<Ident>,
+    ty: Type,
+
+    borrow: Flag,
+    index: Option<NonZero<i32>>,
+    rename: Option<Ident>,
+    skip: Flag,
+    result: Flag,
+    bind_with: Option<With>,
+
+    // Legacy support for `with` attribute
+    #[darling(rename = "with")]
+    with_legacy: Option<With>,
+}
+
+impl ParametersField {
+    fn build_meta(
+        &self,
+        field_index: usize,
+        binding_mode: BindingMode,
+    ) -> Result<ParameterFieldMeta> {
+        // Determine the parameter identity
+        let sequential = binding_mode == BindingMode::Sequential;
+        let identity = FieldIdentity::from_field(
+            &self.ident,
+            field_index,
+            self.rename.as_ref(),
+            self.index,
+            sequential,
+        );
+
+        // Build the bind expression
+        let bind_expr = self.build_bind_expr(field_index)?;
+
+        // Extract lifetime bound if using borrow wrapper
+        let borrow_bound = self.borrow_bound();
+
+        Ok(ParameterFieldMeta {
+            ident: self.ident.clone(),
+            ty: self.ty.clone(),
+            field_index,
+            identity,
+            bind_expr,
+            borrow_bound,
+        })
+    }
+
+    fn build_bind_expr(&self, field_index: usize) -> Result<Expr> {
+        // Start with field access expression
+        let mut expr = if let Some(ref ident) = self.ident {
+            parse_quote!(self.#ident)
+        } else {
+            let index = syn::Index::from(field_index);
+            parse_quote!(self.#index)
+        };
+
+        // Apply custom bind_with function if provided (or legacy with)
+        let with_fn = self.bind_with.as_ref().or(self.with_legacy.as_ref());
+        if let Some(ref with) = with_fn {
+            expr = with.wrap(&expr);
+        }
+
+        // Unwrap Result if result flag is set
+        if self.result.is_present() {
+            expr = parse_quote!(#expr?);
+        }
+
+        // Wrap in Static if borrow flag is set
+        if self.borrow.is_present() {
+            if !matches!(&self.ty, Type::Reference(_)) {
+                return Err(self.borrow_error());
+            }
+            expr = parse_quote!(squire::ffi::Static::new(#expr));
+        }
+
+        Ok(expr)
+    }
+
+    fn borrow_bound(&self) -> Option<syn::Lifetime> {
+        if self.borrow.is_present() {
+            if let Type::Reference(syn::TypeReference {
+                lifetime: Some(ref lifetime),
+                ..
+            }) = self.ty
+            {
+                Some(lifetime.clone())
+            } else {
+                None
+            }
+        } else {
+            None
+        }
+    }
+
+    fn borrow_error(&self) -> darling::Error {
+        darling::Error::custom("borrow can only be used with references")
+            .with_span(&self.borrow.span())
+    }
+}
+
+/// Validated and processed metadata for the Parameters derive.
+struct ParametersMeta {
+    ident: Ident,
+    generics: Generics,
+    fields: Vec<ParameterFieldMeta>,
+    binding_mode: BindingMode,
+    style: ast::Style,
+}
+
+impl ParametersMeta {
+    fn generate_impl(self) -> Result<TokenStream> {
+        let ident = &self.ident;
         let (_, ty_generics, where_clause) = self.generics.split_for_impl();
 
         // Create impl_generics with our 'statement lifetime
-        let impl_generics = if self.generics.params.is_empty() {
-            quote! { <'statement> }
-        } else {
-            let params = &self.generics.params;
-            quote! { <'statement, #params> }
-        };
+        let impl_generics = impl_generics_with_lifetime(&self.generics, "'statement");
 
-        let fields = match self.data {
-            ast::Data::Struct(contents) => match contents.style {
-                ast::Style::Struct | ast::Style::Tuple => contents.fields,
-                ast::Style::Unit => return Err(darling::Error::unsupported_shape("unit struct")),
-            },
-            ast::Data::Enum(_) => return Err(darling::Error::unsupported_shape("enum")),
-        };
-
-        let fields: Vec<_> = fields
-            .into_iter()
-            .filter(|field| !field.skip.is_present())
-            .collect();
-
-        let mut errors = darling::Error::accumulator();
-
-        if self.named.is_present() && self.sequential.is_present() {
-            errors.push(
-                darling::Error::custom("named and sequential are mutually exclusive")
-                    .with_span(&self.sequential.span()),
-            );
-        }
-
-        let bind_exprs: Vec<_> = fields
+        // Collect lifetime bounds from borrow-wrapped fields
+        let lifetime_bounds: BTreeSet<_> = self
+            .fields
             .iter()
-            .enumerate()
-            .filter_map(|(i, field)| errors.handle_in(|| field.bind_expr(i)))
+            .filter_map(|f| f.borrow_bound.clone())
             .collect();
-
-        let lifetime_bounds: BTreeSet<_> = fields.iter().filter_map(Field::borrow_bound).collect();
 
         // Build where clause with lifetime bounds
         let mut where_clause = where_clause.cloned();
@@ -83,79 +212,28 @@ impl Parameters {
             }
         }
 
-        let names: BTreeMap<String, usize> = fields
+        // Build parameter name map for named resolution
+        let param_names: BTreeMap<&str, usize> = self
+            .fields
             .iter()
-            .filter_map(|field| field.name())
             .enumerate()
-            .map(|(i, field)| (field, i))
+            .filter_map(|(i, field)| field.identity.name().map(|name| (name, i)))
             .collect();
 
-        if self.named.is_present() && names.len() < fields.len() {
-            errors.push(
-                darling::Error::custom("not all fields have names").with_span(&self.named.span()),
-            );
+        // Validate that explicit #[squire(named)] on tuple structs has all names
+        if self.binding_mode.requires_all_names(self.style) && param_names.len() < self.fields.len()
+        {
+            return Err(darling::Error::custom("not all fields have names"));
         }
 
-        errors.finish()?;
-
-        let (indexes_type, resolve_indexes) = if !self.sequential.is_present() && !names.is_empty()
-        {
-            let count = names.len();
-
-            let initializers = names.keys().enumerate().map(|(i, name)| {
-                quote! {
-                    if let Some(index) = params.index(#name) {
-                        indexes[#i].write(index);
-                    } else {
-                        return None;
-                    }
-                }
-            });
-
-            let finalize = if cfg!(feature = "lang-array-assume-init") {
-                quote! {
-                    unsafe {
-                        Some(::core::mem::MaybeUninit::array_assume_init(indexes))
-                    }
-                }
+        let (indexes_type, resolve_indexes) =
+            if self.binding_mode.is_named() && !param_names.is_empty() {
+                self.generate_named_resolution(&param_names)
             } else {
-                quote! {
-                    Some(indexes.map(|i| unsafe { ::core::mem::MaybeUninit::assume_init(i) }))
-                }
+                (quote! { type Indexes = (); }, quote! { Some(()) })
             };
 
-            let initialize = quote! {
-                let params = statement.parameters();
-                let mut indexes = [::core::mem::MaybeUninit::<squire::Index>::uninit(); #count];
-
-                #(#initializers)*
-
-                #finalize
-            };
-
-            (
-                quote! { type Indexes = [squire::Index; #count]; },
-                initialize,
-            )
-        } else {
-            (quote! { type Indexes = (); }, quote! { Some(()) })
-        };
-
-        let bind_statements = bind_exprs.into_iter().enumerate().map(|(i, expr)| {
-            let field = &fields[i];
-            let index = match field.parameter(i, self.sequential.is_present()) {
-                Parameter::Named(name) => {
-                    let offset = names.get(&name).unwrap();
-                    quote! { indexes[#offset] }
-                }
-                Parameter::Sequential(index) => {
-                    let index = index.get();
-                    quote! { unsafe { squire::Index.new_unchecked(#index) } }
-                }
-            };
-
-            quote! { binding.set(#index, #expr)?; }
-        });
+        let bind_statements = self.generate_bind_statements(&param_names);
 
         Ok(quote! {
             impl #impl_generics squire::Parameters<'statement> for #ident #ty_generics
@@ -178,199 +256,77 @@ impl Parameters {
             }
         })
     }
-}
 
-#[derive(Clone, Debug)]
-enum Parameter {
-    Named(String),
-    Sequential(NonZero<i32>),
-}
+    fn generate_named_resolution(
+        &self,
+        param_names: &BTreeMap<&str, usize>,
+    ) -> (TokenStream, TokenStream) {
+        let count = param_names.len();
 
-#[derive(FromField, Debug)]
-#[darling(attributes(squire))]
-struct Field {
-    ident: Option<Ident>,
-    ty: Type,
-
-    borrow: Flag,
-    index: Option<NonZero<i32>>,
-    rename: Option<Ident>,
-    skip: Flag,
-    result: Flag,
-    with: Option<With>,
-}
-
-impl Field {
-    fn expr(&self, index: usize) -> syn::Expr {
-        if let Some(ref ident) = self.ident {
-            parse_quote!(self.#ident)
-        } else {
-            parse_quote!(self.#index)
-        }
-    }
-
-    fn bind_expr(&self, index: usize) -> Result<syn::Expr> {
-        let expr = self.expr(index);
-
-        let expr = if let Some(ref with) = self.with {
-            with.wrap(&expr)
-        } else {
-            expr
-        };
-
-        let expr = if self.result.is_present() {
-            parse_quote!(#expr?)
-        } else {
-            expr
-        };
-
-        let expr = if self.borrow.is_present() {
-            if !matches!(&self.ty, syn::Type::Reference(_)) {
-                return Err(self.borrow_error());
-            }
-            parse_quote!(squire::ffi::Static::new(#expr))
-        } else {
-            expr
-        };
-
-        Ok(expr)
-    }
-
-    fn parameter(&self, index: usize, sequential: bool) -> Parameter {
-        match (
-            sequential,
-            self.index,
-            self.rename.as_ref(),
-            self.ident.as_ref(),
-        ) {
-            (_, Some(index), _, _) => Parameter::Sequential(index),
-            (false, None, Some(name), _) => Parameter::Named(name.to_string()),
-            (false, None, None, Some(ident)) => Parameter::Named(ident.to_string()),
-            _ => Parameter::Sequential(unsafe { NonZero::new_unchecked((index as i32) + 1) }),
-        }
-    }
-
-    fn name(&self) -> Option<String> {
-        match self.parameter(0, false) {
-            Parameter::Named(name) => Some(name),
-            Parameter::Sequential(_) => None,
-        }
-    }
-
-    fn borrow_bound(&self) -> Option<syn::Lifetime> {
-        if self.borrow.is_present() {
-            if let syn::Type::Reference(syn::TypeReference {
-                lifetime: Some(ref lifetime),
-                ..
-            }) = self.ty
-            {
-                Some(lifetime.clone())
-            } else {
-                None
-            }
-        } else {
-            None
-        }
-    }
-
-    fn borrow_error(&self) -> darling::Error {
-        darling::Error::custom("borrow can only be used with references")
-            .with_span(&self.borrow.span())
-    }
-}
-
-#[derive(Debug, Clone)]
-pub enum With {
-    /// Simple path: `my_function`
-    Path(Path),
-    /// String reference: `"my_function"`
-    Name(String),
-    /// Complex expression with placeholders: `some::func(_, some::Enum::Value)`
-    Expression(syn::Expr),
-}
-
-impl With {
-    /// Pipe the given [`Expr`](syn::Expr) through the [`With`] wrapper.
-    pub fn wrap(&self, value_expr: &syn::Expr) -> syn::Expr {
-        match self {
-            With::Path(path) => {
-                syn::parse_quote!(#path(#value_expr))
-            }
-            With::Name(func_name) => {
-                let path: syn::Path =
-                    syn::parse_str(func_name).unwrap_or_else(|_| syn::parse_quote!(#func_name));
-                syn::parse_quote!(#path(#value_expr))
-            }
-            With::Expression(expr) => Self::replace_placeholders(expr, value_expr),
-        }
-    }
-
-    fn replace_placeholders(expr: &syn::Expr, replacement: &syn::Expr) -> syn::Expr {
-        use syn::*;
-        match expr {
-            // Replace underscore with the actual value
-            Expr::Path(path) if path.path.is_ident("_") => replacement.clone(),
-
-            // Recursively process function calls
-            Expr::Call(call) => {
-                let func = Self::replace_placeholders(&call.func, replacement);
-                let args = call
-                    .args
-                    .iter()
-                    .map(|arg| Self::replace_placeholders(arg, replacement))
-                    .collect();
-                Expr::Call(ExprCall {
-                    attrs: call.attrs.clone(),
-                    func: Box::new(func),
-                    paren_token: call.paren_token,
-                    args,
-                })
-            }
-
-            // Recursively process method calls
-            Expr::MethodCall(method) => {
-                let receiver = Self::replace_placeholders(&method.receiver, replacement);
-                let args = method
-                    .args
-                    .iter()
-                    .map(|arg| Self::replace_placeholders(arg, replacement))
-                    .collect();
-                Expr::MethodCall(ExprMethodCall {
-                    attrs: method.attrs.clone(),
-                    receiver: Box::new(receiver),
-                    dot_token: method.dot_token,
-                    method: method.method.clone(),
-                    turbofish: method.turbofish.clone(),
-                    paren_token: method.paren_token,
-                    args,
-                })
-            }
-
-            // For other expressions, return as-is
-            _ => expr.clone(),
-        }
-    }
-}
-
-impl FromMeta for With {
-    fn from_meta(item: &syn::Meta) -> darling::Result<Self> {
-        match item {
-            syn::Meta::NameValue(meta) => {
-                match &meta.value {
-                    // Handle string literals: with = "my_function"
-                    syn::Expr::Lit(syn::ExprLit {
-                        lit: syn::Lit::Str(lit_str),
-                        ..
-                    }) => Ok(With::Name(lit_str.value())),
-
-                    // Handle direct paths: with = my_function
-                    syn::Expr::Path(path) => Ok(With::Path(path.path.clone())),
-
-                    // Handle complex expressions: with = some::func(_, Enum::Value)
-                    expr => Ok(With::Expression(expr.clone())),
+        let initializers = param_names.keys().enumerate().map(|(i, name)| {
+            quote! {
+                if let Some(index) = params.index(#name) {
+                    indexes[#i].write(index);
+                } else {
+                    return None;
                 }
             }
-            _ => Err(darling::Error::custom("Invalid function attribute format")),
-        }
+        });
+
+        let finalize = assume_array_init(quote!(squire::Index));
+
+        let initialize = quote! {
+            let params = statement.parameters();
+            let mut indexes = [::core::mem::MaybeUninit::<squire::Index>::uninit(); #count];
+
+            #(#initializers)*
+
+            #finalize
+        };
+
+        (
+            quote! { type Indexes = [squire::Index; #count]; },
+            initialize,
+        )
+    }
+
+    fn generate_bind_statements(&self, param_names: &BTreeMap<&str, usize>) -> Vec<TokenStream> {
+        self.fields
+            .iter()
+            .map(|field| {
+                let index_expr = match &field.identity {
+                    FieldIdentity::Named(name) => {
+                        let offset = param_names.get(name.as_str()).unwrap();
+                        quote! { indexes[#offset] }
+                    }
+                    FieldIdentity::Sequential(index) => {
+                        let index_val = index.get();
+                        quote! { unsafe { squire::Index::new_unchecked(#index_val) } }
+                    }
+                };
+
+                let bind_expr = &field.bind_expr;
+
+                quote! {
+                    binding.set(#index_expr, #bind_expr)?;
+                }
+            })
+            .collect()
     }
 }
+
+/// Processed metadata for a single field in the Parameters derive.
+struct ParameterFieldMeta {
+    #[allow(dead_code)]
+    ident: Option<Ident>,
+    #[allow(dead_code)]
+    ty: Type,
+    #[allow(dead_code)]
+    field_index: usize,
+    identity: FieldIdentity<NonZero<i32>>,
+    bind_expr: Expr,
+    borrow_bound: Option<syn::Lifetime>,
+}
+
+// Keep the old name as an alias for backwards compatibility
+pub use ParametersDerive as Parameters;
