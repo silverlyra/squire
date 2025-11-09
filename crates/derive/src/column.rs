@@ -70,7 +70,7 @@ struct FieldDerive {
     ident: Option<Ident>,
     ty: Type,
 
-    bytes: Flag,
+    borrow: Flag,
     index: Option<i32>,
     rename: Option<Ident>,
     skip: Flag,
@@ -93,14 +93,14 @@ impl FieldDerive {
         // Build the fetch expression
         let fetch_expr = self.build_fetch_expr(field_index)?;
 
-        // Extract lifetime bound if using bytes wrapper
-        let bytes_bound = self.bytes_bound();
+        // Extract lifetime bound if using borrow wrapper
+        let borrow_bound = self.borrow_bound();
 
         Ok(Column {
             ident: self.ident.clone(),
             identity,
             fetch_expr,
-            bytes_bound,
+            borrow_bound,
         })
     }
 
@@ -121,20 +121,20 @@ impl FieldDerive {
             expr = parse_quote!(#expr?);
         }
 
-        // Wrap in Bytes if bytes flag is set
-        if self.bytes.is_present() {
+        // Wrap in Borrowed if borrow flag is set
+        if self.borrow.is_present() {
             if !matches!(&self.ty, Type::Reference(_)) {
-                return Err(self.bytes_error());
+                return Err(self.borrow_error());
             }
-            // Note: The Bytes wrapper is applied at the type level via the Fetch trait,
+            // Note: The Borrowed wrapper is applied at the type level via the Fetch trait,
             // so we don't need to wrap the expression here
         }
 
         Ok(expr)
     }
 
-    fn bytes_bound(&self) -> Option<syn::Lifetime> {
-        if self.bytes.is_present() {
+    fn borrow_bound(&self) -> Option<syn::Lifetime> {
+        if self.borrow.is_present() {
             if let Type::Reference(syn::TypeReference {
                 lifetime: Some(ref lifetime),
                 ..
@@ -149,9 +149,9 @@ impl FieldDerive {
         }
     }
 
-    fn bytes_error(&self) -> darling::Error {
-        darling::Error::custom("bytes can only be used with references")
-            .with_span(&self.bytes.span())
+    fn borrow_error(&self) -> darling::Error {
+        darling::Error::custom("borrow can only be used with references")
+            .with_span(&self.borrow.span())
     }
 }
 
@@ -171,11 +171,11 @@ impl Columns {
         // Create impl_generics with row lifetime
         let impl_generics = impl_generics_with_lifetime(&self.generics, "'row");
 
-        // Collect lifetime bounds from bytes-wrapped fields
+        // Collect lifetime bounds from borrow-wrapped fields
         let lifetime_bounds: BTreeSet<_> = self
             .fields
             .iter()
-            .filter_map(|f| f.bytes_bound.clone())
+            .filter_map(|f| f.borrow_bound.clone())
             .collect();
 
         // Build where clause with lifetime bounds
@@ -292,7 +292,7 @@ impl Columns {
                         quote! { indexes[#offset] }
                     }
                     FieldIdentity::Sequential(index) => {
-                        quote! { squire::ColumnIndex::from(#index) }
+                        quote! { squire::ColumnIndex::try_from(#index)? }
                     }
                 };
 
@@ -344,5 +344,5 @@ struct Column {
     ident: Option<Ident>,
     identity: FieldIdentity<i32>,
     fetch_expr: Expr,
-    bytes_bound: Option<syn::Lifetime>,
+    borrow_bound: Option<syn::Lifetime>,
 }

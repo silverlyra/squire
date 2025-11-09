@@ -12,7 +12,7 @@ use proc_macro::TokenStream;
 /// # Attributes
 ///
 /// - `#[squire(skip)]` - Skip this field when binding parameters
-/// - `#[squire(borrow)]` - Wrap the field in `Static` for zero-copy binding
+/// - `#[squire(borrow)]` - Wrap the field in `Borrowed` for zero-copy binding
 /// - `#[squire(bind_with = custom_function)]` - Use a custom binding function
 /// - `#[squire(index = 1)]` - Use a specific parameter index
 /// - `#[squire(rename = other_name)]` - Use a different field name for binding
@@ -34,7 +34,7 @@ pub fn derive_parameters(input: TokenStream) -> TokenStream {
 /// # Attributes
 ///
 /// - `#[squire(skip)]` - Skip this field when fetching columns
-/// - `#[squire(bytes)]` - Wrap the field in `Bytes` for zero-copy fetching
+/// - `#[squire(borrow)]` - Fetch the field as `Borrowed` for zero-copy access
 /// - `#[squire(fetch_with = custom_function)]` - Use a custom fetch function
 /// - `#[squire(index = 0)]` - Use a specific column index
 /// - `#[squire(rename = other_name)]` - Use a different field name for column lookup

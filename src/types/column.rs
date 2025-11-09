@@ -1,5 +1,7 @@
 use core::ffi::c_int;
 
+use crate::error::{Error, Result};
+
 /// A SQLite column index, used for [reading values][] out of queried rows.
 ///
 /// [reading values]: https://sqlite.org/c3ref/column_blob.html
@@ -42,9 +44,27 @@ impl ColumnIndex {
     }
 }
 
-impl From<i32> for ColumnIndex {
-    fn from(value: i32) -> Self {
-        Self::new(value as c_int)
+impl From<ColumnIndex> for i32 {
+    fn from(index: ColumnIndex) -> Self {
+        index.value() as Self
+    }
+}
+
+impl From<ColumnIndex> for u32 {
+    fn from(index: ColumnIndex) -> Self {
+        index.value() as Self
+    }
+}
+
+impl From<ColumnIndex> for i64 {
+    fn from(index: ColumnIndex) -> Self {
+        index.value() as Self
+    }
+}
+
+impl From<ColumnIndex> for u64 {
+    fn from(index: ColumnIndex) -> Self {
+        index.value() as Self
     }
 }
 
@@ -57,6 +77,73 @@ impl From<ColumnIndex> for isize {
 impl From<ColumnIndex> for usize {
     fn from(index: ColumnIndex) -> Self {
         index.value() as Self
+    }
+}
+
+impl TryFrom<i32> for ColumnIndex {
+    type Error = Error<()>;
+
+    fn try_from(value: i32) -> Result<Self, ()> {
+        if value < 0 {
+            Err(Error::range())
+        } else {
+            Ok(Self::new(value as c_int))
+        }
+    }
+}
+
+impl TryFrom<i64> for ColumnIndex {
+    type Error = Error<()>;
+
+    fn try_from(value: i64) -> Result<Self, ()> {
+        match c_int::try_from(value) {
+            Ok(value) if value >= 0 => Ok(Self::new(value)),
+            _ => Err(Error::range()),
+        }
+    }
+}
+
+impl TryFrom<isize> for ColumnIndex {
+    type Error = Error<()>;
+
+    fn try_from(value: isize) -> Result<Self, ()> {
+        match c_int::try_from(value) {
+            Ok(value) if value >= 0 => Ok(Self::new(value)),
+            _ => Err(Error::range()),
+        }
+    }
+}
+
+impl TryFrom<u32> for ColumnIndex {
+    type Error = Error<()>;
+
+    fn try_from(value: u32) -> Result<Self, ()> {
+        match c_int::try_from(value) {
+            Ok(value) => Ok(Self::new(value)),
+            Err(_) => Err(Error::range()),
+        }
+    }
+}
+
+impl TryFrom<u64> for ColumnIndex {
+    type Error = Error<()>;
+
+    fn try_from(value: u64) -> Result<Self, ()> {
+        match c_int::try_from(value) {
+            Ok(value) => Ok(Self::new(value)),
+            Err(_) => Err(Error::range()),
+        }
+    }
+}
+
+impl TryFrom<usize> for ColumnIndex {
+    type Error = Error<()>;
+
+    fn try_from(value: usize) -> Result<Self, ()> {
+        match c_int::try_from(value) {
+            Ok(value) => Ok(Self::new(value)),
+            Err(_) => Err(Error::range()),
+        }
     }
 }
 

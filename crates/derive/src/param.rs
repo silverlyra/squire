@@ -125,12 +125,12 @@ impl FieldDerive {
             expr = parse_quote!(#expr?);
         }
 
-        // Wrap in Static if borrow flag is set
+        // Wrap in Borrowed if borrow flag is set
         if self.borrow.is_present() {
             if !matches!(&self.ty, Type::Reference(_)) {
                 return Err(self.borrow_error());
             }
-            expr = parse_quote!(squire::ffi::Static::new(#expr));
+            expr = parse_quote!(squire::Borrowed::new(#expr));
         }
 
         Ok(expr)

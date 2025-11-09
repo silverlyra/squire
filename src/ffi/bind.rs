@@ -11,8 +11,8 @@ use crate::{
 };
 
 use sqlite::{
-    SQLITE_STATIC, SQLITE_TRANSIENT, sqlite3_bind_double, sqlite3_bind_int, sqlite3_bind_int64,
-    sqlite3_bind_null, sqlite3_destructor_type,
+    SQLITE_TRANSIENT, sqlite3_bind_double, sqlite3_bind_int, sqlite3_bind_int64, sqlite3_bind_null,
+    sqlite3_destructor_type,
 };
 #[cfg(target_pointer_width = "64")]
 use sqlite::{
@@ -130,7 +130,7 @@ impl<'b> Bind<'b> for f64 {
 ///
 /// The [`SQLITE_TRANSIENT`] flag is used; SQLite will [clone][] the string's
 /// bytes before `bind` returns. If you know the `&str` will outlive the
-/// prepared statement, wrap the `&str` in [`Static`].
+/// prepared statement, wrap the `&str` in [`Borrowed`](crate::Borrowed).
 ///
 /// [clone]: https://sqlite.org/c3ref/c_static.html
 impl<'b> Bind<'b> for &str {
@@ -159,7 +159,7 @@ impl<'b> Bind<'b> for &str {
 ///
 /// The [`SQLITE_TRANSIENT`] flag is used; SQLite will [clone][] the bytes
 /// before `bind` returns. If you know the `&[u8]` will outlive the prepared
-/// statement, wrap the `&[u8]` in [`Static`].
+/// statement, wrap the `&[u8]` in [`Borrowed`](crate::Borrowed).
 ///
 /// [clone]: https://sqlite.org/c3ref/c_static.html
 impl<'b> Bind<'b> for &[u8] {
@@ -172,84 +172,6 @@ impl<'b> Bind<'b> for &[u8] {
 
         #[cfg(target_pointer_width = "64")]
         bind! { sqlite3_bind_blob64(statement, index, self.as_ptr() as *const c_void, self.len() as sqlite3_uint64, SQLITE_TRANSIENT) }
-    }
-}
-
-/// Marks a reference as outliving a SQLite [prepared statement][], which SQLite
-/// does not need to copy to use as a [`Bind`] value.
-///
-/// `Static` values are passed to SQLite with the [`SQLITE_STATIC`] flag, which
-/// prevents SQLite from [cloning][] the data.
-///
-/// [prepared statement]: crate::ffi::Statement
-/// [cloning]: https://sqlite.org/c3ref/c_static.html
-#[derive(Copy, Clone, Debug)]
-#[repr(transparent)]
-#[doc(alias = "SQLITE_STATIC")]
-pub struct Static<'a, T: ?Sized>(&'a T);
-
-impl<'a, T: ?Sized> Static<'a, T> {
-    pub const fn new(value: &'a T) -> Self {
-        Self(value)
-    }
-
-    #[inline]
-    pub(super) fn as_ptr(&self) -> *const T {
-        self.0 as *const T
-    }
-}
-
-#[cfg_attr(
-    target_pointer_width = "32",
-    doc = "[Binds](Bind) a [`&str`](str) via [`sqlite3_bind_text`]."
-)]
-#[cfg_attr(
-    target_pointer_width = "64",
-    doc = "[Binds](Bind) a [`&str`](str) via [`sqlite3_bind_text64`]."
-)]
-///
-/// The [`SQLITE_STATIC`] flag is used; SQLite will read the string's bytes
-/// without [cloning][] them.
-///
-/// [cloning]: https://sqlite.org/c3ref/c_static.html
-impl<'b, 'a: 'b> Bind<'b> for Static<'a, str> {
-    unsafe fn bind<'c>(self, statement: &Statement<'c>, index: BindIndex) -> Result<()>
-    where
-        'c: 'b,
-    {
-        #[cfg(target_pointer_width = "32")]
-        bind! { sqlite3_bind_text(statement, index, self.as_ptr() as *const i8, self.0.len() as c_int, SQLITE_STATIC) }?;
-
-        #[cfg(target_pointer_width = "64")]
-        bind! { sqlite3_bind_text64(statement, index, self.as_ptr() as *const i8, self.0.len() as sqlite3_uint64, SQLITE_STATIC, ENCODING_UTF8) }?;
-
-        Ok(())
-    }
-}
-
-#[cfg_attr(
-    target_pointer_width = "32",
-    doc = "[Binds](Bind) a [`&[u8]`](primitive@slice) via [`sqlite3_bind_blob`]."
-)]
-#[cfg_attr(
-    target_pointer_width = "64",
-    doc = "[Binds](Bind) a [`&[u8]`](primitive@slice) via [`sqlite3_bind_blob64`]."
-)]
-///
-/// The [`SQLITE_STATIC`] flag is used; SQLite will read the bytes without
-/// [cloning][] them.
-///
-/// [cloning]: https://sqlite.org/c3ref/c_static.html
-impl<'b, 'a: 'b> Bind<'b> for Static<'a, [u8]> {
-    unsafe fn bind<'c>(self, statement: &Statement<'c>, index: BindIndex) -> Result<()>
-    where
-        'c: 'b,
-    {
-        #[cfg(target_pointer_width = "32")]
-        bind! { sqlite3_bind_blob(statement, index, self.as_ptr() as *const c_void, self.0.len() as c_int, SQLITE_STATIC) }
-
-        #[cfg(target_pointer_width = "64")]
-        bind! { sqlite3_bind_blob64(statement, index, self.as_ptr() as *const c_void, self.0.len() as sqlite3_uint64, SQLITE_STATIC) }
     }
 }
 

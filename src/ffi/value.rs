@@ -1,13 +1,7 @@
-use core::{ops::Deref, slice};
-
-use sqlite::{
-    SQLITE_BLOB, SQLITE_FLOAT, SQLITE_INTEGER, SQLITE_NULL, SQLITE_TEXT, sqlite3_column_blob,
-    sqlite3_column_bytes, sqlite3_column_double, sqlite3_column_int, sqlite3_column_int64,
-    sqlite3_column_text, sqlite3_column_type,
-};
+use sqlite::{sqlite3_column_double, sqlite3_column_int, sqlite3_column_int64};
 
 use super::statement::Statement;
-use crate::types::ColumnIndex;
+use crate::types::{ColumnIndex, Type};
 
 pub trait Fetch<'r> {
     unsafe fn fetch<'c>(statement: &'r Statement<'c>, column: ColumnIndex) -> Self
@@ -42,68 +36,12 @@ impl<'r> Fetch<'r> for f64 {
     }
 }
 
-#[derive(Debug)]
-#[repr(transparent)]
-pub struct Bytes<'r, T: ?Sized = [u8]>(&'r T);
-
-impl<'r, T: ?Sized> Bytes<'r, T> {
-    pub const fn into_inner(self) -> &'r T {
-        self.0
-    }
-}
-
-impl<'r, T: ?Sized> Deref for Bytes<'r, T> {
-    type Target = T;
-
-    fn deref(&self) -> &Self::Target {
-        self.0
-    }
-}
-
-impl<'r> Fetch<'r> for Bytes<'r, str> {
-    unsafe fn fetch<'c>(statement: &'r Statement<'c>, column: ColumnIndex) -> Self
-    where
-        'c: 'r,
-    {
-        let data = unsafe { sqlite3_column_text(statement.as_ptr(), column.value()) };
-        let len = unsafe { sqlite3_column_bytes(statement.as_ptr(), column.value()) };
-
-        let bytes = unsafe { slice::from_raw_parts::<'r, u8>(data, len as usize) };
-        let text = unsafe { str::from_utf8_unchecked(bytes) };
-
-        Self(text)
-    }
-}
-
-impl<'r> Fetch<'r> for Bytes<'r, [u8]> {
-    unsafe fn fetch<'c>(statement: &'r Statement<'c>, column: ColumnIndex) -> Self
-    where
-        'c: 'r,
-    {
-        let data = unsafe { sqlite3_column_blob(statement.as_ptr(), column.value()) };
-        let len = unsafe { sqlite3_column_bytes(statement.as_ptr(), column.value()) };
-
-        let bytes = unsafe { slice::from_raw_parts::<'r, u8>(data as *const u8, len as usize) };
-
-        Self(bytes)
-    }
-}
-
 impl<'r> Fetch<'r> for Type {
     unsafe fn fetch<'c>(statement: &'r Statement<'c>, column: ColumnIndex) -> Self
     where
         'c: 'r,
     {
-        let value = unsafe { sqlite3_column_type(statement.as_ptr(), column.value()) };
-
-        match value {
-            SQLITE_INTEGER => Type::Integer,
-            SQLITE_FLOAT => Type::Float,
-            SQLITE_TEXT => Type::Text,
-            SQLITE_BLOB => Type::Blob,
-            SQLITE_NULL => Type::Null,
-            _ => panic!("unknown sqlite3_column_type {value}"),
-        }
+        unsafe { Type::fetch(statement, column) }
     }
 }
 
@@ -122,32 +60,5 @@ where
         } else {
             None
         }
-    }
-}
-
-#[derive(PartialEq, Eq, Clone, Copy, Debug)]
-#[repr(i32)]
-pub enum Type {
-    #[doc(alias = "SQLITE_INTEGER")]
-    Integer = SQLITE_INTEGER,
-    #[doc(alias = "SQLITE_FLOAT")]
-    Float = SQLITE_FLOAT,
-    #[doc(alias = "SQLITE_TEXT")]
-    Text = SQLITE_TEXT,
-    #[doc(alias = "SQLITE_BLOB")]
-    Blob = SQLITE_BLOB,
-    #[doc(alias = "SQLITE_NULL")]
-    Null = SQLITE_NULL,
-}
-
-impl Type {
-    /// `true` unless this [`Type`] is [`NULL`](Self::Null); `false` for `NULL`.
-    pub const fn has_value(&self) -> bool {
-        !self.is_null()
-    }
-
-    /// `true` if this [`Type`] is [`NULL`](Self::Null); `false` otherwise.
-    pub const fn is_null(&self) -> bool {
-        matches!(self, Self::Null)
     }
 }

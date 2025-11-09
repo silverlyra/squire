@@ -103,7 +103,11 @@ impl TryFrom<i32> for BindIndex {
     type Error = Error<()>;
 
     fn try_from(value: i32) -> Result<Self, ()> {
-        Self::new(value as c_int)
+        if value <= 0 {
+            Err(Error::range())
+        } else {
+            Self::new(value as c_int)
+        }
     }
 }
 
@@ -112,8 +116,8 @@ impl TryFrom<i64> for BindIndex {
 
     fn try_from(value: i64) -> Result<Self, ()> {
         match c_int::try_from(value) {
-            Ok(value) => Self::new(value),
-            Err(_) => Err(Error::range()),
+            Ok(value) if value > 0 => Self::new(value),
+            _ => Err(Error::range()),
         }
     }
 }
@@ -122,7 +126,10 @@ impl TryFrom<isize> for BindIndex {
     type Error = Error<()>;
 
     fn try_from(value: isize) -> Result<Self, ()> {
-        Self::new(value as c_int)
+        match c_int::try_from(value) {
+            Ok(value) if value > 0 => Self::new(value),
+            _ => Err(Error::range()),
+        }
     }
 }
 
@@ -131,8 +138,8 @@ impl TryFrom<u32> for BindIndex {
 
     fn try_from(value: u32) -> Result<Self, ()> {
         match c_int::try_from(value) {
-            Ok(value) => Self::new(value),
-            Err(_) => Err(Error::range()),
+            Ok(value) if value > 0 => Self::new(value),
+            _ => Err(Error::range()),
         }
     }
 }
@@ -142,8 +149,8 @@ impl TryFrom<u64> for BindIndex {
 
     fn try_from(value: u64) -> Result<Self, ()> {
         match c_int::try_from(value) {
-            Ok(value) => Self::new(value),
-            Err(_) => Err(Error::range()),
+            Ok(value) if value > 0 => Self::new(value),
+            _ => Err(Error::range()),
         }
     }
 }
@@ -153,8 +160,8 @@ impl TryFrom<usize> for BindIndex {
 
     fn try_from(value: usize) -> Result<Self, ()> {
         match c_int::try_from(value) {
-            Ok(value) => Self::new(value),
-            Err(_) => Err(Error::range()),
+            Ok(value) if value > 0 => Self::new(value),
+            _ => Err(Error::range()),
         }
     }
 }

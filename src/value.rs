@@ -2,7 +2,7 @@ use crate::{
     error::{Error, FetchError, Result},
     ffi::{self, Fetch as _},
     statement::Statement,
-    types::{ColumnIndex, RowId},
+    types::{Borrowed, ColumnIndex, RowId},
 };
 
 pub trait Fetch<'r>: Sized {
@@ -131,7 +131,7 @@ impl<'r> Fetch<'r> for RowId {
 }
 
 impl<'r> Fetch<'r> for String {
-    type Value = ffi::Bytes<'r, str>;
+    type Value = Borrowed<'r, str>;
 
     fn from_column_value(value: Self::Value) -> Result<Self> {
         Ok(value.to_owned())

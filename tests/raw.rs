@@ -1,6 +1,6 @@
 use std::error::Error;
 
-use squire::{BindIndex, Connection, Database, RowId, ffi};
+use squire::{BindIndex, Borrowed, Connection, Database, RowId, ffi};
 
 type Result<T = ()> = std::result::Result<T, Box<dyn Error>>;
 
@@ -59,7 +59,7 @@ fn round_trip() -> Result {
         let row = unsafe { select.row() }?;
         assert!(row, "expected a row");
 
-        let a: ffi::Bytes<'_, str> = unsafe { select.fetch(ffi::ColumnIndex::new(0)) };
+        let a: Borrowed<'_, str> = unsafe { select.fetch(ffi::ColumnIndex::new(0)) };
         let b: i32 = unsafe { select.fetch(ffi::ColumnIndex::new(1)) };
         let c: f64 = unsafe { select.fetch(ffi::ColumnIndex::new(2)) };
 

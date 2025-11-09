@@ -2,7 +2,7 @@ use crate::{
     blob::Reservation,
     error::{Error, Result},
     ffi,
-    types::RowId,
+    types::{Borrowed, RowId},
 };
 
 /// A value which can be [bound as a parameter][bind] in SQLite [prepared
@@ -124,7 +124,7 @@ impl<'b> Bind<'b> for RowId {
     }
 }
 
-impl<'a, 'b> Bind<'b> for ffi::Static<'a, str>
+impl<'a, 'b> Bind<'b> for Borrowed<'a, str>
 where
     'a: 'b,
 {

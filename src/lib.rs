@@ -29,7 +29,7 @@ pub use error::{
 };
 pub use param::Parameters;
 pub use statement::{Binding, Execution, PrepareOptions, Statement, StatementParameters};
-pub use types::{BindIndex, BindIndexes, ColumnIndex, RowId};
+pub use types::{BindIndex, BindIndexes, Borrowed, ColumnIndex, RowId, Type};
 pub use value::Fetch;
 
 #[cfg(feature = "derive")]
