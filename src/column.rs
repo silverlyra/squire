@@ -1,7 +1,9 @@
+use core::fmt;
+
 use crate::{error::Result, statement::Statement, types::ColumnIndex, value::Fetch};
 
 pub trait ColumnIndexes {
-    type Indexes: Copy + Sized;
+    type Indexes: Copy + fmt::Debug + Sized;
 
     fn resolve<'c>(statement: &Statement<'c>) -> Option<Self::Indexes>;
 }
