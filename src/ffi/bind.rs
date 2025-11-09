@@ -70,6 +70,14 @@ pub trait Bind<'b> {
     /// Bind `self` as a SQLite prepared statement [parameter][bind].
     ///
     /// [bind]: https://sqlite.org/c3ref/bind_blob.html
+    ///
+    /// # Safety
+    ///
+    /// Implementations access the `sqlite3_bind_*` API’s directly. If these
+    /// API’s are used to bind a pointer non-`SQLITE_TRANSIENT`ly, the caller is
+    /// responsible for ensuring the pointer remains valid for the duration of
+    /// the binding; and if a [destructor](sqlite3_destructor_type) is used, for
+    /// SQLite to call it at the end of the binding lifecycle.
     unsafe fn bind<'c>(self, statement: &Statement<'c>, index: BindIndex) -> Result<()>
     where
         'c: 'b;
@@ -283,5 +291,5 @@ pub const fn destructor<T>() -> sqlite3_destructor_type {
 }
 
 unsafe extern "C" fn destroy<T>(p: *mut c_void) {
-    unsafe { ptr::drop_in_place(p) };
+    unsafe { ptr::drop_in_place(p as *mut T) };
 }

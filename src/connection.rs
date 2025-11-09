@@ -32,7 +32,7 @@ impl Connection {
         Self { inner }
     }
 
-    #[must_use]
+    #[must_use = "a Connection will be closed if dropped"]
     pub fn open<L>(database: impl AsRef<Database<L>>) -> Result<Self>
     where
         L: AsRef<CStr> + Clone + fmt::Debug,
@@ -54,7 +54,7 @@ impl Connection {
         ConnectionBuilder::new(database.to_owned().into_endpoint())
     }
 
-    #[must_use]
+    #[must_use = "a Statement will be finalized if dropped"]
     pub fn prepare(
         &self,
         query: impl AsRef<str>,
@@ -62,7 +62,6 @@ impl Connection {
         Statement::prepare(self, query, PrepareOptions::transient())
     }
 
-    #[must_use]
     pub fn execute<P: for<'a> Parameters<'a>>(
         &self,
         query: impl AsRef<str>,
@@ -131,10 +130,7 @@ where
     /// Open a [`Connection`] using the configuration set on this
     /// [builder](Self).
     pub fn open(&self) -> Result<Connection> {
-        let vfs = match &self.vfs {
-            Some(vfs) => Some(vfs.as_ref()),
-            None => None,
-        };
+        let vfs = self.vfs.as_ref().map(|vfs| vfs.as_ref());
 
         let connection = ffi::Connection::open(
             self.endpoint.location(),

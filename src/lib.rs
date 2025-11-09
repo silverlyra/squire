@@ -29,6 +29,7 @@ pub use error::{
     IoError, LockedError, ParameterError, ReadOnlyError, Result,
 };
 pub use param::Parameters;
+pub use query::Query;
 pub use row::{Row, Rows};
 pub use statement::{
     Binding, Execution, PrepareOptions, Statement, StatementColumns, StatementParameters,

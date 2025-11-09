@@ -61,7 +61,7 @@ impl<'c> Statement<'c> {
 
     /// Prepare a [`Statement`] on a [`Connection`] from SQL `query` text.
     #[doc(alias = "sqlite3_prepare_v3")]
-    #[must_use]
+    #[must_use = "a Statement will leak if prepared and discarded"]
     pub fn prepare(
         connection: &'c Connection,
         query: &str,
@@ -99,11 +99,14 @@ impl<'c> Statement<'c> {
     }
 
     #[inline]
-    #[doc(alias = "sqlite3_finalize")]
-    pub unsafe fn finalize(&mut self) -> Result<(), ()> {
+    pub(crate) unsafe fn finalize(&mut self) -> Result<(), ()> {
         call! { sqlite3_finalize(self.as_ptr()) }
     }
 
+    /// [Finalize][] (i.e., destroy) the prepared statement.
+    ///
+    /// [Finalize]: https://sqlite.org/c3ref/finalize.html
+    #[doc(alias = "sqlite3_finalize")]
     pub fn close(mut self) -> Result<(), ()> {
         unsafe { self.finalize() }
     }
@@ -141,6 +144,15 @@ impl<'c> Statement<'c> {
         }
     }
 
+    /// Bind the parameter specified by `index` to the given `value`.
+    ///
+    /// # Safety
+    ///
+    /// Implementations access the `sqlite3_bind_*` API’s directly. If these
+    /// API’s are used to bind a pointer non-`SQLITE_TRANSIENT`ly, the caller is
+    /// responsible for ensuring the pointer remains valid for the duration of
+    /// the binding; and if a [destructor](sqlite::sqlite3_destructor_type) is
+    /// used, for SQLite to call it at the end of the binding lifecycle.
     pub unsafe fn bind<'b, B>(&self, index: BindIndex, value: B) -> Result<()>
     where
         B: Bind<'b>,
@@ -162,6 +174,10 @@ impl<'c> Statement<'c> {
     /// - an [`Error`] if [`sqlite3_step`][step] returns an error result code
     ///
     /// [step]: https://sqlite.org/c3ref/step.html
+    ///
+    /// # Safety
+    ///
+    /// Callers are responsible for managing the `ffi::Statement` lifecycle.
     #[doc(alias = "sqlite3_step")]
     pub unsafe fn row(&self) -> Result<bool> {
         let result = unsafe { sqlite3_step(self.as_ptr()) };
@@ -188,6 +204,10 @@ impl<'c> Statement<'c> {
     /// - an [`Error`] if [`sqlite3_step`][step] returns an error result code
     ///
     /// [step]: https://sqlite.org/c3ref/step.html
+    ///
+    /// # Safety
+    ///
+    /// Callers are responsible for managing the `ffi::Statement` lifecycle.
     pub unsafe fn execute<C: Conclusion>(&self) -> Result<C> {
         let result = unsafe { sqlite3_step(self.as_ptr()) };
 
@@ -204,11 +224,22 @@ impl<'c> Statement<'c> {
     /// [Reset][reset] the [statement](Statement).
     ///
     /// [reset]: https://sqlite.org/c3ref/reset.html
+    ///
+    /// # Safety
+    ///
+    /// Callers are responsible for managing the `ffi::Statement` lifecycle.
     #[doc(alias = "sqlite3_reset")]
     pub unsafe fn reset(&mut self) -> Result<(), ()> {
         call! { sqlite3_reset(self.as_ptr()) }
     }
 
+    /// [Fetch][fetch] a column value from the [statement](Statement).
+    ///
+    /// [fetch]: https://sqlite.org/c3ref/column_blob.html
+    ///
+    /// # Safety
+    ///
+    /// Callers are responsible for managing the `ffi::Statement` lifecycle.
     pub unsafe fn fetch<'r, T: Fetch<'r>>(&'r self, column: ColumnIndex) -> T {
         unsafe { T::fetch(self, column) }
     }
@@ -249,13 +280,28 @@ impl<'c> Connected for &mut Statement<'c> {
 }
 
 pub trait Execute<'c>: Connected {
+    /// Access the raw [`sqlite3_stmt`] pointer.
+    ///
+    /// # Safety
+    ///
+    /// Callers are responsible for managing the `ffi::Statement` lifecycle.
     unsafe fn as_statement_ptr(&self) -> *mut sqlite3_stmt;
 
+    /// Access the [`Statement`] being executed.
+    ///
+    /// # Safety
+    ///
+    /// Callers are responsible for managing the `ffi::Statement` lifecycle.
     unsafe fn cursor<'e>(&'e mut self) -> &'e mut Statement<'c>
     where
         'c: 'e,
         Self: 'e;
 
+    /// Reset the [`Statement`], preparing it for new binding and execution.
+    ///
+    /// # Safety
+    ///
+    /// Callers are responsible for managing the `ffi::Statement` lifecycle.
     unsafe fn reset(&mut self) -> Result<(), ()>;
 }
 
@@ -300,15 +346,19 @@ where
     }
 }
 
+/// A value which represents the _conclusion_ of [`Statement`] execution.
 pub trait Conclusion: Sized {
+    /// Populate the [`Conclusion`] from a [`sqlite3`] connection pointer.
+    ///
+    /// # Safety
+    ///
+    /// Callers are responsible for managing the `ffi::Statement` lifecycle.
     unsafe fn from_connection_ptr(connection: *mut sqlite3) -> Self;
 }
 
 impl Conclusion for () {
     #[inline(always)]
-    unsafe fn from_connection_ptr(_connection: *mut sqlite3) -> Self {
-        ()
-    }
+    unsafe fn from_connection_ptr(_connection: *mut sqlite3) -> Self {}
 }
 
 impl Conclusion for isize {

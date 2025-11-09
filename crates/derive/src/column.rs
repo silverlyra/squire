@@ -122,12 +122,8 @@ impl FieldDerive {
         }
 
         // Wrap in Borrowed if borrow flag is set
-        if self.borrow.is_present() {
-            if !matches!(&self.ty, Type::Reference(_)) {
-                return Err(self.borrow_error());
-            }
-            // Note: The Borrowed wrapper is applied at the type level via the Fetch trait,
-            // so we don't need to wrap the expression here
+        if self.borrow.is_present() && !matches!(&self.ty, Type::Reference(_)) {
+            return Err(self.borrow_error());
         }
 
         Ok(expr)

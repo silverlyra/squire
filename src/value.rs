@@ -115,7 +115,7 @@ impl<'r> Fetch<'r> for bool {
     type Value = i32;
 
     fn from_column_value(value: Self::Value) -> Result<Self> {
-        Ok(if value != 0 { true } else { false })
+        Ok(value != 0)
     }
 }
 

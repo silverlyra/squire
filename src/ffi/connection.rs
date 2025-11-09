@@ -36,7 +36,7 @@ impl Connection {
     }
 
     /// Open a new SQLite database connection.
-    #[must_use]
+    #[must_use = "a Connection will leak if opened and discarded"]
     #[doc(alias = "sqlite3_open_v2")]
     pub fn open(path: &CStr, flags: i32, vfs: Option<&CStr>) -> Result<Self> {
         let path = path.as_ptr();
@@ -55,7 +55,13 @@ impl Connection {
     /// Close the SQLite database connection.
     #[inline]
     #[doc(alias = "sqlite3_close")]
-    pub fn close(self) -> Result<(), ()> {
+    pub fn close(mut self) -> Result<(), ()> {
+        // SAFETY: We own `self` here and will let it be dropped.
+        unsafe { self.dispose() }
+    }
+
+    #[inline]
+    pub(crate) unsafe fn dispose(&mut self) -> Result<(), ()> {
         call! { sqlite3_close(self.as_ptr()) }
     }
 

@@ -1,3 +1,5 @@
+#![allow(clippy::approx_constant)]
+
 use std::error::Error;
 
 use squire::{BindIndex, Borrowed, Connection, Database, RowId, ffi};

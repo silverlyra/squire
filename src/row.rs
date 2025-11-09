@@ -32,6 +32,7 @@ where
     }
 }
 
+#[allow(clippy::should_implement_trait)]
 impl<'c, 's, 'r, C, S> Rows<'c, 's, C, S>
 where
     C: Columns<'r>,

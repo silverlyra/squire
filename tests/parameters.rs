@@ -1,3 +1,5 @@
+#![allow(clippy::approx_constant)]
+
 use std::error::Error;
 
 use squire::{Connection, Database, Parameters};
