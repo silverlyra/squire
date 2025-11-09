@@ -7,6 +7,8 @@ Squire is a [crate][] for embedding [SQLite][] in Rust. It provides a safe, idio
 [SQLite]: https://sqlite.org/
 [C API]: https://sqlite.org/cintro.html
 
+> ⚠️ Squire is under active development, without even a `0.0.1` release yet. Not all features describe below exist.
+
 ```rust
 use squire::{Connection, Database};
 
@@ -36,13 +38,6 @@ pub struct User {
     pub id: squire::RowId,
     pub username: String,
     pub score: f64,
-}
-
-project!(User { id, username, })
-
-select! {
-    User {
-    }
 }
 
 #[derive(squire::Bind)]

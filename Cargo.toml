@@ -1,6 +1,6 @@
 [package]
 name = "squire"
-version = "0.0.1-alpha.3"
+version = "0.0.1-alpha.4"
 edition = "2024"
 description = "Safe and idiomatic SQLite bindings"
 readme = "Readme.md"
@@ -81,7 +81,7 @@ default-features = false
 [dependencies.sqlite]
 package = "squire-sqlite3-sys"
 path = "crates/sys"
-version = "0.0.1-alpha.3"
+version = "0.0.1-alpha.4"
 default-features = false
 
 [dependencies.fallible-iterator]
