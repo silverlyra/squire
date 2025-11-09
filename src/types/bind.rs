@@ -16,7 +16,7 @@ impl BindIndex {
     /// let first = BindIndex::INITIAL;
     /// assert_eq!(usize::from(first), 1);
     /// ```
-    pub const INITIAL: Self = unsafe { Self(NonZero::new_unchecked(1)) };
+    pub const INITIAL: Self = Self(NonZero::new(1).unwrap());
 
     pub const fn new(value: c_int) -> Result<Self, ()> {
         match NonZero::new(value) {
@@ -25,6 +25,11 @@ impl BindIndex {
         }
     }
 
+    /// Initialize a [`BindIndex`] without validating the `value`.
+    ///
+    /// # Safety
+    ///
+    /// Callers are responsible for ensuring `value` is non-zero.
     pub const unsafe fn new_unchecked(value: c_int) -> Self {
         Self(unsafe { NonZero::new_unchecked(value) })
     }

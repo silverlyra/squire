@@ -1,0 +1,75 @@
+name: CI
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+
+jobs:
+  docs:
+    name: API documentation
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: moonrepo/setup-rust@v1
+        with:
+          bins: cargo-docs-rs
+          cache-base: main
+          channel: nightly
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build API documentation
+        run: >-
+          cargo docs-rs
+
+  format:
+    name: Format
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: moonrepo/setup-rust@v1
+        with:
+          components: rustfmt
+          cache-base: main
+      - name: Check formatting
+        run: >-
+          cargo fmt --all --check
+
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: moonrepo/setup-rust@v1
+        with:
+          components: clippy
+          cache-base: main
+      - name: Run linter
+        run: >-
+          cargo clippy --features full
+
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        channel: [stable, beta, nightly]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: moonrepo/setup-rust@v1
+        with:
+          cache-base: main
+          channel: ${{ matrix.channel }}
+      - name: Run tests
+        run: >-
+          cargo test
+      - name: Run tests (full features)
+        run: >-
+          cargo test --features full
+      - name: Run tests (full + nightly features)
+        run: >-
+          cargo test --features full,nightly
+        if: matrix.channel == 'nightly'
+      - name: Run tests (minimal features)
+        run: >-
+          cargo test --no-default-features --features bundled,single-thread

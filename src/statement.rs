@@ -1,4 +1,4 @@
-use core::{ffi::c_int, marker::PhantomData};
+use core::{ffi::c_int, marker::PhantomData, mem};
 use sqlite::{SQLITE_PREPARE_DONT_LOG, SQLITE_PREPARE_NO_VTAB, SQLITE_PREPARE_PERSISTENT, sqlite3};
 
 use crate::{
@@ -37,7 +37,7 @@ impl<'c> Statement<'c> {
     /// that SQLite uses for short-lived operations (“lookaside allocator”). Use
     /// [`PrepareOptions::persistent()`] if the statement will be executed again
     /// over the program run.
-    #[must_use]
+    #[must_use = "a Statement will be finalized if dropped"]
     pub fn prepare(
         connection: &'c Connection,
         query: impl AsRef<str>,
@@ -98,6 +98,15 @@ impl<'c> Statement<'c> {
         StatementParameters::new(self)
     }
 
+    /// [Finalize][] (i.e., destroy) the prepared statement.
+    ///
+    /// [Finalize]: https://sqlite.org/c3ref/finalize.html
+    pub fn finalize(mut self) -> Result<(), ()> {
+        let result = unsafe { self.internal_mut().finalize() };
+        mem::forget(self); // or Drop will also try to finalize
+        result
+    }
+
     /// Access the [`ffi::Statement`] underlying this [`Statement`].
     #[inline]
     pub(crate) fn internal_ref(&self) -> &ffi::Statement<'c> {
@@ -120,6 +129,12 @@ impl<'c> ffi::Connected for Statement<'c> {
 impl<'c, 's> ffi::Connected for &'s mut Statement<'c> {
     fn as_connection_ptr(&self) -> *mut sqlite3 {
         unsafe { self.internal_ref().connection_ptr() }
+    }
+}
+
+impl<'c> Drop for Statement<'c> {
+    fn drop(&mut self) {
+        let _ = unsafe { self.internal_mut().finalize() };
     }
 }
 
@@ -271,14 +286,14 @@ where
     where
         's: 'e,
     {
-        &self.statement
+        self.statement
     }
 
     fn cursor_mut<'e>(&'e mut self) -> &'e mut Statement<'c>
     where
         's: 'e,
     {
-        &mut self.statement
+        self.statement
     }
 
     fn reset(&mut self) -> Result<(), ()> {
@@ -304,14 +319,14 @@ where
     where
         's: 'e,
     {
-        &self.statement
+        self.statement
     }
 
     fn cursor_mut<'e>(&'e mut self) -> &'e mut Statement<'c>
     where
         's: 'e,
     {
-        &mut self.statement
+        self.statement
     }
 
     fn reset(&mut self) -> Result<(), ()> {
@@ -441,6 +456,11 @@ where
         self.count() as usize
     }
 
+    #[must_use]
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
+    }
+
     fn count(&self) -> c_int {
         self.statement.internal_ref().column_count()
     }
@@ -477,7 +497,7 @@ impl Iterator for StatementColumnIter {
         let current = self.current;
 
         if current < self.count {
-            self.current = self.current + 1;
+            self.current += 1;
             Some(ColumnIndex::new(current))
         } else {
             None
@@ -493,7 +513,7 @@ where
     statement: &'s Statement<'c>,
 }
 
-const SIGILS: &'static [char] = &[':', '@', '$'];
+const SIGILS: &[char] = &[':', '@', '$'];
 
 impl<'c, 's> StatementParameters<'c, 's>
 where
@@ -523,12 +543,11 @@ where
             }
         } else {
             for index in self.iter() {
-                if let Some(full_name) = self.name(index) {
-                    if let Some(n) = full_name.strip_prefix(SIGILS)
-                        && name == n
-                    {
-                        return Some(index);
-                    }
+                if let Some(full_name) = self.name(index)
+                    && let Some(n) = full_name.strip_prefix(SIGILS)
+                    && name == n
+                {
+                    return Some(index);
                 }
             }
         }
@@ -542,6 +561,11 @@ where
 
     pub fn len(&self) -> usize {
         self.count() as usize
+    }
+
+    #[must_use]
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
     }
 
     fn count(&self) -> c_int {

@@ -1,4 +1,9 @@
+#![cfg_attr(
+    feature = "lang-array-assume-init",
+    feature(maybe_uninit_array_assume_init)
+)]
 #![cfg_attr(feature = "lang-iat", feature(inherent_associated_types))]
+#![cfg_attr(feature = "lang-rustc-scalar-valid-range", allow(internal_features))]
 #![cfg_attr(feature = "lang-rustc-scalar-valid-range", feature(rustc_attrs))]
 #![cfg_attr(feature = "lang-step-trait", feature(step_trait))]
 #![cfg_attr(docsrs, feature(doc_cfg), deny(rustdoc::broken_intra_doc_links))]
@@ -29,6 +34,7 @@ pub use error::{
     IoError, LockedError, ParameterError, ReadOnlyError, Result,
 };
 pub use param::Parameters;
+pub use query::Query;
 pub use row::{Row, Rows};
 pub use statement::{
     Binding, Execution, PrepareOptions, Statement, StatementColumns, StatementParameters,

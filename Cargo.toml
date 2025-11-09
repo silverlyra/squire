@@ -63,7 +63,7 @@ stat4 = ["sqlite/stat4"]
 trace = ["sqlite/trace"]
 utf-16 = ["sqlite/utf-16"]
 
-nightly = ["lang-array-assume-init", "lang-iat", "lang-rustc-scalar-valid-range", "lang-step-trait"]
+nightly = ["lang-array-assume-init", "lang-rustc-scalar-valid-range", "lang-step-trait"]
 lang-array-assume-init = ["squire-derive?/lang-array-assume-init"]
 lang-iat = []
 lang-rustc-scalar-valid-range = []
@@ -101,26 +101,21 @@ version = "^1.0.2"
 optional = true
 
 [[test]]
-name = "raw"
+name = "columns"
+required-features = ["derive"]
 
 [[test]]
 name = "parameters"
 required-features = ["derive"]
+
+[[test]]
+name = "query"
+
+[[test]]
+name = "raw"
 
 [package.metadata.docs.rs]
 features = ["bundled", "full", "serialized"]
 no-default-features = true
 
 rustdoc-args = ["--cfg", "docsrs"]
-
-default-target = "x86_64-unknown-linux-gnu"
-targets = [
-    "aarch64-apple-darwin",
-    "aarch64-unknown-linux-gnu",
-    "arm-unknown-linux-gnueabihf",
-    "i686-unknown-linux-gnu",
-    "x86_64-unknown-freebsd",
-    "x86_64-unknown-linux-gnu",
-    "x86_64-unknown-illumos",
-    "x86_64-pc-windows-msvc",
-]

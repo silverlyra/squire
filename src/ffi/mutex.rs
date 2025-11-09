@@ -101,13 +101,10 @@ impl<'a> MutexRef<'a> {
 
 impl MutexRef<'static> {
     pub fn global(mutex: StaticMutex) -> Option<Self> {
-        match MutexInner::global(mutex) {
-            Some(inner) => Some(Self {
-                inner,
-                _lifetime: PhantomData,
-            }),
-            None => None,
-        }
+        MutexInner::global(mutex).map(|inner| Self {
+            inner,
+            _lifetime: PhantomData,
+        })
     }
 }
 

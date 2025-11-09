@@ -1,3 +1,9 @@
+#![cfg_attr(
+    feature = "lang-array-assume-init",
+    feature(maybe_uninit_array_assume_init)
+)]
+#![allow(clippy::approx_constant)]
+
 use std::error::Error;
 
 use squire::{Connection, Database, Parameters};

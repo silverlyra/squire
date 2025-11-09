@@ -7,6 +7,7 @@
 #[repr(transparent)]
 pub struct Reservation(isize);
 
+#[allow(clippy::len_without_is_empty)]
 impl Reservation {
     /// Create a [`Reservation`].
     pub const fn new(bytes: isize) -> Self {
