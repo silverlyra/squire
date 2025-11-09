@@ -666,7 +666,14 @@ impl ConnectedErrorContext for (ErrorMessage, Option<ErrorLocation>) {
 impl ErrorLocation {
     const fn new(location: i32) -> Option<Self> {
         if location >= 0 {
-            Some(Self(location as u32))
+            #[cfg(feature = "lang-rustc-scalar-valid-range")]
+            {
+                Some(unsafe { Self(location as u32) })
+            }
+            #[cfg(not(feature = "lang-rustc-scalar-valid-range"))]
+            {
+                Some(Self(location as u32))
+            }
         } else {
             None
         }

@@ -63,7 +63,7 @@ stat4 = ["sqlite/stat4"]
 trace = ["sqlite/trace"]
 utf-16 = ["sqlite/utf-16"]
 
-nightly = ["lang-array-assume-init", "lang-iat", "lang-rustc-scalar-valid-range", "lang-step-trait"]
+nightly = ["lang-array-assume-init", "lang-rustc-scalar-valid-range", "lang-step-trait"]
 lang-array-assume-init = ["squire-derive?/lang-array-assume-init"]
 lang-iat = []
 lang-rustc-scalar-valid-range = []
