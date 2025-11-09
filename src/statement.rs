@@ -501,6 +501,8 @@ where
     statement: &'s Statement<'c>,
 }
 
+const SIGILS: &'static [char] = &[':', '@', '$'];
+
 impl<'c, 's> StatementParameters<'c, 's>
 where
     'c: 's,
@@ -519,11 +521,23 @@ where
     pub fn index(&self, name: impl AsRef<str>) -> Option<Index> {
         let name = name.as_ref();
 
-        for index in self.iter() {
-            if let Some(n) = self.name(index)
-                && name == n
-            {
-                return Some(index);
+        if name.starts_with(SIGILS) {
+            for index in self.iter() {
+                if let Some(n) = self.name(index)
+                    && name == n
+                {
+                    return Some(index);
+                }
+            }
+        } else {
+            for index in self.iter() {
+                if let Some(full_name) = self.name(index) {
+                    if let Some(n) = full_name.strip_prefix(SIGILS)
+                        && name == n
+                    {
+                        return Some(index);
+                    }
+                }
             }
         }
 

@@ -30,3 +30,6 @@ pub use param::Parameters;
 pub use statement::{Binding, Execution, PrepareOptions, Statement, StatementParameters};
 pub use types::RowId;
 pub use value::Fetch;
+
+#[cfg(feature = "derive")]
+pub use squire_derive::Parameters;

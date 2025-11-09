@@ -175,13 +175,13 @@ impl<'b> Bind<'b> for &[u8] {
     }
 }
 
-/// Marks a reference as outliving a SQLite [prepared
-/// statement](crate::ffi::Statement), which SQLite does not need to copy to use
-/// as a [`Bind`] value.
+/// Marks a reference as outliving a SQLite [prepared statement][], which SQLite
+/// does not need to copy to use as a [`Bind`] value.
 ///
 /// `Static` values are passed to SQLite with the [`SQLITE_STATIC`] flag, which
 /// prevents SQLite from [cloning][] the data.
 ///
+/// [prepared statement]: crate::ffi::Statement
 /// [cloning]: https://sqlite.org/c3ref/c_static.html
 #[derive(Copy, Clone, Debug)]
 #[repr(transparent)]
@@ -309,8 +309,6 @@ impl<'b> Bind<'b> for Vec<u8> {
 /// When a `Reservation` is [used](Bind) as a prepared [statement](Statement)
 /// parameter, SQLite will create a `BLOB` of the [requested length](Reservation::len())
 /// and set every byte in the blob to `\0`.
-///
-/// [clone]: https://sqlite.org/c3ref/c_static.html
 impl<'b> Bind<'b> for Reservation {
     unsafe fn bind<'c>(self, statement: &Statement<'c>, index: Index) -> Result<()>
     where

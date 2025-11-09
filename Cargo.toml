@@ -11,7 +11,7 @@ keywords = ["sqlite", "database", "api", "bindings", "sql"]
 
 [workspace]
 resolver = "3"
-members = ["crates/sys"]
+members = ["crates/derive", "crates/sys"]
 
 [workspace.package]
 repository = "https://github.com/silverlyra/squire"
@@ -19,7 +19,8 @@ license = "Apache-2.0"
 
 [features]
 # default = ["linked", "common", "multi-thread"]
-default = ["bundled", "common", "multi-thread"]
+default = ["bundled", "common", "derive", "multi-thread"]
+derive = ["dep:squire-derive"]
 
 common = ["sqlite/common", "json", "url", "mutex"]
 full = ["sqlite/full", "common"]
@@ -62,13 +63,20 @@ stat4 = ["sqlite/stat4"]
 trace = ["sqlite/trace"]
 utf-16 = ["sqlite/utf-16"]
 
-nightly = ["lang-iat", "lang-step-trait"]
+nightly = ["lang-array-assume-init", "lang-iat", "lang-rustc-scalar-valid-range", "lang-step-trait"]
+lang-array-assume-init = ["squire-derive?/lang-array-assume-init"]
 lang-iat = []
 lang-rustc-scalar-valid-range = []
 lang-step-trait = []
 
 url = ["dep:url"]
 widestring = ["utf-16", "dep:widestring"]
+
+[dependencies.squire-derive]
+path = "crates/derive"
+version = "0.0.1-alpha.1"
+optional = true
+default-features = false
 
 [dependencies.sqlite]
 package = "squire-sqlite3-sys"
@@ -94,6 +102,10 @@ optional = true
 
 [[test]]
 name = "raw"
+
+[[test]]
+name = "parameters"
+required-features = ["derive"]
 
 [package.metadata.docs.rs]
 features = ["bundled", "full", "serialized"]

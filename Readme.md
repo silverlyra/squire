@@ -21,7 +21,8 @@ let id: squire::RowId = connection.execute("INSERT INTO users VALUES (DEFAULT, ?
 
 let user: (i32, String, f64) = statement.bind(101)?.fetch()?;
 
-#[derive(squire::Statement)]
+#[derive(squire::Query)]
+#[query = "SELECT * FROM users WHERE id = ?"]
 struct GetUser(i64);
 
 #[squire::query]
