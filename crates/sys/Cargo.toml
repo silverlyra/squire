@@ -91,7 +91,7 @@ wal = []
 
 [build-dependencies.sqlite]
 package = "squire-sqlite3-src"
-path = "../../../ext/squire-src"
+# path = "../../../ext/squire-src"
 version = "3.50.4-alpha.2"
 optional = true
 
