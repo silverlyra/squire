@@ -17,9 +17,9 @@ mod statement;
 mod types;
 mod value;
 
-pub use bind::{Bind, Index};
+pub use bind::Bind;
 pub use blob::Reservation;
-pub use column::{Column, Columns};
+pub use column::Columns;
 pub use connection::{Connection, ConnectionBuilder};
 pub use database::{Database, IntoLocation};
 pub use error::{
@@ -29,8 +29,9 @@ pub use error::{
 };
 pub use param::Parameters;
 pub use statement::{Binding, Execution, PrepareOptions, Statement, StatementParameters};
-pub use types::RowId;
+pub use types::{BindIndex, BindIndexes, ColumnIndex, RowId};
 pub use value::Fetch;
 
 #[cfg(feature = "derive")]
+#[cfg_attr(docsrs, doc(cfg(feature = "derive")))]
 pub use squire_derive::{Columns, Parameters};

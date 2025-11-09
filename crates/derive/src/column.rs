@@ -253,11 +253,11 @@ impl Columns {
             }
         });
 
-        let finalize = assume_array_init(quote!(squire::Column));
+        let finalize = assume_array_init(quote!(squire::ColumnIndex));
 
         let initialize = quote! {
             let columns = statement.columns();
-            let mut indexes = [::core::mem::MaybeUninit::<squire::Column>::uninit(); #count];
+            let mut indexes = [::core::mem::MaybeUninit::<squire::ColumnIndex>::uninit(); #count];
 
             #(#initializers)*
 
@@ -265,7 +265,7 @@ impl Columns {
         };
 
         (
-            quote! { type Indexes = [squire::Column; #count]; },
+            quote! { type Indexes = [squire::ColumnIndex; #count]; },
             initialize,
         )
     }
@@ -292,7 +292,7 @@ impl Columns {
                         quote! { indexes[#offset] }
                     }
                     FieldIdentity::Sequential(index) => {
-                        quote! { squire::Column::from(#index) }
+                        quote! { squire::ColumnIndex::from(#index) }
                     }
                 };
 

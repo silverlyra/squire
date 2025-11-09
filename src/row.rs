@@ -1,7 +1,8 @@
 use crate::{
-    column::{Column, Columns},
+    column::Columns,
     error::Result,
     statement::{Binding, Execute, Execution},
+    types::ColumnIndex,
     value::Fetch,
 };
 
@@ -27,7 +28,7 @@ where
         Self { execution }
     }
 
-    pub fn fetch<'a, T: Fetch<'r>>(&'a mut self, column: Column) -> Result<T>
+    pub fn fetch<'a, T: Fetch<'r>>(&'a mut self, column: ColumnIndex) -> Result<T>
     where
         'a: 'r,
     {

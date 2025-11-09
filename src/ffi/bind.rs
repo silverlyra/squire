@@ -1,6 +1,5 @@
 use core::{
-    ffi::{c_int, c_uchar, c_void},
-    num::NonZero,
+    ffi::{c_uchar, c_void},
     ptr,
 };
 
@@ -8,6 +7,7 @@ use super::statement::Statement;
 use crate::{
     blob::Reservation,
     error::{Error, ErrorMessage, Result},
+    types::BindIndex,
 };
 
 use sqlite::{
@@ -70,7 +70,7 @@ pub trait Bind<'b> {
     /// Bind `self` as a SQLite prepared statement [parameter][bind].
     ///
     /// [bind]: https://sqlite.org/c3ref/bind_blob.html
-    unsafe fn bind<'c>(self, statement: &Statement<'c>, index: Index) -> Result<()>
+    unsafe fn bind<'c>(self, statement: &Statement<'c>, index: BindIndex) -> Result<()>
     where
         'c: 'b;
 }
@@ -91,7 +91,7 @@ macro_rules! bind {
 
 /// [Binds](Bind) an [`i32`] via [`sqlite3_bind_int`].
 impl<'b> Bind<'b> for i32 {
-    unsafe fn bind<'c>(self, statement: &Statement<'c>, index: Index) -> Result<()>
+    unsafe fn bind<'c>(self, statement: &Statement<'c>, index: BindIndex) -> Result<()>
     where
         'c: 'b,
     {
@@ -101,7 +101,7 @@ impl<'b> Bind<'b> for i32 {
 
 /// [Binds](Bind) an [`i64`] via [`sqlite3_bind_int64`].
 impl<'b> Bind<'b> for i64 {
-    unsafe fn bind<'c>(self, statement: &Statement<'c>, index: Index) -> Result<()>
+    unsafe fn bind<'c>(self, statement: &Statement<'c>, index: BindIndex) -> Result<()>
     where
         'c: 'b,
     {
@@ -111,7 +111,7 @@ impl<'b> Bind<'b> for i64 {
 
 /// [Binds](Bind) an [`f64`] via [`sqlite3_bind_double`].
 impl<'b> Bind<'b> for f64 {
-    unsafe fn bind<'c>(self, statement: &Statement<'c>, index: Index) -> Result<()>
+    unsafe fn bind<'c>(self, statement: &Statement<'c>, index: BindIndex) -> Result<()>
     where
         'c: 'b,
     {
@@ -134,7 +134,7 @@ impl<'b> Bind<'b> for f64 {
 ///
 /// [clone]: https://sqlite.org/c3ref/c_static.html
 impl<'b> Bind<'b> for &str {
-    unsafe fn bind<'c>(self, statement: &Statement<'c>, index: Index) -> Result<()>
+    unsafe fn bind<'c>(self, statement: &Statement<'c>, index: BindIndex) -> Result<()>
     where
         'c: 'b,
     {
@@ -163,7 +163,7 @@ impl<'b> Bind<'b> for &str {
 ///
 /// [clone]: https://sqlite.org/c3ref/c_static.html
 impl<'b> Bind<'b> for &[u8] {
-    unsafe fn bind<'c>(self, statement: &Statement<'c>, index: Index) -> Result<()>
+    unsafe fn bind<'c>(self, statement: &Statement<'c>, index: BindIndex) -> Result<()>
     where
         'c: 'b,
     {
@@ -213,7 +213,7 @@ impl<'a, T: ?Sized> Static<'a, T> {
 ///
 /// [cloning]: https://sqlite.org/c3ref/c_static.html
 impl<'b, 'a: 'b> Bind<'b> for Static<'a, str> {
-    unsafe fn bind<'c>(self, statement: &Statement<'c>, index: Index) -> Result<()>
+    unsafe fn bind<'c>(self, statement: &Statement<'c>, index: BindIndex) -> Result<()>
     where
         'c: 'b,
     {
@@ -241,7 +241,7 @@ impl<'b, 'a: 'b> Bind<'b> for Static<'a, str> {
 ///
 /// [cloning]: https://sqlite.org/c3ref/c_static.html
 impl<'b, 'a: 'b> Bind<'b> for Static<'a, [u8]> {
-    unsafe fn bind<'c>(self, statement: &Statement<'c>, index: Index) -> Result<()>
+    unsafe fn bind<'c>(self, statement: &Statement<'c>, index: BindIndex) -> Result<()>
     where
         'c: 'b,
     {
@@ -267,7 +267,7 @@ impl<'b, 'a: 'b> Bind<'b> for Static<'a, [u8]> {
 ///
 /// [clone]: https://sqlite.org/c3ref/c_static.html
 impl<'b> Bind<'b> for String {
-    unsafe fn bind<'c>(self, statement: &Statement<'c>, index: Index) -> Result<()>
+    unsafe fn bind<'c>(self, statement: &Statement<'c>, index: BindIndex) -> Result<()>
     where
         'c: 'b,
     {
@@ -289,7 +289,7 @@ impl<'b> Bind<'b> for String {
 ///
 /// [clone]: https://sqlite.org/c3ref/c_static.html
 impl<'b> Bind<'b> for Vec<u8> {
-    unsafe fn bind<'c>(self, statement: &Statement<'c>, index: Index) -> Result<()>
+    unsafe fn bind<'c>(self, statement: &Statement<'c>, index: BindIndex) -> Result<()>
     where
         'c: 'b,
     {
@@ -310,7 +310,7 @@ impl<'b> Bind<'b> for Vec<u8> {
 /// parameter, SQLite will create a `BLOB` of the [requested length](Reservation::len())
 /// and set every byte in the blob to `\0`.
 impl<'b> Bind<'b> for Reservation {
-    unsafe fn bind<'c>(self, statement: &Statement<'c>, index: Index) -> Result<()>
+    unsafe fn bind<'c>(self, statement: &Statement<'c>, index: BindIndex) -> Result<()>
     where
         'c: 'b,
     {
@@ -328,7 +328,7 @@ impl<'b, T> Bind<'b> for Option<T>
 where
     T: Bind<'b>,
 {
-    unsafe fn bind<'c>(self, statement: &Statement<'c>, index: Index) -> Result<()>
+    unsafe fn bind<'c>(self, statement: &Statement<'c>, index: BindIndex) -> Result<()>
     where
         'c: 'b,
     {
@@ -343,7 +343,7 @@ where
 pub(crate) struct Null;
 
 impl<'b> Bind<'b> for Null {
-    unsafe fn bind<'c>(self, statement: &Statement<'c>, index: Index) -> Result<()>
+    unsafe fn bind<'c>(self, statement: &Statement<'c>, index: BindIndex) -> Result<()>
     where
         'c: 'b,
     {
@@ -362,209 +362,4 @@ pub const fn destructor<T>() -> sqlite3_destructor_type {
 
 unsafe extern "C" fn destroy<T>(p: *mut c_void) {
     unsafe { ptr::drop_in_place(p) };
-}
-
-/// A SQLite [prepared statement](Statement) parameter index, used when
-/// [binding](Bind) values to a statement.
-#[derive(PartialEq, Eq, PartialOrd, Ord, Clone, Copy, Debug)]
-#[repr(transparent)]
-pub struct Index(NonZero<c_int>);
-
-impl Index {
-    /// The first numbered binding parameter index (`1`).
-    ///
-    /// ```rust
-    /// # use squire::ffi::Index;
-    /// let first = Index::INITIAL;
-    /// assert_eq!(usize::from(first), 1);
-    /// ```
-    pub const INITIAL: Self = unsafe { Self(NonZero::new_unchecked(1)) };
-
-    pub const fn new(value: c_int) -> Result<Self, ()> {
-        match NonZero::new(value) {
-            Some(value) => Ok(Self(value)),
-            None => Err(Error::range()),
-        }
-    }
-
-    pub const unsafe fn new_unchecked(value: c_int) -> Self {
-        Self(unsafe { NonZero::new_unchecked(value) })
-    }
-
-    /// Access the underlying parameter index value as a C [`int`](c_int).
-    #[inline]
-    pub const fn value(&self) -> c_int {
-        self.0.get()
-    }
-
-    pub const fn iter(&self) -> Indexes {
-        Indexes::new(*self)
-    }
-
-    /// Add `1` to this [`Index`].
-    ///
-    /// ```rust
-    /// # use squire::ffi::Index;
-    /// let first = Index::INITIAL;
-    /// assert_eq!(usize::from(first), 1);
-    ///
-    /// let second = first.next();
-    /// assert_eq!(usize::from(second), 2);
-    /// ```
-    pub const fn next(&self) -> Self {
-        unsafe { Self::new_unchecked(self.value() + 1) }
-    }
-}
-
-impl IntoIterator for Index {
-    type Item = Index;
-    type IntoIter = Indexes;
-
-    fn into_iter(self) -> Self::IntoIter {
-        self.iter()
-    }
-}
-
-impl From<Index> for i32 {
-    fn from(index: Index) -> Self {
-        index.value() as Self
-    }
-}
-
-impl From<Index> for u32 {
-    fn from(index: Index) -> Self {
-        index.value() as Self
-    }
-}
-
-impl From<Index> for i64 {
-    fn from(index: Index) -> Self {
-        index.value() as Self
-    }
-}
-
-impl From<Index> for u64 {
-    fn from(index: Index) -> Self {
-        index.value() as Self
-    }
-}
-
-impl From<Index> for isize {
-    fn from(index: Index) -> Self {
-        index.value() as Self
-    }
-}
-
-impl From<Index> for usize {
-    fn from(index: Index) -> Self {
-        index.value() as Self
-    }
-}
-
-impl TryFrom<i32> for Index {
-    type Error = Error<()>;
-
-    fn try_from(value: i32) -> Result<Self, ()> {
-        Self::new(value as c_int)
-    }
-}
-
-impl TryFrom<i64> for Index {
-    type Error = Error<()>;
-
-    fn try_from(value: i64) -> Result<Self, ()> {
-        match c_int::try_from(value) {
-            Ok(value) => Self::new(value),
-            Err(_) => Err(Error::range()),
-        }
-    }
-}
-
-impl TryFrom<isize> for Index {
-    type Error = Error<()>;
-
-    fn try_from(value: isize) -> Result<Self, ()> {
-        Self::new(value as c_int)
-    }
-}
-
-impl TryFrom<u32> for Index {
-    type Error = Error<()>;
-
-    fn try_from(value: u32) -> Result<Self, ()> {
-        match c_int::try_from(value) {
-            Ok(value) => Self::new(value),
-            Err(_) => Err(Error::range()),
-        }
-    }
-}
-
-impl TryFrom<u64> for Index {
-    type Error = Error<()>;
-
-    fn try_from(value: u64) -> Result<Self, ()> {
-        match c_int::try_from(value) {
-            Ok(value) => Self::new(value),
-            Err(_) => Err(Error::range()),
-        }
-    }
-}
-
-impl TryFrom<usize> for Index {
-    type Error = Error<()>;
-
-    fn try_from(value: usize) -> Result<Self, ()> {
-        match c_int::try_from(value) {
-            Ok(value) => Self::new(value),
-            Err(_) => Err(Error::range()),
-        }
-    }
-}
-
-#[cfg(feature = "lang-step-trait")]
-impl core::iter::Step for Index {
-    fn steps_between(start: &Self, end: &Self) -> (usize, Option<usize>) {
-        if start.0.get() <= end.0.get() {
-            let steps = (end.0.get() - start.0.get()) as usize;
-            (steps, Some(steps))
-        } else {
-            (0, None)
-        }
-    }
-
-    fn forward_checked(start: Self, count: usize) -> Option<Self> {
-        let count = c_int::try_from(count).ok()?;
-        let new_value = start.0.get().checked_add(count)?;
-        NonZero::new(new_value).map(Self)
-    }
-
-    fn backward_checked(start: Self, count: usize) -> Option<Self> {
-        let count = c_int::try_from(count).ok()?;
-        let new_value = start.0.get().checked_sub(count)?;
-        NonZero::new(new_value).map(Self)
-    }
-}
-
-pub struct Indexes {
-    current: Index,
-}
-
-impl Indexes {
-    const fn new(initial: Index) -> Self {
-        Self { current: initial }
-    }
-}
-
-impl Iterator for Indexes {
-    type Item = Index;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        let current = self.current;
-        self.current = self.current.next();
-        Some(current)
-    }
-
-    fn size_hint(&self) -> (usize, Option<usize>) {
-        (usize::MAX, None)
-    }
 }

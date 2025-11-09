@@ -16,13 +16,14 @@ use sqlite::{
 };
 
 use super::{
-    bind::{Bind, Index},
+    bind::Bind,
     connection::{Connected, Connection},
-    value::{Column, Fetch},
+    value::Fetch,
 };
 use crate::{
     call,
     error::{Error, ErrorLocation, ErrorMessage, Result},
+    types::{BindIndex, ColumnIndex},
 };
 
 /// A thin wrapper around a [`sqlite3_stmt`] prepared statement pointer.
@@ -108,7 +109,7 @@ impl<'c> Statement<'c> {
     }
 
     #[doc(alias = "sqlite3_column_name")]
-    pub fn column_name(&self, index: Column) -> Option<&CStr> {
+    pub fn column_name(&self, index: ColumnIndex) -> Option<&CStr> {
         let ptr = unsafe { sqlite3_column_name(self.as_ptr(), index.value()) };
 
         if ptr.is_null() {
@@ -130,7 +131,7 @@ impl<'c> Statement<'c> {
     }
 
     #[doc(alias = "sqlite3_bind_parameter_name")]
-    pub fn parameter_name(&self, index: Index) -> Option<&CStr> {
+    pub fn parameter_name(&self, index: BindIndex) -> Option<&CStr> {
         let ptr = unsafe { sqlite3_bind_parameter_name(self.as_ptr(), index.value()) };
 
         if ptr.is_null() {
@@ -140,7 +141,7 @@ impl<'c> Statement<'c> {
         }
     }
 
-    pub unsafe fn bind<'b, B>(&self, index: Index, value: B) -> Result<()>
+    pub unsafe fn bind<'b, B>(&self, index: BindIndex, value: B) -> Result<()>
     where
         B: Bind<'b>,
         'c: 'b,
@@ -208,7 +209,7 @@ impl<'c> Statement<'c> {
         call! { sqlite3_reset(self.as_ptr()) }
     }
 
-    pub unsafe fn fetch<'r, T: Fetch<'r>>(&'r self, column: Column) -> T {
+    pub unsafe fn fetch<'r, T: Fetch<'r>>(&'r self, column: ColumnIndex) -> T {
         unsafe { T::fetch(self, column) }
     }
 

@@ -1,7 +1,8 @@
 use crate::{
-    bind::{Bind, Index},
+    bind::Bind,
     error::Result,
     statement::{Binding, Statement},
+    types::BindIndex,
 };
 
 pub trait Parameters<'s> {
@@ -29,7 +30,7 @@ where
     where
         'c: 's,
     {
-        binding.set(Index::INITIAL, self)?;
+        binding.set(BindIndex::INITIAL, self)?;
         Ok(())
     }
 }
@@ -68,7 +69,7 @@ macro_rules! tuple {
                 'c: 's,
             {
                 let ($i,) = self;
-                binding.set(Index::INITIAL, $i)?;
+                binding.set(BindIndex::INITIAL, $i)?;
                 Ok(())
             }
         }
@@ -93,7 +94,7 @@ macro_rules! tuple {
             {
                 let ($ih, $($it),+) = self;
 
-                let index = Index::INITIAL;
+                let index = BindIndex::INITIAL;
                 binding.set(index, $ih)?;
 
                 $(

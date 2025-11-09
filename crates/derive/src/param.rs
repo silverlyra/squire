@@ -257,11 +257,11 @@ impl Parameters {
             }
         });
 
-        let finalize = assume_array_init(quote!(squire::Index));
+        let finalize = assume_array_init(quote!(squire::BindIndex));
 
         let initialize = quote! {
             let params = statement.parameters();
-            let mut indexes = [::core::mem::MaybeUninit::<squire::Index>::uninit(); #count];
+            let mut indexes = [::core::mem::MaybeUninit::<squire::BindIndex>::uninit(); #count];
 
             #(#initializers)*
 
@@ -269,7 +269,7 @@ impl Parameters {
         };
 
         (
-            quote! { type Indexes = [squire::Index; #count]; },
+            quote! { type Indexes = [squire::BindIndex; #count]; },
             initialize,
         )
     }
@@ -285,7 +285,7 @@ impl Parameters {
                     }
                     FieldIdentity::Sequential(index) => {
                         let index_val = index.get();
-                        quote! { unsafe { squire::Index::new_unchecked(#index_val) } }
+                        quote! { unsafe { squire::BindIndex::new_unchecked(#index_val) } }
                     }
                 };
 

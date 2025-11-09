@@ -1,6 +1,4 @@
-use crate::{error::Result, statement::Statement, value::Fetch};
-
-pub use crate::ffi::Column;
+use crate::{error::Result, statement::Statement, types::ColumnIndex, value::Fetch};
 
 pub trait Columns<'r>: Sized {
     type Indexes: Copy + Sized;
@@ -27,7 +25,7 @@ where
     where
         'c: 'r,
     {
-        <Self as Fetch<'r>>::fetch(statement, Column::INITIAL)
+        <Self as Fetch<'r>>::fetch(statement, ColumnIndex::INITIAL)
     }
 }
 
@@ -49,7 +47,7 @@ macro_rules! tuple {
             where
                 'c: 'r,
             {
-                let column = Column::INITIAL;
+                let column = ColumnIndex::INITIAL;
                 let $i = <$t as Fetch<'r>>::fetch(statement, column)?;
                 Ok(($i,))
             }
@@ -73,7 +71,7 @@ macro_rules! tuple {
             where
                 'c: 'r,
             {
-                let column = Column::INITIAL;
+                let column = ColumnIndex::INITIAL;
                 let $ih = <$th as Fetch<'r>>::fetch(statement, column)?;
 
                 $(

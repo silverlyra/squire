@@ -1,15 +1,14 @@
 use crate::{
-    column::Column,
     error::{Error, FetchError, Result},
     ffi::{self, Fetch as _},
     statement::Statement,
-    types::RowId,
+    types::{ColumnIndex, RowId},
 };
 
 pub trait Fetch<'r>: Sized {
     type Value: ffi::Fetch<'r>;
 
-    fn fetch<'c>(statement: &'r Statement<'c>, column: Column) -> Result<Self> {
+    fn fetch<'c>(statement: &'r Statement<'c>, column: ColumnIndex) -> Result<Self> {
         let value = unsafe { Self::Value::fetch(statement.internal_ref(), column) };
         Self::from_column_value(value)
     }

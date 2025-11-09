@@ -2,14 +2,14 @@ use core::{ffi::c_int, marker::PhantomData};
 use sqlite::{SQLITE_PREPARE_DONT_LOG, SQLITE_PREPARE_NO_VTAB, SQLITE_PREPARE_PERSISTENT, sqlite3};
 
 use crate::{
-    bind::{Bind, Index},
-    column::{Column, Columns},
+    bind::Bind,
+    column::Columns,
     connection::Connection,
     error::{Error, ErrorLocation, ErrorMessage, Result},
     ffi,
     param::Parameters,
     row::Row,
-    types::RowId,
+    types::{BindIndex, ColumnIndex, RowId},
 };
 
 /// A [prepared statement][]; an SQL statement that SQLite has compiled and made
@@ -234,7 +234,7 @@ impl<'c, 's> Binding<'c, 's>
 where
     'c: 's,
 {
-    pub fn set<B>(&mut self, index: Index, value: B) -> Result<()>
+    pub fn set<B>(&mut self, index: BindIndex, value: B) -> Result<()>
     where
         B: Bind<'s>,
     {
@@ -420,14 +420,14 @@ where
         Self { statement }
     }
 
-    pub fn name(&self, column: Column) -> Option<&str> {
+    pub fn name(&self, column: ColumnIndex) -> Option<&str> {
         self.statement
             .internal_ref()
             .column_name(column)
             .map(|name| unsafe { str::from_utf8_unchecked(name.to_bytes()) })
     }
 
-    pub fn index(&self, name: impl AsRef<str>) -> Option<Column> {
+    pub fn index(&self, name: impl AsRef<str>) -> Option<ColumnIndex> {
         let name = name.as_ref();
 
         for index in self.iter() {
@@ -441,7 +441,7 @@ where
         None
     }
 
-    pub fn iter(&self) -> impl Iterator<Item = Column> {
+    pub fn iter(&self) -> impl Iterator<Item = ColumnIndex> {
         StatementColumnIter::new(self.count())
     }
 
@@ -458,7 +458,7 @@ impl<'c, 's> IntoIterator for StatementColumns<'c, 's>
 where
     'c: 's,
 {
-    type Item = Column;
+    type Item = ColumnIndex;
     type IntoIter = StatementColumnIter;
 
     fn into_iter(self) -> Self::IntoIter {
@@ -479,14 +479,14 @@ impl StatementColumnIter {
 }
 
 impl Iterator for StatementColumnIter {
-    type Item = Column;
+    type Item = ColumnIndex;
 
     fn next(&mut self) -> Option<Self::Item> {
         let current = self.current;
 
         if current < self.count {
             self.current = self.current + 1;
-            Some(Column::new(current))
+            Some(ColumnIndex::new(current))
         } else {
             None
         }
@@ -511,14 +511,14 @@ where
         Self { statement }
     }
 
-    pub fn name(&self, index: Index) -> Option<&str> {
+    pub fn name(&self, index: BindIndex) -> Option<&str> {
         self.statement
             .internal_ref()
             .parameter_name(index)
             .map(|name| unsafe { str::from_utf8_unchecked(name.to_bytes()) })
     }
 
-    pub fn index(&self, name: impl AsRef<str>) -> Option<Index> {
+    pub fn index(&self, name: impl AsRef<str>) -> Option<BindIndex> {
         let name = name.as_ref();
 
         if name.starts_with(SIGILS) {
@@ -544,7 +544,7 @@ where
         None
     }
 
-    pub fn iter(&self) -> impl Iterator<Item = Index> {
+    pub fn iter(&self) -> impl Iterator<Item = BindIndex> {
         StatementParameterIter::new(self)
     }
 
@@ -556,8 +556,8 @@ where
         self.statement.internal_ref().parameter_count()
     }
 
-    fn max(&self) -> Option<Index> {
-        Index::new(self.count()).ok()
+    fn max(&self) -> Option<BindIndex> {
+        BindIndex::new(self.count()).ok()
     }
 }
 
@@ -565,7 +565,7 @@ impl<'c, 's> IntoIterator for StatementParameters<'c, 's>
 where
     'c: 's,
 {
-    type Item = Index;
+    type Item = BindIndex;
     type IntoIter = StatementParameterIter;
 
     fn into_iter(self) -> Self::IntoIter {
@@ -586,7 +586,7 @@ impl StatementParameterIter {
     {
         let state = match parameters.max() {
             Some(max) => StatementParameterIterState::Next {
-                current: Index::INITIAL,
+                current: BindIndex::INITIAL,
                 max,
             },
             None => StatementParameterIterState::Done,
@@ -597,7 +597,7 @@ impl StatementParameterIter {
 }
 
 impl Iterator for StatementParameterIter {
-    type Item = Index;
+    type Item = BindIndex;
 
     fn next(&mut self) -> Option<Self::Item> {
         match self.state {
@@ -620,6 +620,6 @@ impl Iterator for StatementParameterIter {
 
 #[derive(Copy, Clone, Debug)]
 enum StatementParameterIterState {
-    Next { current: Index, max: Index },
+    Next { current: BindIndex, max: BindIndex },
     Done,
 }

@@ -5,8 +5,6 @@ use crate::{
     types::RowId,
 };
 
-pub use ffi::Index;
-
 /// A value which can be [bound as a parameter][bind] in SQLite [prepared
 /// statements](crate::Statement).
 ///
