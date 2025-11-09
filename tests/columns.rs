@@ -32,7 +32,7 @@ fn fetch_named_struct() -> Result {
     let connection = setup()?;
 
     let mut query = connection.prepare("SELECT a, b, c FROM example WHERE id = 1;")?;
-    let row: Row = query.query(())?.next()?.ok_or("not found")?;
+    let row: Row = query.query(())?.rows()?.next()?.ok_or("not found")?;
 
     assert_eq!("hello 🌎!", row.a);
     assert_eq!(42, row.b);
@@ -54,7 +54,8 @@ fn fetch_borrowed_struct() -> Result {
     let connection = setup()?;
 
     let mut query = connection.prepare("SELECT a, b, c FROM example WHERE id = 1;")?;
-    let row: BorrowedRow = query.query(())?.next()?.ok_or("not found")?;
+    let mut rows = query.query(())?.rows()?;
+    let row: BorrowedRow = rows.next()?.ok_or("not found")?;
 
     assert_eq!("hello 🌎!", row.a);
     assert_eq!(42, row.b);
@@ -71,7 +72,7 @@ fn fetch_tuple_struct() -> Result {
     let connection = setup()?;
 
     let mut query = connection.prepare("SELECT a, b, c FROM example WHERE id = 1;")?;
-    let row: RowTuple = query.query(())?.next()?.ok_or("not found")?;
+    let row: RowTuple = query.query(())?.rows()?.next()?.ok_or("not found")?;
 
     assert_eq!("hello 🌎!", row.0);
     assert_eq!(42, row.1);
@@ -93,7 +94,7 @@ fn fetch_sequential() -> Result {
     let connection = setup()?;
 
     let mut query = connection.prepare("SELECT a, b, c FROM example WHERE id = 1;")?;
-    let row: RowSequential = query.query(())?.next()?.ok_or("not found")?;
+    let row: RowSequential = query.query(())?.rows()?.next()?.ok_or("not found")?;
 
     assert_eq!("hello 🌎!", row.a);
     assert_eq!(42, row.b);

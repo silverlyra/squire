@@ -19,7 +19,7 @@ mod value;
 
 pub use bind::Bind;
 pub use blob::Reservation;
-pub use column::Columns;
+pub use column::{ColumnIndexes, Columns};
 pub use connection::{Connection, ConnectionBuilder};
 pub use database::{Database, IntoLocation};
 pub use error::{
@@ -28,6 +28,7 @@ pub use error::{
     Result,
 };
 pub use param::Parameters;
+pub use row::{Row, Rows};
 pub use statement::{Binding, Execution, PrepareOptions, Statement, StatementParameters};
 pub use types::{BindIndex, BindIndexes, Borrowed, ColumnIndex, RowId, Type};
 pub use value::Fetch;

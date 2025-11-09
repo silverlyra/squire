@@ -1,10 +1,54 @@
 use crate::{
-    column::Columns,
-    error::Result,
+    column::{ColumnIndexes, Columns},
+    error::{Error, Result},
     statement::{Binding, Execute, Execution},
     types::ColumnIndex,
     value::Fetch,
 };
+
+#[derive(Debug)]
+pub struct Rows<'c, 's, C: ColumnIndexes, S = Binding<'c, 's>>
+where
+    S: Execute<'c, 's>,
+    'c: 's,
+{
+    execution: Execution<'c, 's, S>,
+    indexes: C::Indexes,
+}
+
+impl<'c, 's, C, S> Rows<'c, 's, C, S>
+where
+    C: ColumnIndexes,
+    S: Execute<'c, 's>,
+    'c: 's,
+{
+    pub(crate) fn new(execution: Execution<'c, 's, S>) -> Result<Self> {
+        if let Some(indexes) = C::resolve(execution.cursor()) {
+            Ok(Self { execution, indexes })
+        } else {
+            Err(Error::resolve("failed to resolve column indexes"))
+        }
+    }
+}
+
+impl<'c, 's, 'r, C, S> Rows<'c, 's, C, S>
+where
+    C: Columns<'r>,
+    S: Execute<'c, 's>,
+    'c: 's,
+    's: 'r,
+{
+    pub fn next(&'r mut self) -> Result<Option<C>> {
+        let statement = self.execution.cursor();
+        let more = unsafe { statement.internal_ref().row() }?;
+
+        if more {
+            Ok(Some(C::fetch(statement, self.indexes)?))
+        } else {
+            Ok(None)
+        }
+    }
+}
 
 #[derive(Debug)]
 #[repr(transparent)]

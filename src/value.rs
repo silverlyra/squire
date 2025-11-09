@@ -130,19 +130,33 @@ impl<'r> Fetch<'r> for RowId {
     }
 }
 
-impl<'r> Fetch<'r> for &'r str {
+impl<'r, 'a> Fetch<'r> for &'a str
+where
+    'r: 'a,
+{
     type Value = Borrowed<'r, str>;
 
     fn from_column_value(value: Self::Value) -> Result<Self> {
-        Ok(value.into_inner())
+        // SAFETY: We have 'r: 'a, so shortening the lifetime from 'r to 'a is sound.
+        // The caller ensures 'r outlives 'a, so the reference remains valid.
+        unsafe { Ok(std::mem::transmute::<&'r str, &'a str>(value.into_inner())) }
     }
 }
 
-impl<'r> Fetch<'r> for &'r [u8] {
+impl<'r, 'a> Fetch<'r> for &'a [u8]
+where
+    'r: 'a,
+{
     type Value = Borrowed<'r, [u8]>;
 
     fn from_column_value(value: Self::Value) -> Result<Self> {
-        Ok(value.into_inner())
+        // SAFETY: We have 'r: 'a, so shortening the lifetime from 'r to 'a is sound.
+        // The caller ensures 'r outlives 'a, so the reference remains valid.
+        unsafe {
+            Ok(std::mem::transmute::<&'r [u8], &'a [u8]>(
+                value.into_inner(),
+            ))
+        }
     }
 }
 

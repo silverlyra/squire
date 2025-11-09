@@ -35,7 +35,7 @@ fn round_trip() -> Result {
     })?;
 
     let mut query = connection.prepare("SELECT a, b, c FROM example WHERE id = ?;")?;
-    let (a, b, c): (String, i64, f64) = query.query(id)?.next()?.ok_or("not found")?;
+    let (a, b, c): (String, i64, f64) = query.query(id)?.rows()?.next()?.ok_or("not found")?;
 
     assert_eq!("hello 🌎!", a);
     assert_eq!(42, b);

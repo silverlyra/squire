@@ -1,48 +1,33 @@
 use crate::{error::Result, statement::Statement, types::ColumnIndex, value::Fetch};
 
-pub trait Columns<'r>: Sized {
+pub trait ColumnIndexes {
     type Indexes: Copy + Sized;
 
     fn resolve<'c>(statement: &Statement<'c>) -> Option<Self::Indexes>;
+}
 
+pub trait Columns<'r>: ColumnIndexes + Sized {
     fn fetch<'c>(statement: &'r Statement<'c>, indexes: Self::Indexes) -> Result<Self>
     where
         'c: 'r;
 }
 
-impl<'r, T> Columns<'r> for T
-where
-    T: Fetch<'r>,
-{
-    type Indexes = ();
-
-    #[inline(always)]
-    fn resolve<'c>(_statement: &Statement<'c>) -> Option<Self::Indexes> {
-        Some(())
-    }
-
-    fn fetch<'c>(statement: &'r Statement<'c>, _indexes: Self::Indexes) -> Result<Self>
-    where
-        'c: 'r,
-    {
-        <Self as Fetch<'r>>::fetch(statement, ColumnIndex::INITIAL)
-    }
-}
-
 /// Implement [`Columns`] for a tuple type.
 macro_rules! tuple {
     ($i:ident: $t:ident) => {
-        impl<'r, $t> Columns<'r> for ($t,)
-        where
-            $t: Fetch<'r>,
-        {
+        impl<$t> ColumnIndexes for ($t,) {
             type Indexes = ();
 
             #[inline(always)]
             fn resolve<'c>(_statement: &Statement<'c>) -> Option<Self::Indexes> {
                 Some(())
             }
+        }
 
+        impl<'r, $t> Columns<'r> for ($t,)
+        where
+            $t: Fetch<'r>,
+        {
             fn fetch<'c>(statement: &'r Statement<'c>, _indexes: Self::Indexes) -> Result<Self>
             where
                 'c: 'r,
@@ -55,10 +40,7 @@ macro_rules! tuple {
     };
 
     ($ih:ident: $th:ident, $($it:ident: $tt:ident),+) => {
-        impl<'r, $th, $($tt),+> Columns<'r> for ($th, $($tt),+)
-        where
-            $th: Fetch<'r>,
-            $($tt: Fetch<'r>),+
+        impl<$th, $($tt),+> ColumnIndexes for ($th, $($tt),+)
         {
             type Indexes = ();
 
@@ -66,7 +48,13 @@ macro_rules! tuple {
             fn resolve<'c>(_statement: &Statement<'c>) -> Option<Self::Indexes> {
                 Some(())
             }
+        }
 
+        impl<'r, $th, $($tt),+> Columns<'r> for ($th, $($tt),+)
+        where
+            $th: Fetch<'r>,
+            $($tt: Fetch<'r>),+
+        {
             fn fetch<'c>(statement: &'r Statement<'c>, _indexes: Self::Indexes) -> Result<Self>
             where
                 'c: 'r,

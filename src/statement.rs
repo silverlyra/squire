@@ -3,12 +3,12 @@ use sqlite::{SQLITE_PREPARE_DONT_LOG, SQLITE_PREPARE_NO_VTAB, SQLITE_PREPARE_PER
 
 use crate::{
     bind::Bind,
-    column::Columns,
+    column::ColumnIndexes,
     connection::Connection,
     error::{Error, ErrorLocation, ErrorMessage, Result},
     ffi,
     param::Parameters,
-    row::Row,
+    row::{Row, Rows},
     types::{BindIndex, ColumnIndex, RowId},
 };
 
@@ -350,19 +350,11 @@ where
         Ok(if more { Some(Row::new(self)) } else { None })
     }
 
-    pub fn next<C>(mut self) -> Result<Option<C>>
+    pub fn rows<C>(self) -> Result<Rows<'c, 's, C, S>>
     where
-        C: for<'r> Columns<'r>,
+        C: ColumnIndexes,
     {
-        if let Some(indexes) = C::resolve(self.cursor()) {
-            match self.row() {
-                Ok(Some(mut row)) => Ok(Some(row.unpack(indexes)?)),
-                Ok(None) => Ok(None),
-                Err(err) => Err(err),
-            }
-        } else {
-            Err(Error::resolve("failed to resolve column indexes"))
-        }
+        Rows::new(self)
     }
 
     pub fn run(self) -> Result<isize> {

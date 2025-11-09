@@ -166,10 +166,11 @@ struct Columns {
 impl Columns {
     fn generate_impl(self) -> Result<TokenStream> {
         let ident = &self.ident;
-        let (_, ty_generics, where_clause) = self.generics.split_for_impl();
+        let (indexes_impl_generics, ty_generics, indexes_where_clause) =
+            self.generics.split_for_impl();
 
         // Create impl_generics with row lifetime
-        let impl_generics = impl_generics_with_lifetime(&self.generics, "'row");
+        let columns_impl_generics = impl_generics_with_lifetime(&self.generics, "'row");
 
         // Collect lifetime bounds from borrow-wrapped fields
         let lifetime_bounds: BTreeSet<_> = self
@@ -179,18 +180,18 @@ impl Columns {
             .collect();
 
         // Build where clause with lifetime bounds
-        let mut where_clause = where_clause.cloned();
+        let mut columns_where_clause = indexes_where_clause.cloned();
         if !lifetime_bounds.is_empty() {
             let lifetime_predicates: Vec<syn::WherePredicate> = lifetime_bounds
                 .iter()
-                .map(|lt| parse_quote!(#lt: 'row))
+                .map(|lt| parse_quote!('row: #lt))
                 .collect();
 
-            if where_clause.is_none() {
-                where_clause = Some(parse_quote!(where));
+            if columns_where_clause.is_none() {
+                columns_where_clause = Some(parse_quote!(where));
             }
 
-            if let Some(ref mut where_clause) = where_clause {
+            if let Some(ref mut where_clause) = columns_where_clause {
                 where_clause.predicates.extend(lifetime_predicates);
             }
         }
@@ -222,15 +223,19 @@ impl Columns {
         let fetch_statements = self.generate_fetch_statements(&column_names);
 
         Ok(quote! {
-            impl #impl_generics squire::Columns<'row> for #ident #ty_generics
-            #where_clause
+            impl #indexes_impl_generics squire::ColumnIndexes for #ident #ty_generics
+            #indexes_where_clause
             {
                 #indexes
 
                 fn resolve<'connection>(statement: &squire::Statement<'connection>) -> Option<Self::Indexes> {
                     #resolve
                 }
+            }
 
+            impl #columns_impl_generics squire::Columns<'row> for #ident #ty_generics
+            #columns_where_clause
+            {
                 fn fetch<'connection>(statement: &'row squire::Statement<'connection>, indexes: Self::Indexes) -> squire::Result<Self>
                 where
                     'connection: 'row,
