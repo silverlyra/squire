@@ -42,6 +42,28 @@ fn fetch_named_struct() -> Result {
 }
 
 #[derive(Columns)]
+struct BorrowedRow<'a> {
+    #[squire(borrow)]
+    a: &'a str,
+    b: i64,
+    c: f64,
+}
+
+#[test]
+fn fetch_borrowed_struct() -> Result {
+    let connection = setup()?;
+
+    let mut query = connection.prepare("SELECT a, b, c FROM example WHERE id = 1;")?;
+    let row: BorrowedRow = query.query(())?.next()?.ok_or("not found")?;
+
+    assert_eq!("hello 🌎!", row.a);
+    assert_eq!(42, row.b);
+    assert_eq!(3.14, row.c);
+
+    Ok(())
+}
+
+#[derive(Columns)]
 struct RowTuple(String, i64, f64);
 
 #[test]

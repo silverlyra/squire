@@ -130,10 +130,48 @@ impl<'r> Fetch<'r> for RowId {
     }
 }
 
+impl<'r> Fetch<'r> for &'r str {
+    type Value = Borrowed<'r, str>;
+
+    fn from_column_value(value: Self::Value) -> Result<Self> {
+        Ok(value.into_inner())
+    }
+}
+
+impl<'r> Fetch<'r> for &'r [u8] {
+    type Value = Borrowed<'r, [u8]>;
+
+    fn from_column_value(value: Self::Value) -> Result<Self> {
+        Ok(value.into_inner())
+    }
+}
+
 impl<'r> Fetch<'r> for String {
     type Value = Borrowed<'r, str>;
 
     fn from_column_value(value: Self::Value) -> Result<Self> {
         Ok(value.to_owned())
+    }
+}
+
+impl<'r> Fetch<'r> for Vec<u8> {
+    type Value = Borrowed<'r, [u8]>;
+
+    fn from_column_value(value: Self::Value) -> Result<Self> {
+        Ok(value.to_owned())
+    }
+}
+
+impl<'r, T> Fetch<'r> for Option<T>
+where
+    T: Fetch<'r>,
+{
+    type Value = Option<T::Value>;
+
+    fn from_column_value(value: Self::Value) -> Result<Self> {
+        Ok(match value {
+            Some(value) => Some(T::from_column_value(value)?),
+            None => None,
+        })
     }
 }

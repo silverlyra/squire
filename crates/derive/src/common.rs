@@ -184,21 +184,6 @@ pub fn impl_generics_with_lifetime(generics: &Generics, lifetime_name: &str) -> 
     }
 }
 
-/// Generate [`MaybeUninit`](core::mem::MaybeUninit) array finalization code.
-pub fn assume_array_init(elem_type: TokenStream) -> TokenStream {
-    if cfg!(feature = "lang-array-assume-init") {
-        quote! {
-            unsafe {
-                Some(::core::mem::MaybeUninit::array_assume_init(indexes))
-            }
-        }
-    } else {
-        quote! {
-            Some(indexes.map(|i| unsafe { ::core::mem::MaybeUninit::<#elem_type>::assume_init(i) }))
-        }
-    }
-}
-
 /// Binding mode for parameters/columns - determines whether to use named or sequential indexing.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum BindingMode {
@@ -255,4 +240,67 @@ pub fn process_fields<F, T>(
         .collect();
     errors.finish()?;
     Ok(results)
+}
+
+pub struct NamedIndexResolution {
+    pub indexes: TokenStream,
+    pub resolve: TokenStream,
+}
+
+impl NamedIndexResolution {
+    pub fn empty() -> Self {
+        Self {
+            indexes: quote! { type Indexes = (); },
+            resolve: quote! { Some(()) },
+        }
+    }
+
+    pub fn derive(
+        names: &std::collections::BTreeMap<&str, usize>,
+        which: TokenStream,
+        index_type: TokenStream,
+    ) -> Self {
+        let count = names.len();
+
+        let initializers = names.keys().enumerate().map(|(i, name)| {
+            quote! {
+                if let Some(index) = #which.index(#name) {
+                    indexes[#i].write(index);
+                } else {
+                    return None;
+                }
+            }
+        });
+
+        let finalize = assume_array_init(index_type.clone());
+
+        let resolve = quote! {
+            let #which = statement.#which();
+            let mut indexes = [::core::mem::MaybeUninit::<#index_type>::uninit(); #count];
+
+            #(#initializers)*
+
+            #finalize
+        };
+
+        Self {
+            indexes: quote! { type Indexes = [#index_type; #count]; },
+            resolve,
+        }
+    }
+}
+
+/// Generate [`MaybeUninit`](core::mem::MaybeUninit) array finalization code.
+fn assume_array_init(elem_type: TokenStream) -> TokenStream {
+    if cfg!(feature = "lang-array-assume-init") {
+        quote! {
+            unsafe {
+                Some(::core::mem::MaybeUninit::array_assume_init(indexes))
+            }
+        }
+    } else {
+        quote! {
+            Some(indexes.map(|i| unsafe { ::core::mem::MaybeUninit::<#elem_type>::assume_init(i) }))
+        }
+    }
 }

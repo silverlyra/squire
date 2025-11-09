@@ -6,7 +6,7 @@ use quote::quote;
 use syn::{Expr, Generics, Ident, Type, parse_quote};
 
 use crate::common::{
-    BindingMode, FieldIdentity, With, assume_array_init, impl_generics_with_lifetime,
+    BindingMode, FieldIdentity, NamedIndexResolution, With, impl_generics_with_lifetime,
     process_fields,
 };
 
@@ -208,11 +208,15 @@ impl Columns {
             return Err(darling::Error::custom("not all fields have names"));
         }
 
-        let (indexes_type, resolve_indexes) =
+        let NamedIndexResolution { indexes, resolve } =
             if self.binding_mode.is_named() && !column_names.is_empty() {
-                self.generate_named_resolution(&column_names)
+                NamedIndexResolution::derive(
+                    &column_names,
+                    quote!(columns),
+                    quote!(squire::ColumnIndex),
+                )
             } else {
-                (quote! { type Indexes = (); }, quote! { Some(()) })
+                NamedIndexResolution::empty()
             };
 
         let fetch_statements = self.generate_fetch_statements(&column_names);
@@ -221,10 +225,10 @@ impl Columns {
             impl #impl_generics squire::Columns<'row> for #ident #ty_generics
             #where_clause
             {
-                #indexes_type
+                #indexes
 
                 fn resolve<'connection>(statement: &squire::Statement<'connection>) -> Option<Self::Indexes> {
-                    #resolve_indexes
+                    #resolve
                 }
 
                 fn fetch<'connection>(statement: &'row squire::Statement<'connection>, indexes: Self::Indexes) -> squire::Result<Self>
@@ -235,39 +239,6 @@ impl Columns {
                 }
             }
         })
-    }
-
-    fn generate_named_resolution(
-        &self,
-        column_names: &BTreeMap<&str, usize>,
-    ) -> (TokenStream, TokenStream) {
-        let count = column_names.len();
-
-        let initializers = column_names.keys().enumerate().map(|(i, name)| {
-            quote! {
-                if let Some(column) = columns.index(#name) {
-                    indexes[#i].write(column);
-                } else {
-                    return None;
-                }
-            }
-        });
-
-        let finalize = assume_array_init(quote!(squire::ColumnIndex));
-
-        let initialize = quote! {
-            let columns = statement.columns();
-            let mut indexes = [::core::mem::MaybeUninit::<squire::ColumnIndex>::uninit(); #count];
-
-            #(#initializers)*
-
-            #finalize
-        };
-
-        (
-            quote! { type Indexes = [squire::ColumnIndex; #count]; },
-            initialize,
-        )
     }
 
     fn generate_fetch_statements(&self, column_names: &BTreeMap<&str, usize>) -> TokenStream {

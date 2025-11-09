@@ -9,7 +9,7 @@ use quote::quote;
 use syn::{Expr, Generics, Ident, Type, parse_quote};
 
 use crate::common::{
-    BindingMode, FieldIdentity, With, assume_array_init, impl_generics_with_lifetime,
+    BindingMode, FieldIdentity, NamedIndexResolution, With, impl_generics_with_lifetime,
     process_fields,
 };
 
@@ -210,11 +210,15 @@ impl Parameters {
             return Err(darling::Error::custom("not all fields have names"));
         }
 
-        let (indexes_type, resolve_indexes) =
+        let NamedIndexResolution { indexes, resolve } =
             if self.binding_mode.is_named() && !param_names.is_empty() {
-                self.generate_named_resolution(&param_names)
+                NamedIndexResolution::derive(
+                    &param_names,
+                    quote!(parameters),
+                    quote!(squire::BindIndex),
+                )
             } else {
-                (quote! { type Indexes = (); }, quote! { Some(()) })
+                NamedIndexResolution::empty()
             };
 
         let bind_statements = self.generate_bind_statements(&param_names);
@@ -223,10 +227,10 @@ impl Parameters {
             impl #impl_generics squire::Parameters<'statement> for #ident #ty_generics
             #where_clause
             {
-                #indexes_type
+                #indexes
 
                 fn resolve<'connection>(statement: &squire::Statement<'connection>) -> Option<Self::Indexes> {
-                    #resolve_indexes
+                    #resolve
                 }
 
                 fn bind<'connection>(self, binding: &mut squire::Binding<'connection, 'statement>, indexes: Self::Indexes) -> squire::Result<()>
@@ -239,39 +243,6 @@ impl Parameters {
                 }
             }
         })
-    }
-
-    fn generate_named_resolution(
-        &self,
-        param_names: &BTreeMap<&str, usize>,
-    ) -> (TokenStream, TokenStream) {
-        let count = param_names.len();
-
-        let initializers = param_names.keys().enumerate().map(|(i, name)| {
-            quote! {
-                if let Some(index) = params.index(#name) {
-                    indexes[#i].write(index);
-                } else {
-                    return None;
-                }
-            }
-        });
-
-        let finalize = assume_array_init(quote!(squire::BindIndex));
-
-        let initialize = quote! {
-            let params = statement.parameters();
-            let mut indexes = [::core::mem::MaybeUninit::<squire::BindIndex>::uninit(); #count];
-
-            #(#initializers)*
-
-            #finalize
-        };
-
-        (
-            quote! { type Indexes = [squire::BindIndex; #count]; },
-            initialize,
-        )
     }
 
     fn generate_bind_statements(&self, param_names: &BTreeMap<&str, usize>) -> Vec<TokenStream> {

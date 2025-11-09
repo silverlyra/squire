@@ -136,6 +136,18 @@ where
     }
 }
 
+impl<'a, 'b> Bind<'b> for Borrowed<'a, [u8]>
+where
+    'a: 'b,
+{
+    type Value = Self;
+
+    #[inline]
+    fn into_bind_value(self) -> Result<Self::Value> {
+        Ok(self)
+    }
+}
+
 impl<'b, T> Bind<'b> for Option<T>
 where
     T: Bind<'b>,

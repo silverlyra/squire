@@ -30,11 +30,19 @@ fn get_user(id: i64) -> Result<User> {
     "SELECT * FROM users WHERE id = :id"
 }
 
-#[derive(squire::Row)]
+#[derive(squire::Table)]
+#[squire(table = users)]
 pub struct User {
-    pub id: i64,
+    pub id: squire::RowId,
     pub username: String,
     pub score: f64,
+}
+
+project!(User { id, username, })
+
+select! {
+    User {
+    }
 }
 
 #[derive(squire::Bind)]
