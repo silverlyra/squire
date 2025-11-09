@@ -1,0 +1,25 @@
+[package]
+name = "squire-derive"
+version = "0.0.1-alpha.1"
+edition = "2024"
+repository.workspace = true
+license.workspace = true
+
+[features]
+nightly = ["lang-array-assume-init"]
+lang-array-assume-init = []
+
+[lib]
+proc-macro = true
+
+[dependencies.darling]
+version = "0.21"
+
+[dependencies.proc-macro2]
+version = "^1.0.94"
+
+[dependencies.quote]
+version = "^1.0.40"
+
+[dependencies.syn]
+version = "^2.0.100"

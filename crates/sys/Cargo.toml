@@ -1,0 +1,139 @@
+[package]
+name = "squire-sqlite3-sys"
+description = "External FFI bindings for the SQLite C API"
+version = "0.0.1-alpha.3"
+edition = "2024"
+links = "sqlite3"
+readme = "Readme.md"
+repository.workspace = true
+license.workspace = true
+categories = ["external-ffi-bindings"]
+keywords = ["sqlite", "ffi"]
+
+[features]
+default = ["bundled", "common", "multi-thread"]
+bindgen = [
+    "dep:bindgen",
+    "dep:syn",
+    "dep:prettyplease",
+    "dep:proc-macro2",
+    "dep:quote",
+]
+bundled = ["dep:sqlite", "bindgen", "static"]
+linked = ["bindgen"]
+static = []
+
+single-thread = []
+multi-thread = []
+serialized = []
+
+core = [
+    "json",
+    "vtab",
+    "wal"
+]
+common = [
+    "core",
+    "blob-io",
+    "fts",
+    "geo",
+    "serialize",
+    "snapshot",
+    "stat4",
+    "stat-vtab",
+]
+full = [
+    "common",
+    "authorization",
+    "extensions",
+    "fts3",
+    "memory-status",
+    "metadata",
+    "normalize-sql",
+    "preupdate-hook",
+    "progress-callback",
+    "session",
+    "soundex",
+    "trace",
+]
+metadata = ["column-metadata", "decltype"]
+
+armor = []
+authorization = []
+auto-vacuum = []
+blob-io = []
+column-metadata = []
+decltype = []
+extensions = []
+fts = ["fts5"]
+fts3 = []
+fts5 = ["blob-io"]
+geo = ["geopoly", "rtree"]
+geopoly = ["vtab"]
+json = []
+memory-status = []
+normalize-sql = []
+page-vtab = ["vtab"]
+preupdate-hook = []
+progress-callback = []
+rtree = ["vtab"]
+serialize = []
+session = ["preupdate-hook"]
+shared-cache = ["multi-thread"]
+snapshot = []
+soundex = []
+stat-vtab = ["vtab"]
+stat4 = []
+trace = []
+utf-16 = []
+vtab = []
+wal = []
+
+[build-dependencies.sqlite]
+package = "squire-sqlite3-src"
+path = "../../../ext/squire-src"
+version = "3.50.4-alpha.2"
+optional = true
+
+[build-dependencies.bindgen]
+version = "^0.72"
+optional = true
+
+[build-dependencies.syn]
+version = "^2.0"
+features = ["full", "parsing", "printing"]
+optional = true
+
+[build-dependencies.prettyplease]
+version = "^0.2"
+optional = true
+
+[build-dependencies.proc-macro2]
+version = "^1.0"
+optional = true
+
+[build-dependencies.quote]
+version = "^1.0"
+optional = true
+
+[build-dependencies.pkg-config]
+version = "^0.3.32"
+optional = true
+
+[package.metadata.docs.rs]
+features = ["bundled", "full", "serialized"]
+no-default-features = true
+
+rustdoc-args = ["--cfg", "docsrs"]
+
+default-target = "x86_64-unknown-linux-gnu"
+targets = [
+    "aarch64-apple-darwin",
+    "aarch64-unknown-linux-gnu",
+    "arm-unknown-linux-gnueabihf",
+    "i686-unknown-linux-gnu",
+    "x86_64-unknown-freebsd",
+    "x86_64-unknown-linux-gnu",
+    "x86_64-unknown-illumos",
+    "x86_64-pc-windows-msvc",
+]

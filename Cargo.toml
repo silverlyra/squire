@@ -1,6 +1,6 @@
 [package]
 name = "squire"
-version = "0.0.1"
+version = "0.0.1-alpha.3"
 edition = "2024"
 description = "Safe and idiomatic SQLite bindings"
 readme = "Readme.md"
@@ -11,7 +11,116 @@ keywords = ["sqlite", "database", "api", "bindings", "sql"]
 
 [workspace]
 resolver = "3"
+members = ["crates/derive", "crates/sys"]
 
 [workspace.package]
 repository = "https://github.com/silverlyra/squire"
 license = "Apache-2.0"
+
+[features]
+# default = ["linked", "common", "multi-thread"]
+default = ["bundled", "common", "derive", "multi-thread"]
+derive = ["dep:squire-derive"]
+
+common = ["sqlite/common", "json", "url", "mutex"]
+full = ["sqlite/full", "common"]
+
+bundled = ["sqlite/bundled"]
+linked = ["sqlite/linked"]
+static = ["sqlite/static"]
+
+single-thread = ["sqlite/single-thread"]
+multi-thread = ["sqlite/multi-thread"]
+serialized = ["sqlite/serialized", "mutex"]
+
+armor = ["sqlite/armor"]
+authorization = ["sqlite/authorization"]
+auto-vacuum = ["sqlite/auto-vacuum"]
+blob-io = ["sqlite/blob-io"]
+column-metadata = ["sqlite/column-metadata"]
+decltype = ["sqlite/decltype"]
+extensions = ["sqlite/extensions"]
+fts = ["sqlite/fts"]
+fts3 = ["sqlite/fts3"]
+fts5 = ["sqlite/fts5"]
+geo = ["sqlite/geo"]
+geopoly = ["sqlite/geopoly"]
+json = ["sqlite/json", "dep:serde_json"]
+memory-status = ["sqlite/memory-status"]
+mutex = []
+normalize-sql = ["sqlite/normalize-sql"]
+page-vtab = ["sqlite/page-vtab"]
+preupdate-hook = ["sqlite/preupdate-hook"]
+progress-callback = ["sqlite/progress-callback"]
+rtree = ["sqlite/rtree"]
+serialize = ["sqlite/serialize"]
+session = ["sqlite/session"]
+shared-cache = ["sqlite/shared-cache"]
+snapshot = ["sqlite/snapshot"]
+soundex = ["sqlite/soundex"]
+stat-vtab = ["sqlite/stat-vtab"]
+stat4 = ["sqlite/stat4"]
+trace = ["sqlite/trace"]
+utf-16 = ["sqlite/utf-16"]
+
+nightly = ["lang-array-assume-init", "lang-iat", "lang-rustc-scalar-valid-range", "lang-step-trait"]
+lang-array-assume-init = ["squire-derive?/lang-array-assume-init"]
+lang-iat = []
+lang-rustc-scalar-valid-range = []
+lang-step-trait = []
+
+url = ["dep:url"]
+widestring = ["utf-16", "dep:widestring"]
+
+[dependencies.squire-derive]
+path = "crates/derive"
+version = "0.0.1-alpha.1"
+optional = true
+default-features = false
+
+[dependencies.sqlite]
+package = "squire-sqlite3-sys"
+path = "crates/sys"
+version = "0.0.1-alpha.3"
+default-features = false
+
+[dependencies.fallible-iterator]
+version = "^0.3"
+optional = true
+
+[dependencies.serde_json]
+version = "^1.0"
+optional = true
+
+[dependencies.url]
+version = "^2.5"
+optional = true
+
+[dependencies.widestring]
+version = "^1.0.2"
+optional = true
+
+[[test]]
+name = "raw"
+
+[[test]]
+name = "parameters"
+required-features = ["derive"]
+
+[package.metadata.docs.rs]
+features = ["bundled", "full", "serialized"]
+no-default-features = true
+
+rustdoc-args = ["--cfg", "docsrs"]
+
+default-target = "x86_64-unknown-linux-gnu"
+targets = [
+    "aarch64-apple-darwin",
+    "aarch64-unknown-linux-gnu",
+    "arm-unknown-linux-gnueabihf",
+    "i686-unknown-linux-gnu",
+    "x86_64-unknown-freebsd",
+    "x86_64-unknown-linux-gnu",
+    "x86_64-unknown-illumos",
+    "x86_64-pc-windows-msvc",
+]
