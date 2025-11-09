@@ -1,4 +1,4 @@
-use core::{ffi::c_int, marker::PhantomData};
+use core::{ffi::c_int, marker::PhantomData, mem};
 use sqlite::{SQLITE_PREPARE_DONT_LOG, SQLITE_PREPARE_NO_VTAB, SQLITE_PREPARE_PERSISTENT, sqlite3};
 
 use crate::{
@@ -98,6 +98,15 @@ impl<'c> Statement<'c> {
         StatementParameters::new(self)
     }
 
+    /// [Finalize][] (i.e., destroy) the prepared statement.
+    ///
+    /// [Finalize]: https://sqlite.org/c3ref/finalize.html
+    pub fn finalize(mut self) -> Result<(), ()> {
+        let result = unsafe { self.internal_mut().finalize() };
+        mem::forget(self); // or Drop will also try to finalize
+        result
+    }
+
     /// Access the [`ffi::Statement`] underlying this [`Statement`].
     #[inline]
     pub(crate) fn internal_ref(&self) -> &ffi::Statement<'c> {
@@ -120,6 +129,12 @@ impl<'c> ffi::Connected for Statement<'c> {
 impl<'c, 's> ffi::Connected for &'s mut Statement<'c> {
     fn as_connection_ptr(&self) -> *mut sqlite3 {
         unsafe { self.internal_ref().connection_ptr() }
+    }
+}
+
+impl<'c> Drop for Statement<'c> {
+    fn drop(&mut self) {
+        let _ = unsafe { self.internal_mut().finalize() };
     }
 }
 
