@@ -1,4 +1,3 @@
-#[macro_export]
 macro_rules! call {
     { $fn:ident($($arg:expr),*) } => {
         {
@@ -10,3 +9,5 @@ macro_rules! call {
         }
     };
 }
+
+pub(crate) use call;

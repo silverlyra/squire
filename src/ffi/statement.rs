@@ -17,11 +17,11 @@ use sqlite::{
 
 use super::{
     bind::Bind,
+    call::call,
     connection::{Connected, Connection},
     value::Fetch,
 };
 use crate::{
-    call,
     error::{Error, ErrorLocation, ErrorMessage, Result},
     types::{BindIndex, ColumnIndex},
 };

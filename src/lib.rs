@@ -10,6 +10,7 @@ mod connection;
 mod database;
 mod error;
 pub mod ffi;
+pub mod iter;
 mod param;
 mod query;
 mod row;
@@ -24,12 +25,14 @@ pub use connection::{Connection, ConnectionBuilder};
 pub use database::{Database, IntoLocation};
 pub use error::{
     AbortError, AuthorizationError, BusyError, CantOpenError, ConstraintError, CorruptError, Error,
-    ErrorCategory, ErrorCode, GeneralError, IoError, LockedError, ParameterError, ReadOnlyError,
-    Result,
+    ErrorCategory, ErrorCode, ErrorContext, ErrorLocation, ErrorMessage, FetchError, GeneralError,
+    IoError, LockedError, ParameterError, ReadOnlyError, Result,
 };
 pub use param::Parameters;
 pub use row::{Row, Rows};
-pub use statement::{Binding, Execution, PrepareOptions, Statement, StatementParameters};
+pub use statement::{
+    Binding, Execution, PrepareOptions, Statement, StatementColumns, StatementParameters,
+};
 pub use types::{BindIndex, BindIndexes, Borrowed, ColumnIndex, RowId, Type};
 pub use value::Fetch;
 

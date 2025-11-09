@@ -28,7 +28,7 @@ const ENCODING_UTF8: c_uchar = SQLITE_UTF8 as c_uchar;
 ///
 /// `squire::ffi::Bind` is the low-level `trait` whose implementations directly
 /// call a [`sqlite3_bind_*`][bind] function in the C API. To make your own
-/// user-defined types `Bind`able, implement [`squire::Bind`] instead.
+/// user-defined types `Bind`able, implement [`Bind`](crate::Bind) instead.
 ///
 /// Squire implements `ffi::Bind` only for types that the [SQLite C API][bind]
 /// implements directly:
@@ -273,7 +273,7 @@ impl<'b> Bind<'b> for Null {
     }
 }
 
-/// Create a SQLite [destructor](sqlite_destructor_type) for [bindable](Bind)
+/// Create a SQLite [destructor](sqlite3_destructor_type) for [bindable](Bind)
 /// type `T`.
 ///
 /// When SQLite invokes the destructor, Squire will call

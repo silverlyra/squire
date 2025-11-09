@@ -9,7 +9,8 @@ use sqlite::{
     sqlite3_mutex_enter, sqlite3_mutex_free, sqlite3_mutex_leave, sqlite3_mutex_try,
 };
 
-use crate::{call, error::Result};
+use super::call::call;
+use crate::error::Result;
 
 #[derive(PartialEq, Eq, Debug)]
 #[repr(transparent)]

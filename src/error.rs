@@ -50,8 +50,8 @@ const SQUIRE_ERROR_PARAMETER_RESOLVE: i32 = 0x02c2;
 /// An [error][return-codes] returned by a SQLite operation.
 ///
 /// Use [`category`](Error::category) to inspect the [primary](ErrorCategory)
-/// SQLite result code of the error, and [`code`] for the [extended](ErrorCode)
-/// result code (if available for this error).
+/// SQLite result code of the error, and [`code`](Error::code) for the
+/// [extended](ErrorCode) result code (if available for this error).
 ///
 /// [return-codes]: https://sqlite.org/rescode.html
 #[derive(PartialEq, Eq, Copy, Clone)]
@@ -196,6 +196,8 @@ impl<Context: ErrorContext> Error<Context> {
     ///
     /// Returns `None` if this is a primary result code or if the extended code
     /// is not recognized.
+    ///
+    /// [extended result code]: https://sqlite.org/rescode.html#extended_result_code_list
     pub const fn code(&self) -> Option<ErrorCode> {
         #[allow(deprecated)]
         match self.raw() {

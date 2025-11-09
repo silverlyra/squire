@@ -139,7 +139,7 @@ where
     fn from_column_value(value: Self::Value) -> Result<Self> {
         // SAFETY: We have 'r: 'a, so shortening the lifetime from 'r to 'a is sound.
         // The caller ensures 'r outlives 'a, so the reference remains valid.
-        unsafe { Ok(std::mem::transmute::<&'r str, &'a str>(value.into_inner())) }
+        unsafe { Ok(core::mem::transmute::<&'r str, &'a str>(value.into_inner())) }
     }
 }
 
@@ -153,7 +153,7 @@ where
         // SAFETY: We have 'r: 'a, so shortening the lifetime from 'r to 'a is sound.
         // The caller ensures 'r outlives 'a, so the reference remains valid.
         unsafe {
-            Ok(std::mem::transmute::<&'r [u8], &'a [u8]>(
+            Ok(core::mem::transmute::<&'r [u8], &'a [u8]>(
                 value.into_inner(),
             ))
         }

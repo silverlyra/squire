@@ -1,7 +1,8 @@
 use crate::{
     column::{ColumnIndexes, Columns},
     error::{Error, Result},
-    statement::{Binding, Execute, Execution},
+    iter,
+    statement::{Binding, Execute, Execution, Statement},
     types::ColumnIndex,
     value::Fetch,
 };
@@ -38,63 +39,63 @@ where
     'c: 's,
     's: 'r,
 {
+    /// [Fetch](Columns::fetch) the next row.
+    ///
+    /// If fetching fails, returns an error. If no more rows are available,
+    /// returns `Ok(None)`. Otherwise, returns `Ok(Some(C))`.
     pub fn next(&'r mut self) -> Result<Option<C>> {
-        let more = unsafe { self.advance()? };
-
-        if more {
-            let statement = self.execution.cursor();
-            Ok(Some(C::fetch(statement, self.indexes)?))
-        } else {
-            Ok(None)
-        }
+        unsafe { self.advance() }
     }
 
-    pub fn map<F, T: 's>(self, f: F) -> Map<'c, 's, C, F, S>
+    /// Call a closure to transform each row in the result set.
+    ///
+    /// Like [`Iterator::map`], but can map over [`Columns`] which borrow data
+    /// from the SQLite row. The returned `T` must not borrow from the row.
+    pub fn map<F, T: 's>(self, f: F) -> iter::Map<'c, 's, C, F, S>
     where
         F: FnMut(C) -> T,
     {
-        Map { rows: self, f }
+        iter::Map { rows: self, f }
     }
 
-    pub fn filter<F>(self, predicate: F) -> Filter<'c, 's, C, F, S>
-    where
-        F: FnMut(&C) -> bool,
-    {
-        Filter {
-            rows: self,
-            predicate,
-        }
-    }
-
-    pub fn filter_map<F, T: 's>(self, f: F) -> FilterMap<'c, 's, C, F, S>
+    /// Call a closure to transform each row in the result set into an
+    /// [`Option`], and filter out any rows where the closure returned `None`.
+    ///
+    /// Like [`Iterator::filter_map`], but can map over [`Columns`] which borrow
+    /// data from the SQLite row. The returned `T` must not borrow from the row.
+    pub fn filter_map<F, T: 's>(self, f: F) -> iter::FilterMap<'c, 's, C, F, S>
     where
         F: FnMut(C) -> Option<T>,
     {
-        FilterMap { rows: self, f }
+        iter::FilterMap { rows: self, f }
     }
-}
 
-impl<'c, 's, C, S> Rows<'c, 's, C, S>
-where
-    C: ColumnIndexes,
-    S: Execute<'c, 's>,
-    'c: 's,
-{
     /// # Safety
     ///
     /// This function must not be called while any data borrowed from a previous
     /// row is still in use. The public `next()` method enforces this via `&mut self`,
     /// but internal code may bypass this for performance in controlled scenarios.
-    unsafe fn advance(&self) -> Result<bool> {
+    pub(crate) unsafe fn advance(&self) -> Result<Option<C>> {
         let statement = self.execution.cursor();
-        unsafe { statement.internal_ref().row() }
+
+        // SAFETY: This always is an &'r Statement
+        let statement =
+            unsafe { core::mem::transmute::<&Statement<'_>, &'r Statement<'s>>(statement) };
+
+        let more = unsafe { statement.internal_ref().row()? };
+
+        if more {
+            Ok(Some(C::fetch(statement, self.indexes)?))
+        } else {
+            Ok(None)
+        }
     }
 }
 
 // IntoIterator implementation for owned (non-borrowing) Columns types
 impl<'c, 's, C, S> IntoIterator for Rows<'c, 's, C, S>
 where
-    C: ColumnIndexes + for<'r> Columns<'r> + 'static,
+    C: for<'r> Columns<'r> + 'static,
     S: Execute<'c, 's>,
     'c: 's,
 {
@@ -164,214 +165,5 @@ where
     {
         let statement = self.execution.cursor();
         T::fetch(statement, indexes)
-    }
-}
-
-// Map combinator
-#[derive(Debug)]
-pub struct Map<'c, 's, C, F, S = Binding<'c, 's>>
-where
-    C: ColumnIndexes,
-    S: Execute<'c, 's>,
-    'c: 's,
-{
-    rows: Rows<'c, 's, C, S>,
-    f: F,
-}
-
-impl<'c, 's, 'r, C, F, T, S> Map<'c, 's, C, F, S>
-where
-    C: Columns<'r>,
-    F: FnMut(C) -> T,
-    S: Execute<'c, 's>,
-    'c: 's,
-    's: 'r,
-{
-    pub fn next(&'r mut self) -> Result<Option<T>> {
-        Ok(self.rows.next()?.map(|item| (self.f)(item)))
-    }
-}
-
-impl<'c, 's, C, F, T, S> Iterator for Map<'c, 's, C, F, S>
-where
-    C: for<'r> Columns<'r>,
-    F: for<'r> FnMut(C) -> T,
-    T: 's,
-    S: Execute<'c, 's>,
-    'c: 's,
-{
-    type Item = Result<T>;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        // SAFETY: We never hold onto row data across loop iterations
-        let more = match unsafe { self.rows.advance() } {
-            Ok(m) => m,
-            Err(e) => return Some(Err(e)),
-        };
-
-        if !more {
-            return None;
-        }
-
-        let statement = self.rows.execution.cursor();
-        let item = match C::fetch(statement, self.rows.indexes) {
-            Ok(i) => i,
-            Err(e) => return Some(Err(e)),
-        };
-
-        Some(Ok((self.f)(item)))
-    }
-}
-
-// Filter combinator
-#[derive(Debug)]
-pub struct Filter<'c, 's, C, F, S = Binding<'c, 's>>
-where
-    C: ColumnIndexes,
-    S: Execute<'c, 's>,
-    'c: 's,
-{
-    rows: Rows<'c, 's, C, S>,
-    predicate: F,
-}
-
-impl<'c, 's, 'r, C, F, S> Filter<'c, 's, C, F, S>
-where
-    C: Columns<'r>,
-    F: FnMut(&C) -> bool,
-    S: Execute<'c, 's>,
-    'c: 's,
-    's: 'r,
-{
-    pub fn next(&'r mut self) -> Result<Option<C>> {
-        loop {
-            // SAFETY: We never hold onto row data across loop iterations,
-            // so it's safe to call advance() multiple times
-            let more = unsafe { self.rows.advance()? };
-
-            if !more {
-                return Ok(None);
-            }
-
-            let statement = self.rows.execution.cursor();
-            let item = C::fetch(statement, self.rows.indexes)?;
-
-            if (self.predicate)(&item) {
-                return Ok(Some(item));
-            }
-            // Otherwise continue looping
-        }
-    }
-}
-
-impl<'c, 's, C, F, S> Iterator for Filter<'c, 's, C, F, S>
-where
-    C: ColumnIndexes + for<'r> Columns<'r>,
-    F: for<'r> FnMut(&C) -> bool,
-    S: Execute<'c, 's>,
-    'c: 's,
-{
-    type Item = Result<C>;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        loop {
-            // SAFETY: We never hold onto row data across loop iterations
-            let more = match unsafe { self.rows.advance() } {
-                Ok(m) => m,
-                Err(e) => return Some(Err(e)),
-            };
-
-            if !more {
-                return None;
-            }
-
-            let statement = self.rows.execution.cursor();
-            let item = match C::fetch(statement, self.rows.indexes) {
-                Ok(i) => i,
-                Err(e) => return Some(Err(e)),
-            };
-
-            if (self.predicate)(&item) {
-                return Some(Ok(item));
-            }
-            // Otherwise continue looping
-        }
-    }
-}
-
-// FilterMap combinator
-#[derive(Debug)]
-pub struct FilterMap<'c, 's, C, F, S = Binding<'c, 's>>
-where
-    C: ColumnIndexes,
-    S: Execute<'c, 's>,
-    'c: 's,
-{
-    rows: Rows<'c, 's, C, S>,
-    f: F,
-}
-
-impl<'c, 's, 'r, C, F, T, S> FilterMap<'c, 's, C, F, S>
-where
-    C: Columns<'r>,
-    F: FnMut(C) -> Option<T>,
-    S: Execute<'c, 's>,
-    'c: 's,
-    's: 'r,
-{
-    pub fn next(&'r mut self) -> Result<Option<T>> {
-        loop {
-            // SAFETY: We never hold onto row data across loop iterations,
-            // so it's safe to call advance() multiple times
-            let more = unsafe { self.rows.advance()? };
-
-            if !more {
-                return Ok(None);
-            }
-
-            let statement = self.rows.execution.cursor();
-            let item = C::fetch(statement, self.rows.indexes)?;
-
-            if let Some(mapped) = (self.f)(item) {
-                return Ok(Some(mapped));
-            }
-            // Otherwise continue looping
-        }
-    }
-}
-
-impl<'c, 's, C, F, T, S> Iterator for FilterMap<'c, 's, C, F, S>
-where
-    C: ColumnIndexes + for<'r> Columns<'r>,
-    F: for<'r> FnMut(C) -> Option<T>,
-    T: 's,
-    S: Execute<'c, 's>,
-    'c: 's,
-{
-    type Item = Result<T>;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        loop {
-            // SAFETY: We never hold onto row data across loop iterations
-            let more = match unsafe { self.rows.advance() } {
-                Ok(m) => m,
-                Err(e) => return Some(Err(e)),
-            };
-
-            if !more {
-                return None;
-            }
-
-            let statement = self.rows.execution.cursor();
-            let item = match C::fetch(statement, self.rows.indexes) {
-                Ok(i) => i,
-                Err(e) => return Some(Err(e)),
-            };
-
-            if let Some(mapped) = (self.f)(item) {
-                return Some(Ok(mapped));
-            }
-            // Otherwise continue looping
-        }
     }
 }

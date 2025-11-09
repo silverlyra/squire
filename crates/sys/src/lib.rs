@@ -22,7 +22,7 @@ mod bindings {
 
 pub use bindings::*;
 
-/// Use `SQLITE_STATIC` as a SQLite [destructor](sqlite_destructor_type)
+/// Use `SQLITE_STATIC` as a SQLite [destructor](sqlite3_destructor_type)
 /// argument to signal to SQLite that the memory allocation will outlive the
 /// (e.g.) prepared statement.
 ///
@@ -34,7 +34,7 @@ pub use bindings::*;
 /// [SQLite reference]: https://sqlite.org/c3ref/c_static.html
 pub const SQLITE_STATIC: sqlite3_destructor_type = sqlite3_destructor_type::from_sentinel(0);
 
-/// Use `SQLITE_TRANSIENT` as a SQLite [destructor](sqlite_destructor_type)
+/// Use `SQLITE_TRANSIENT` as a SQLite [destructor](sqlite3_destructor_type)
 /// argument to instruct SQLite to clone the provided value before returning,
 /// and for SQLite to take responsibility to free the memory it allocated for
 /// the clone when it is no longer needed.
