@@ -21,7 +21,7 @@ use crate::common::{
 pub struct ParametersDerive {
     ident: Ident,
     generics: Generics,
-    data: ast::Data<(), ParametersField>,
+    data: ast::Data<(), FieldDerive>,
 
     named: Flag,
     sequential: Flag,
@@ -30,7 +30,7 @@ pub struct ParametersDerive {
 impl ParametersDerive {
     pub fn derive(self) -> Result<TokenStream> {
         // Step 1: Extract and validate fields
-        let (fields, style) = self.extract_fields()?;
+        let (fields, style) = self.fields()?;
 
         // Step 2: Determine binding mode from flags and struct style
         let binding_mode = BindingMode::from_flags_and_style(&self.named, &self.sequential, style)?;
@@ -39,18 +39,17 @@ impl ParametersDerive {
         let field_metas = process_fields(&fields, |i, field| field.build_meta(i, binding_mode))?;
 
         // Step 4: Build the trait implementation
-        let meta = ParametersMeta {
+        let meta = Parameters {
             ident: self.ident,
             generics: self.generics,
             fields: field_metas,
             binding_mode,
-            style,
         };
 
         meta.generate_impl()
     }
 
-    fn extract_fields(&self) -> Result<(Vec<&ParametersField>, ast::Style)> {
+    fn fields(&self) -> Result<(Vec<&FieldDerive>, ast::Style)> {
         match &self.data {
             ast::Data::Struct(contents) => match contents.style {
                 ast::Style::Struct | ast::Style::Tuple => {
@@ -70,7 +69,7 @@ impl ParametersDerive {
 
 #[derive(FromField, Debug)]
 #[darling(attributes(squire))]
-struct ParametersField {
+struct FieldDerive {
     ident: Option<Ident>,
     ty: Type,
 
@@ -80,18 +79,10 @@ struct ParametersField {
     skip: Flag,
     result: Flag,
     bind_with: Option<With>,
-
-    // Legacy support for `with` attribute
-    #[darling(rename = "with")]
-    with_legacy: Option<With>,
 }
 
-impl ParametersField {
-    fn build_meta(
-        &self,
-        field_index: usize,
-        binding_mode: BindingMode,
-    ) -> Result<ParameterFieldMeta> {
+impl FieldDerive {
+    fn build_meta(&self, field_index: usize, binding_mode: BindingMode) -> Result<Parameter> {
         // Determine the parameter identity
         let sequential = binding_mode == BindingMode::Sequential;
         let identity = FieldIdentity::from_field(
@@ -108,10 +99,7 @@ impl ParametersField {
         // Extract lifetime bound if using borrow wrapper
         let borrow_bound = self.borrow_bound();
 
-        Ok(ParameterFieldMeta {
-            ident: self.ident.clone(),
-            ty: self.ty.clone(),
-            field_index,
+        Ok(Parameter {
             identity,
             bind_expr,
             borrow_bound,
@@ -128,8 +116,7 @@ impl ParametersField {
         };
 
         // Apply custom bind_with function if provided (or legacy with)
-        let with_fn = self.bind_with.as_ref().or(self.with_legacy.as_ref());
-        if let Some(ref with) = with_fn {
+        if let Some(ref with) = self.bind_with {
             expr = with.wrap(&expr);
         }
 
@@ -171,16 +158,15 @@ impl ParametersField {
     }
 }
 
-/// Validated and processed metadata for the Parameters derive.
-struct ParametersMeta {
+/// [`ParametersDerive`] data that has been prepared to generate the `impl` tokens.
+struct Parameters {
     ident: Ident,
     generics: Generics,
-    fields: Vec<ParameterFieldMeta>,
+    fields: Vec<Parameter>,
     binding_mode: BindingMode,
-    style: ast::Style,
 }
 
-impl ParametersMeta {
+impl Parameters {
     fn generate_impl(self) -> Result<TokenStream> {
         let ident = &self.ident;
         let (_, ty_generics, where_clause) = self.generics.split_for_impl();
@@ -220,9 +206,7 @@ impl ParametersMeta {
             .filter_map(|(i, field)| field.identity.name().map(|name| (name, i)))
             .collect();
 
-        // Validate that explicit #[squire(named)] on tuple structs has all names
-        if self.binding_mode.requires_all_names(self.style) && param_names.len() < self.fields.len()
-        {
+        if self.binding_mode.is_named() && param_names.len() < self.fields.len() {
             return Err(darling::Error::custom("not all fields have names"));
         }
 
@@ -316,17 +300,8 @@ impl ParametersMeta {
 }
 
 /// Processed metadata for a single field in the Parameters derive.
-struct ParameterFieldMeta {
-    #[allow(dead_code)]
-    ident: Option<Ident>,
-    #[allow(dead_code)]
-    ty: Type,
-    #[allow(dead_code)]
-    field_index: usize,
+struct Parameter {
     identity: FieldIdentity<NonZero<i32>>,
     bind_expr: Expr,
     borrow_bound: Option<syn::Lifetime>,
 }
-
-// Keep the old name as an alias for backwards compatibility
-pub use ParametersDerive as Parameters;

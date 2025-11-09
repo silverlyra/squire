@@ -1,7 +1,7 @@
 use std::collections::{BTreeMap, BTreeSet};
 
 use darling::{FromDeriveInput, FromField, Result, ast, util::Flag};
-use proc_macro2::TokenStream;
+use proc_macro2::{Span, TokenStream};
 use quote::quote;
 use syn::{Expr, Generics, Ident, Type, parse_quote};
 
@@ -27,7 +27,7 @@ pub struct ColumnsDerive {
 impl ColumnsDerive {
     pub fn derive(self) -> Result<TokenStream> {
         // Step 1: Extract and validate fields
-        let (fields, style) = self.extract_fields()?;
+        let (fields, style) = self.fields()?;
 
         // Step 2: Determine binding mode from flags and struct style
         let binding_mode = BindingMode::from_flags_and_style(&self.named, &self.sequential, style)?;
@@ -36,18 +36,17 @@ impl ColumnsDerive {
         let field_metas = process_fields(&fields, |i, field| field.build_meta(i, binding_mode))?;
 
         // Step 4: Build the trait implementation
-        let meta = ColumnsMeta {
+        let meta = Columns {
             ident: self.ident,
             generics: self.generics,
             fields: field_metas,
             binding_mode,
-            style,
         };
 
         meta.generate_impl()
     }
 
-    fn extract_fields(&self) -> Result<(Vec<&FieldDerive>, ast::Style)> {
+    fn fields(&self) -> Result<(Vec<&FieldDerive>, ast::Style)> {
         match &self.data {
             ast::Data::Struct(contents) => match contents.style {
                 ast::Style::Struct | ast::Style::Tuple => {
@@ -99,8 +98,6 @@ impl FieldDerive {
 
         Ok(Column {
             ident: self.ident.clone(),
-            ty: self.ty.clone(),
-            field_index,
             identity,
             fetch_expr,
             bytes_bound,
@@ -158,16 +155,15 @@ impl FieldDerive {
     }
 }
 
-/// Validated and processed metadata for the Columns derive.
-struct ColumnsMeta {
+/// [`ColumnsDerive`] data that has been prepared to generate the `impl` tokens.
+struct Columns {
     ident: Ident,
     generics: Generics,
     fields: Vec<Column>,
     binding_mode: BindingMode,
-    style: ast::Style,
 }
 
-impl ColumnsMeta {
+impl Columns {
     fn generate_impl(self) -> Result<TokenStream> {
         let ident = &self.ident;
         let (_, ty_generics, where_clause) = self.generics.split_for_impl();
@@ -208,9 +204,7 @@ impl ColumnsMeta {
             .collect();
 
         // Validate that explicit #[squire(named)] on tuple structs has all names
-        if self.binding_mode.requires_all_names(self.style)
-            && column_names.len() < self.fields.len()
-        {
+        if self.binding_mode.is_named() && column_names.len() < self.fields.len() {
             return Err(darling::Error::custom("not all fields have names"));
         }
 
@@ -288,8 +282,7 @@ impl ColumnsMeta {
                     .as_ref()
                     .map(|id| quote!(#id))
                     .unwrap_or_else(|| {
-                        let var_ident =
-                            Ident::new(&format!("field_{}", i), proc_macro2::Span::call_site());
+                        let var_ident = Ident::new(&format!("field_{}", i), Span::call_site());
                         quote!(#var_ident)
                     });
 
@@ -324,8 +317,7 @@ impl ColumnsMeta {
                     .as_ref()
                     .map(|id| quote!(#id))
                     .unwrap_or_else(|| {
-                        let var_ident =
-                            Ident::new(&format!("field_{}", i), proc_macro2::Span::call_site());
+                        let var_ident = Ident::new(&format!("field_{}", i), Span::call_site());
                         quote!(#var_ident)
                     })
             })
@@ -350,8 +342,6 @@ impl ColumnsMeta {
 /// Processed metadata for a single [field](FieldDerive) from [`ColumnsDerive`].
 struct Column {
     ident: Option<Ident>,
-    ty: Type,
-    field_index: usize,
     identity: FieldIdentity<i32>,
     fetch_expr: Expr,
     bytes_bound: Option<syn::Lifetime>,

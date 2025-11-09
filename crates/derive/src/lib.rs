@@ -4,7 +4,7 @@ mod param;
 
 use column::ColumnsDerive;
 use darling::FromDeriveInput;
-use param::Parameters;
+use param::ParametersDerive;
 use proc_macro::TokenStream;
 
 /// Derive macro for implementing the `Parameters` trait.
@@ -20,7 +20,7 @@ use proc_macro::TokenStream;
 pub fn derive_parameters(input: TokenStream) -> TokenStream {
     let input = syn::parse_macro_input!(input as syn::DeriveInput);
 
-    match Parameters::from_derive_input(&input) {
+    match ParametersDerive::from_derive_input(&input) {
         Ok(params) => match params.derive() {
             Ok(tokens) => tokens.into(),
             Err(err) => err.write_errors().into(),

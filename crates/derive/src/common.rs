@@ -66,11 +66,6 @@ impl<I: SequentialIndex> FieldIdentity<I> {
             FieldIdentity::Sequential(_) => None,
         }
     }
-
-    /// Check if this is a named identity.
-    pub fn is_named(&self) -> bool {
-        matches!(self, FieldIdentity::Named(_))
-    }
 }
 
 /// Custom function wrapper for `bind_with` and `fetch_with` attributes.
@@ -189,7 +184,7 @@ pub fn impl_generics_with_lifetime(generics: &Generics, lifetime_name: &str) -> 
     }
 }
 
-/// Generate the MaybeUninit array finalization code.
+/// Generate [`MaybeUninit`](core::mem::MaybeUninit) array finalization code.
 pub fn assume_array_init(elem_type: TokenStream) -> TokenStream {
     if cfg!(feature = "lang-array-assume-init") {
         quote! {
@@ -241,14 +236,6 @@ impl BindingMode {
     /// Check if this mode uses named binding.
     pub fn is_named(self) -> bool {
         matches!(self, BindingMode::Named)
-    }
-
-    /// Check if all fields must have names.
-    ///
-    /// This is only true when Named mode is used with tuple structs, which means
-    /// the user explicitly set `#[squire(named)]`.
-    pub fn requires_all_names(self, style: ast::Style) -> bool {
-        self == BindingMode::Named && style != ast::Style::Struct
     }
 }
 
