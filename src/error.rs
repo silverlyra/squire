@@ -549,9 +549,7 @@ impl ErrorContext for () {
 
 impl ConnectedErrorContext for () {
     #[inline(always)]
-    unsafe fn capture(_connection: *mut sqlite3, _code: i32) -> Self {
-        
-    }
+    unsafe fn capture(_connection: *mut sqlite3, _code: i32) -> Self {}
 }
 
 #[derive(PartialEq, Eq, PartialOrd, Ord, Clone, Debug)]
