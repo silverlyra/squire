@@ -58,6 +58,9 @@ jobs:
         sqlite: [bundled]
         include:
           - channel: stable
+            host: ubuntu-22.04
+            sqlite: linked
+          - channel: stable
             host: ubuntu-24.04
             sqlite: linked
           - channel: stable
