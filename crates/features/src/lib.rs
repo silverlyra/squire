@@ -18,7 +18,7 @@ mod version;
 pub use feature::{
     Feature, FeatureKey,
     api::{
-        ApiArmor, AutomaticInitialize, AutomaticReset, Complete, Deprecated, GetTable,
+        ApiArmor, AutomaticInitialize, AutomaticReset, Complete, Deprecated, ErrorOffset, GetTable,
         MemoryManagement, Trace,
     },
     blob::{BlobIo, BlobLike},

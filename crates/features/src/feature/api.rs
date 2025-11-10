@@ -1,5 +1,8 @@
 use super::{Feature, FeatureKey};
-use crate::probe::{Flag, Probe};
+use crate::{
+    probe::{Flag, Probe},
+    version::Version,
+};
 
 /// Detects support for [API armor][armor], which adds extra defensive checks to the SQLite API.
 ///
@@ -143,5 +146,29 @@ impl Feature for MemoryManagement {
 
     fn key(&self) -> FeatureKey {
         FeatureKey::MemoryManagement
+    }
+}
+
+/// Detects support for [`sqlite3_error_offset()`][errors], which returns the byte offset
+/// of the token where an error occurred in SQL.
+///
+/// [errors]: https://sqlite.org/c3ref/errcode.html
+#[derive(Debug)]
+#[doc(alias = "sqlite3_error_offset")]
+pub struct ErrorOffset;
+
+impl ErrorOffset {
+    /// The SQLite version where `sqlite3_error_offset` was introduced.
+    pub const AVAILABLE: Version = Version::release(3, 38);
+}
+
+#[cfg_attr(feature = "inherent", inherent::inherent)]
+impl Feature for ErrorOffset {
+    fn is_supported<P: Probe>(&self, probe: &P) -> bool {
+        probe.version() >= Self::AVAILABLE
+    }
+
+    fn key(&self) -> FeatureKey {
+        FeatureKey::ErrorOffset
     }
 }
