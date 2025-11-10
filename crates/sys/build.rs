@@ -54,7 +54,43 @@ fn main() -> Result {
         println!("cargo:rustc-link-lib={linkage}=sqlite3");
     }
 
+    // Detect features and emit metadata
+    #[cfg(feature = "bundled")]
+    let library = features::Library::new(
+        features::Version::new(3, 51, 0), // Update this when bundled version changes
+        threading_mode(),
+        bundled_features(),
+    );
+    #[cfg(feature = "linked")]
+    let library = {
+        use features::build;
+        let probe = build::Library::probe(build::Build::default());
+        features::Library::probe(&probe)
+    };
+
+    library.emit_cargo_metadata();
+    library.emit_cfg();
+
     Ok(())
+}
+
+#[cfg(feature = "bundled")]
+fn threading_mode() -> features::Threading {
+    #[cfg(feature = "single-thread")]
+    return features::Threading::SingleThread;
+    #[cfg(feature = "multi-thread")]
+    return features::Threading::MultiThread;
+    #[cfg(feature = "serialized")]
+    return features::Threading::Serialized;
+}
+
+#[cfg(feature = "bundled")]
+fn bundled_features() -> impl Iterator<Item = features::FeatureKey> {
+    use features::FeatureKey::*;
+
+    let all = [(Json, cfg!(feature = "json")), (PrepareQuiet, true)];
+    all.into_iter()
+        .filter_map(|(key, enabled)| if enabled { Some(key) } else { None })
 }
 
 fn out_path() -> PathBuf {

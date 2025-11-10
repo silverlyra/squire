@@ -1,5 +1,5 @@
 use core::{ffi::c_int, marker::PhantomData, mem};
-use sqlite::{SQLITE_PREPARE_DONT_LOG, SQLITE_PREPARE_NO_VTAB, SQLITE_PREPARE_PERSISTENT, sqlite3};
+use sqlite::{SQLITE_PREPARE_NO_VTAB, SQLITE_PREPARE_PERSISTENT, sqlite3};
 
 use crate::{
     bind::Bind,
@@ -203,7 +203,8 @@ impl<'c, 's> Execute<'c, 's> for &'s mut Statement<'c> {
 pub struct PrepareOptions(u32);
 
 impl PrepareOptions {
-    const DONT_LOG: u32 = SQLITE_PREPARE_DONT_LOG as u32;
+    #[cfg(sqlite_has_prepare_quiet)]
+    const DONT_LOG: u32 = sqlite::SQLITE_PREPARE_DONT_LOG as u32;
     const NO_VTAB: u32 = SQLITE_PREPARE_NO_VTAB as u32;
     const PERSISTENT: u32 = SQLITE_PREPARE_PERSISTENT as u32;
 
@@ -223,6 +224,7 @@ impl PrepareOptions {
         }
     }
 
+    #[cfg(sqlite_has_prepare_quiet)]
     pub const fn log(&self, allowed: bool) -> Self {
         if allowed {
             Self(self.0 & !Self::DONT_LOG)
