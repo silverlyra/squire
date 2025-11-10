@@ -32,8 +32,11 @@ use sqlite::{
     SQLITE_NOTFOUND, SQLITE_PERM, SQLITE_PROTOCOL, SQLITE_RANGE, SQLITE_READONLY,
     SQLITE_READONLY_CANTINIT, SQLITE_READONLY_CANTLOCK, SQLITE_READONLY_DBMOVED,
     SQLITE_READONLY_DIRECTORY, SQLITE_READONLY_RECOVERY, SQLITE_READONLY_ROLLBACK, SQLITE_SCHEMA,
-    SQLITE_TOOBIG, sqlite3, sqlite3_errcode, sqlite3_errmsg, sqlite3_error_offset, sqlite3_errstr,
+    SQLITE_TOOBIG, sqlite3, sqlite3_errcode, sqlite3_errmsg, sqlite3_errstr,
 };
+
+#[cfg(sqlite_has_error_offset)]
+use sqlite::sqlite3_error_offset;
 
 use crate::ffi;
 
@@ -664,6 +667,7 @@ impl ConnectedErrorContext for (ErrorMessage, Option<ErrorLocation>) {
 }
 
 impl ErrorLocation {
+    #[cfg(sqlite_has_error_offset)]
     const fn new(location: i32) -> Option<Self> {
         if location >= 0 {
             #[cfg(feature = "lang-rustc-scalar-valid-range")]
@@ -680,7 +684,15 @@ impl ErrorLocation {
     }
 
     unsafe fn capture(connection: *mut sqlite3) -> Option<Self> {
-        Self::new(unsafe { sqlite3_error_offset(connection) })
+        #[cfg(sqlite_has_error_offset)]
+        {
+            Self::new(unsafe { sqlite3_error_offset(connection) })
+        }
+        #[cfg(not(sqlite_has_error_offset))]
+        {
+            let _ = connection;
+            None
+        }
     }
 
     pub const fn offset(&self) -> usize {

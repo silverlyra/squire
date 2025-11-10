@@ -1,5 +1,5 @@
 use core::{
-    ffi::{c_uchar, c_void},
+    ffi::{c_char, c_uchar, c_void},
     ptr,
 };
 
@@ -147,10 +147,10 @@ impl<'b> Bind<'b> for &str {
         'c: 'b,
     {
         #[cfg(target_pointer_width = "32")]
-        bind! { sqlite3_bind_text(statement, index, self.as_ptr() as *const i8, self.len() as c_int, SQLITE_TRANSIENT) }?;
+        bind! { sqlite3_bind_text(statement, index, self.as_ptr() as *const c_char, self.len() as c_int, SQLITE_TRANSIENT) }?;
 
         #[cfg(target_pointer_width = "64")]
-        bind! { sqlite3_bind_text64(statement, index, self.as_ptr() as *const i8, self.len() as sqlite3_uint64, SQLITE_TRANSIENT, ENCODING_UTF8) }?;
+        bind! { sqlite3_bind_text64(statement, index, self.as_ptr() as *const c_char, self.len() as sqlite3_uint64, SQLITE_TRANSIENT, ENCODING_UTF8) }?;
 
         Ok(())
     }

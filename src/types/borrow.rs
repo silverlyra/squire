@@ -1,4 +1,4 @@
-use core::{ops::Deref, slice};
+use core::{ffi::c_char, ops::Deref, slice};
 
 use sqlite::{SQLITE_STATIC, sqlite3_column_blob, sqlite3_column_bytes, sqlite3_column_text};
 #[cfg(target_pointer_width = "64")]
@@ -86,7 +86,7 @@ impl<'b, 'a: 'b> Bind<'b> for Borrowed<'a, str> {
                 sqlite3_bind_text(
                     statement.as_ptr(),
                     index.value(),
-                    self.as_ptr() as *const i8,
+                    self.as_ptr() as *const c_char,
                     self.0.len() as i32,
                     SQLITE_STATIC,
                 )
@@ -104,7 +104,7 @@ impl<'b, 'a: 'b> Bind<'b> for Borrowed<'a, str> {
                 sqlite3_bind_text64(
                     statement.as_ptr(),
                     index.value(),
-                    self.as_ptr() as *const i8,
+                    self.as_ptr() as *const c_char,
                     self.0.len() as sqlite3_uint64,
                     SQLITE_STATIC,
                     ENCODING_UTF8,

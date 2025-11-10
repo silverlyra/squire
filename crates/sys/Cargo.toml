@@ -20,7 +20,7 @@ bindgen = [
     "dep:quote",
 ]
 bundled = ["dep:sqlite", "bindgen", "static"]
-linked = ["bindgen"]
+linked = ["bindgen", "features/build"]
 static = []
 
 single-thread = []
@@ -119,6 +119,12 @@ optional = true
 [build-dependencies.pkg-config]
 version = "^0.3.32"
 optional = true
+
+[build-dependencies.features]
+package = "squire-sqlite3-features"
+path = "../features"
+version = "0.0.1-alpha.1"
+features = ["inherent", "metadata"]
 
 [package.metadata.docs.rs]
 features = ["bundled", "full", "serialized"]

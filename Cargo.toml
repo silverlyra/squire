@@ -11,7 +11,7 @@ keywords = ["sqlite", "database", "api", "bindings", "sql"]
 
 [workspace]
 resolver = "3"
-members = ["crates/derive", "crates/sys"]
+members = ["crates/derive", "crates/features", "crates/sys"]
 
 [workspace.package]
 repository = "https://github.com/silverlyra/squire"
@@ -99,6 +99,12 @@ optional = true
 [dependencies.widestring]
 version = "^1.0.2"
 optional = true
+
+[build-dependencies.features]
+package = "squire-sqlite3-features"
+path = "crates/features"
+version = "0.0.1-alpha.1"
+features = ["metadata"]
 
 [[test]]
 name = "columns"
