@@ -46,6 +46,7 @@ pub type Result<T, C = ErrorMessage> = core::result::Result<T, Error<C>>;
 const SQUIRE_ERROR: i32 = 0x00c0;
 const SQUIRE_ERROR_FETCH: i32 = 0x00c1;
 const SQUIRE_ERROR_FETCH_RANGE: i32 = 0x01c1;
+const SQUIRE_ERROR_FETCH_PARSE: i32 = 0x01c2;
 const SQUIRE_ERROR_PARAMETER: i32 = 0x00c2;
 const SQUIRE_ERROR_PARAMETER_BIND: i32 = 0x01c2;
 const SQUIRE_ERROR_PARAMETER_RESOLVE: i32 = 0x02c2;
@@ -1316,6 +1317,10 @@ pub enum FetchError {
     /// SQLite is out of the range the destination Rust type can represent
     /// (e.g., fetching into a `u8` a value > 255).
     Range = SQUIRE_ERROR_FETCH_RANGE,
+
+    /// [Fetching](crate::Fetch) a column value failed; the value stored in
+    /// SQLite cannot be parsed into the desired type.
+    Parse = SQUIRE_ERROR_FETCH_PARSE,
 }
 
 /// An error passing prepared statement parameter(s) to SQLite.

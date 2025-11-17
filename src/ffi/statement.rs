@@ -31,7 +31,7 @@ use crate::{
 #[repr(transparent)]
 pub struct Statement<'c> {
     handle: ptr::NonNull<sqlite3_stmt>,
-    _connection: PhantomData<&'c Connection>,
+    _connection: PhantomData<fn() -> &'c Connection>,
 }
 
 #[cfg(any(feature = "multi-thread", feature = "serialized"))]
@@ -239,7 +239,9 @@ impl<'c> Statement<'c> {
     ///
     /// # Safety
     ///
-    /// Callers are responsible for managing the `ffi::Statement` lifecycle.
+    /// Callers are responsible for managing the `ffi::Statement` lifecycle, and
+    /// ensuring the [`ColumnIndex`] is in bounds. See [`fetch`](Fetch::fetch)
+    /// for details.
     pub unsafe fn fetch<'r, T: Fetch<'r>>(&'r self, column: ColumnIndex) -> T {
         unsafe { T::fetch(self, column) }
     }

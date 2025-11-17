@@ -42,6 +42,11 @@ pub use statement::{
 pub use types::{BindIndex, BindIndexes, Borrowed, ColumnIndex, RowId, Type};
 pub use value::Fetch;
 
+#[cfg(all(feature = "json", feature = "serde"))]
+pub use types::Json;
+#[cfg(all(feature = "jsonb", feature = "serde"))]
+pub use types::Jsonb;
+
 #[cfg(feature = "derive")]
 #[cfg_attr(docsrs, doc(cfg(feature = "derive")))]
 pub use squire_derive::{Columns, Parameters};

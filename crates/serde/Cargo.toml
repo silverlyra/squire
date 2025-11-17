@@ -1,0 +1,29 @@
+[package]
+name = "squire-serde"
+version = "0.0.1-alpha.1"
+edition = "2024"
+readme = "Readme.md"
+repository.workspace = true
+license.workspace = true
+
+[features]
+default = ["std"]
+
+alloc = ["serde/alloc", "serde_json?/alloc"]
+std = ["serde/std", "serde_json?/std"]
+
+json = ["dep:serde_json"]
+jsonb = ["std", "dep:serde_sqlite_jsonb"]
+
+[dependencies.serde]
+version = "^1.0.220"
+default-features = false
+features = ["derive"]
+
+[dependencies.serde_json]
+version = "^1.0.100"
+optional = true
+
+[dependencies.serde_sqlite_jsonb]
+version = "^0.2.1"
+optional = true
