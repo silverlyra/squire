@@ -31,7 +31,7 @@ use crate::{
 #[repr(transparent)]
 pub struct Statement<'c> {
     handle: ptr::NonNull<sqlite3_stmt>,
-    _connection: PhantomData<&'c Connection>,
+    _connection: PhantomData<fn() -> &'c Connection>,
 }
 
 #[cfg(any(feature = "multi-thread", feature = "serialized"))]
