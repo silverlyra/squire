@@ -239,7 +239,9 @@ impl<'c> Statement<'c> {
     ///
     /// # Safety
     ///
-    /// Callers are responsible for managing the `ffi::Statement` lifecycle.
+    /// Callers are responsible for managing the `ffi::Statement` lifecycle, and
+    /// ensuring the [`ColumnIndex`] is in bounds. See [`fetch`](Fetch::fetch)
+    /// for details.
     pub unsafe fn fetch<'r, T: Fetch<'r>>(&'r self, column: ColumnIndex) -> T {
         unsafe { T::fetch(self, column) }
     }
