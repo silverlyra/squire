@@ -2,7 +2,7 @@ use crate::{
     error::{Error, FetchError, Result},
     ffi::{self, Fetch as _},
     statement::Statement,
-    types::{Borrowed, ColumnIndex, RowId},
+    types::{Borrowed, ColumnIndex, RowId, Type},
 };
 
 pub trait Fetch<'r>: Sized {
@@ -77,6 +77,7 @@ primitive!(i64 :> isize);
 primitive!(i64 :> usize);
 identity!(i64);
 primitive!(i64 :> u64);
+identity!(Type);
 
 /// Read the column as an [`f64`] with
 /// [`sqlite3_column_double`](sqlite::sqlite3_column_double), and cast to
