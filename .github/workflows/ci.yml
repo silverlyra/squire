@@ -78,6 +78,9 @@ jobs:
       - name: Run tests (full features)
         run: >-
           cargo test --no-default-features --features '${{ matrix.sqlite }} full derive multi-thread'
+      - name: Run tests (full features + integrations)
+        run: >-
+          cargo test --no-default-features --features '${{ matrix.sqlite }} complete derive multi-thread'
       - name: Run tests (full + nightly features)
         run: >-
           cargo test --no-default-features --features '${{ matrix.sqlite }} full derive multi-thread nightly'

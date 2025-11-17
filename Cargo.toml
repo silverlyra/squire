@@ -11,7 +11,7 @@ keywords = ["sqlite", "database", "api", "bindings", "sql"]
 
 [workspace]
 resolver = "3"
-members = ["crates/derive", "crates/features", "crates/sys"]
+members = ["crates/derive", "crates/features", "crates/serde", "crates/sys"]
 
 [workspace.package]
 repository = "https://github.com/silverlyra/squire"
@@ -22,8 +22,9 @@ license = "Apache-2.0"
 default = ["bundled", "common", "derive", "multi-thread"]
 derive = ["dep:squire-derive"]
 
-common = ["sqlite/common", "json", "url", "mutex"]
+common = ["sqlite/common", "json", "mutex"]
 full = ["sqlite/full", "common"]
+complete = ["full", "integrations"]
 
 bundled = ["sqlite/bundled"]
 linked = ["sqlite/linked"]
@@ -45,7 +46,7 @@ fts3 = ["sqlite/fts3"]
 fts5 = ["sqlite/fts5"]
 geo = ["sqlite/geo"]
 geopoly = ["sqlite/geopoly"]
-json = ["sqlite/json", "dep:serde_json"]
+json = ["squire-serde?/json", "sqlite/json"]
 memory-status = ["sqlite/memory-status"]
 mutex = []
 normalize-sql = ["sqlite/normalize-sql"]
@@ -63,14 +64,17 @@ stat4 = ["sqlite/stat4"]
 trace = ["sqlite/trace"]
 utf-16 = ["sqlite/utf-16"]
 
+integrations = ["jsonb", "serde", "url", "widestring"]
+jsonb = ["json", "squire-serde?/jsonb"]
+serde = ["dep:squire-serde"]
+url = ["dep:url"]
+widestring = ["utf-16", "dep:widestring"]
+
 nightly = ["lang-array-assume-init", "lang-rustc-scalar-valid-range", "lang-step-trait"]
 lang-array-assume-init = ["squire-derive?/lang-array-assume-init"]
 lang-iat = []
 lang-rustc-scalar-valid-range = []
 lang-step-trait = []
-
-url = ["dep:url"]
-widestring = ["utf-16", "dep:widestring"]
 
 [dependencies.squire-derive]
 path = "crates/derive"
@@ -78,19 +82,16 @@ version = "0.0.1-alpha.1"
 optional = true
 default-features = false
 
+[dependencies.squire-serde]
+path = "crates/serde"
+version = "0.0.1-alpha.1"
+optional = true
+
 [dependencies.sqlite]
 package = "squire-sqlite3-sys"
 path = "crates/sys"
 version = "0.0.1-alpha.4"
 default-features = false
-
-[dependencies.fallible-iterator]
-version = "^0.3"
-optional = true
-
-[dependencies.serde_json]
-version = "^1.0"
-optional = true
 
 [dependencies.url]
 version = "^2.5"
@@ -106,9 +107,17 @@ path = "crates/features"
 version = "0.0.1-alpha.1"
 features = ["metadata"]
 
+[dev-dependencies.serde]
+version = "^1.0.220"
+features = ["derive"]
+
 [[test]]
 name = "columns"
 required-features = ["derive"]
+
+[[test]]
+name = "json"
+required-features = ["derive", "json", "serde"]
 
 [[test]]
 name = "parameters"
@@ -121,7 +130,7 @@ name = "query"
 name = "raw"
 
 [package.metadata.docs.rs]
-features = ["bundled", "full", "serialized"]
+features = ["bundled", "complete", "serialized"]
 no-default-features = true
 
 rustdoc-args = ["--cfg", "docsrs"]

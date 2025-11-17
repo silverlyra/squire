@@ -79,6 +79,8 @@ struct FieldDerive {
     skip: Flag,
     result: Flag,
     bind_with: Option<With>,
+    json: Flag,
+    jsonb: Flag,
 }
 
 impl FieldDerive {
@@ -107,6 +109,14 @@ impl FieldDerive {
     }
 
     fn build_bind_expr(&self, field_index: usize) -> Result<Expr> {
+        // Validate mutually exclusive flags
+        if self.json.is_present() && self.jsonb.is_present() {
+            return Err(
+                darling::Error::custom("cannot use both json and jsonb attributes")
+                    .with_span(&self.jsonb.span()),
+            );
+        }
+
         // Start with field access expression
         let mut expr = if let Some(ref ident) = self.ident {
             parse_quote!(self.#ident)
@@ -123,6 +133,13 @@ impl FieldDerive {
         // Unwrap Result if result flag is set
         if self.result.is_present() {
             expr = parse_quote!(#expr?);
+        }
+
+        // Wrap in Json or Jsonb if requested
+        if self.json.is_present() {
+            expr = parse_quote!(squire::Json(#expr));
+        } else if self.jsonb.is_present() {
+            expr = parse_quote!(squire::Jsonb(#expr));
         }
 
         // Wrap in Borrowed if borrow flag is set

@@ -76,6 +76,8 @@ struct FieldDerive {
     skip: Flag,
     result: Flag,
     fetch_with: Option<With>,
+    json: Flag,
+    jsonb: Flag,
 }
 
 impl FieldDerive {
@@ -105,11 +107,26 @@ impl FieldDerive {
     }
 
     fn build_fetch_expr(&self, _field_index: usize) -> Result<Expr> {
+        // Validate mutually exclusive flags
+        if self.json.is_present() && self.jsonb.is_present() {
+            return Err(
+                darling::Error::custom("cannot use both json and jsonb attributes")
+                    .with_span(&self.jsonb.span()),
+            );
+        }
+
         // Start with base column fetch - Fetch::fetch returns Result, so unwrap it
         let ty = &self.ty;
         let column_var: Ident = parse_quote!(column);
-        let mut expr: Expr =
-            parse_quote!(<#ty as squire::Fetch<'row>>::fetch(statement, #column_var)?);
+        let mut expr: Expr = if self.json.is_present() {
+            // Wrap type in Json<T> for fetch
+            parse_quote!(<squire::Json<#ty> as squire::Fetch<'row>>::fetch(statement, #column_var)?.0)
+        } else if self.jsonb.is_present() {
+            // Wrap type in Jsonb<T> for fetch
+            parse_quote!(<squire::Jsonb<#ty> as squire::Fetch<'row>>::fetch(statement, #column_var)?.0)
+        } else {
+            parse_quote!(<#ty as squire::Fetch<'row>>::fetch(statement, #column_var)?)
+        };
 
         // Apply custom fetch_with function if provided
         if let Some(ref with) = self.fetch_with {
