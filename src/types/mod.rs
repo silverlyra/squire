@@ -1,6 +1,7 @@
 mod bind;
 mod borrow;
 mod column;
+mod integration;
 #[cfg(all(any(feature = "json", feature = "jsonb"), feature = "serde"))]
 mod json;
 mod row_id;

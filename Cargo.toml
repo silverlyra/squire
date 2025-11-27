@@ -19,7 +19,7 @@ license = "Apache-2.0"
 
 [features]
 # default = ["linked", "common", "multi-thread"]
-default = ["bundled", "common", "derive", "multi-thread"]
+default = ["bundled", "complete", "derive", "multi-thread"]
 derive = ["dep:squire-derive"]
 
 common = ["sqlite/common", "json", "mutex"]
@@ -32,7 +32,7 @@ static = ["sqlite/static"]
 
 single-thread = ["sqlite/single-thread"]
 multi-thread = ["sqlite/multi-thread"]
-serialized = ["sqlite/serialized", "mutex"]
+serialized = ["multi-thread", "sqlite/serialized", "mutex"]
 
 armor = ["sqlite/armor"]
 authorization = ["sqlite/authorization"]
