@@ -8,6 +8,13 @@ use std::sync::Arc;
 /// An [error](core::error::Error) from a crate that Squire integrates with.
 #[derive(Clone, Debug)]
 pub enum IntegrationError {
+    /// An error from the [`jiff`][] crate.
+    ///
+    /// [`jiff`]: https://crates.io/crates/jiff
+    #[cfg(feature = "jiff")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "jiff")))]
+    Jiff(jiff::Error),
+
     /// An error from [`serde_json`][].
     ///
     /// [`serde_json`]: https://lib.rs/serde_json
@@ -28,6 +35,33 @@ pub enum IntegrationError {
     #[cfg(feature = "url")]
     #[cfg_attr(docsrs, doc(cfg(feature = "url")))]
     Url(url::ParseError),
+}
+
+#[cfg(feature = "jiff")]
+#[cfg_attr(docsrs, doc(cfg(feature = "jiff")))]
+impl IntegrationError {
+    /// `true` if this is a [`jiff::Error`]; `false` if otherwise.
+    pub fn is_jiff(&self) -> bool {
+        matches!(self, Self::Jiff(_))
+    }
+
+    /// Access the [`jiff::Error`] contained in this [`IntegrationError`].
+    ///
+    /// Returns `None` if this is not a `Jiff` error.
+    pub fn as_jiff(&self) -> Option<&jiff::Error> {
+        match self {
+            Self::Jiff(error) => Some(error),
+            _ => None,
+        }
+    }
+}
+
+#[cfg(feature = "jiff")]
+#[cfg_attr(docsrs, doc(cfg(feature = "jiff")))]
+impl From<jiff::Error> for IntegrationError {
+    fn from(error: jiff::Error) -> Self {
+        Self::Jiff(error)
+    }
 }
 
 #[cfg(all(feature = "serde", feature = "json"))]
@@ -87,12 +121,12 @@ impl From<squire_serde::jsonb::Error> for IntegrationError {
 #[cfg(feature = "url")]
 #[cfg_attr(docsrs, doc(cfg(feature = "url")))]
 impl IntegrationError {
-    /// `true` if this is a `url::ParseError`; `false` if otherwise.
+    /// `true` if this is a [`url::ParseError`]; `false` if otherwise.
     pub fn is_url(&self) -> bool {
         matches!(self, Self::Url(_))
     }
 
-    /// Access the `url::ParseError` contained in this [`IntegrationError`].
+    /// Access the [`url::ParseError`] contained in this [`IntegrationError`].
     ///
     /// Returns `None` if this is not a `Url` error.
     pub fn as_url(&self) -> Option<&url::ParseError> {
@@ -114,6 +148,7 @@ impl From<url::ParseError> for IntegrationError {
 impl fmt::Display for IntegrationError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
+            IntegrationError::Jiff(error) => error.fmt(f),
             IntegrationError::Json(ErrorContainer(error)) => error.fmt(f),
             IntegrationError::Jsonb(ErrorContainer(error)) => error.fmt(f),
             IntegrationError::Url(error) => error.fmt(f),
@@ -190,3 +225,17 @@ impl<T: fmt::Display> fmt::Display for ErrorContainer<T> {
 }
 
 impl<T: core::error::Error> core::error::Error for ErrorContainer<T> {}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn integration_error_size() {
+        assert!(
+            size_of::<IntegrationError>() <= 2 * size_of::<usize>(),
+            "size of IntegrationError ({}) should be ≤ 2 words",
+            size_of::<IntegrationError>(),
+        );
+    }
+}
