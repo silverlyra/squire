@@ -15,6 +15,7 @@ mod connection;
 #[cfg(feature = "mutex")]
 mod mutex;
 mod statement;
+mod string;
 mod value;
 
 pub use crate::types::ColumnIndex;
@@ -24,4 +25,5 @@ pub use connection::{Connected, Connection};
 #[cfg_attr(docsrs, doc(cfg(any(feature = "mutex", feature = "serialized"))))]
 pub use mutex::{Mutex, MutexGuard, MutexRef, StaticMutex};
 pub use statement::{Conclusion, Execute, Statement};
+pub use string::{String, StringBuilder};
 pub use value::Fetch;
