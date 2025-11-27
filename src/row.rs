@@ -1,6 +1,6 @@
 use crate::{
     column::{ColumnIndexes, Columns},
-    error::{Error, Result},
+    error::{Error, ErrorCode, Result},
     iter,
     statement::{Binding, Execute, Execution, Statement},
     types::ColumnIndex,
@@ -27,7 +27,7 @@ where
         if let Some(indexes) = C::resolve(execution.cursor()) {
             Ok(Self { execution, indexes })
         } else {
-            Err(Error::resolve("failed to resolve column indexes"))
+            Err(Error::new(ErrorCode::SQUIRE_PARAMETER_RESOLVE))
         }
     }
 }

@@ -8,7 +8,7 @@ use sqlite::{
 
 use crate::{
     database::{Database, Endpoint, IntoLocation},
-    error::{ErrorLocation, ErrorMessage, Result},
+    error::Result,
     ffi,
     param::Parameters,
     statement::{PrepareOptions, Statement},
@@ -55,10 +55,7 @@ impl Connection {
     }
 
     #[must_use = "a Statement will be finalized if dropped"]
-    pub fn prepare(
-        &self,
-        query: impl AsRef<str>,
-    ) -> Result<Statement<'_>, (ErrorMessage, Option<ErrorLocation>)> {
+    pub fn prepare(&self, query: impl AsRef<str>) -> Result<Statement<'_>> {
         Statement::prepare(self, query, PrepareOptions::transient())
     }
 
@@ -66,18 +63,18 @@ impl Connection {
         &self,
         query: impl AsRef<str>,
         parameters: P,
-    ) -> Result<isize, (ErrorMessage, Option<ErrorLocation>)> {
+    ) -> Result<isize> {
         let changes = self.prepare(query)?.query(parameters)?.run()?;
         Ok(changes)
     }
 
-    pub fn close(mut self) -> Result<(), ()> {
+    pub fn close(mut self) -> Result<()> {
         let result = unsafe { self.dispose() };
         mem::forget(self); // or Drop will close the connection agian
         result
     }
 
-    unsafe fn dispose(&mut self) -> Result<(), ()> {
+    unsafe fn dispose(&mut self) -> Result<()> {
         unsafe { self.inner.dispose() }
     }
 

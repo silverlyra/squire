@@ -172,7 +172,7 @@ impl MutexInner {
     }
 
     #[inline]
-    fn try_lock(&self) -> Result<(), ()> {
+    fn try_lock(&self) -> Result<()> {
         call! { sqlite3_mutex_try(self.as_ptr()) }
     }
 

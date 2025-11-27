@@ -22,7 +22,7 @@ use super::{
     value::Fetch,
 };
 use crate::{
-    error::{Error, ErrorLocation, ErrorMessage, Result},
+    error::{Error, ErrorCategory, Result},
     types::{BindIndex, ColumnIndex},
 };
 
@@ -62,12 +62,8 @@ impl<'c> Statement<'c> {
     /// Prepare a [`Statement`] on a [`Connection`] from SQL `query` text.
     #[doc(alias = "sqlite3_prepare_v3")]
     #[must_use = "a Statement will leak if prepared and discarded"]
-    pub fn prepare(
-        connection: &'c Connection,
-        query: &str,
-        flags: u32,
-    ) -> Result<(Self, usize), (ErrorMessage, Option<ErrorLocation>)> {
-        let length = i32::try_from(query.len()).map_err(|_| Error::too_big())?;
+    pub fn prepare(connection: &'c Connection, query: &str, flags: u32) -> Result<(Self, usize)> {
+        let length = i32::try_from(query.len()).map_err(|_| ErrorCategory::TooBig)?;
         let query_p = query.as_bytes().as_ptr().cast::<c_char>();
         let mut handle: *mut sqlite3_stmt = ptr::null_mut();
         let mut tail: *const c_char = ptr::null();
@@ -91,15 +87,12 @@ impl<'c> Statement<'c> {
 
         match Self::new(handle) {
             Some(statement) if result == SQLITE_OK => Ok((statement, sql_length)),
-            _ => {
-                let error = Error::from_connection(connection, result);
-                Err(error.unwrap_or_default())
-            }
+            _ => Err(Error::from_prepare(connection, result).unwrap_or_default()),
         }
     }
 
     #[inline]
-    pub(crate) unsafe fn finalize(&mut self) -> Result<(), ()> {
+    pub(crate) unsafe fn finalize(&mut self) -> Result<()> {
         call! { sqlite3_finalize(self.as_ptr()) }
     }
 
@@ -107,7 +100,7 @@ impl<'c> Statement<'c> {
     ///
     /// [Finalize]: https://sqlite.org/c3ref/finalize.html
     #[doc(alias = "sqlite3_finalize")]
-    pub fn close(mut self) -> Result<(), ()> {
+    pub fn close(mut self) -> Result<()> {
         unsafe { self.finalize() }
     }
 
@@ -162,7 +155,7 @@ impl<'c> Statement<'c> {
     }
 
     #[doc(alias = "sqlite3_clear_bindings")]
-    pub fn clear(&mut self) -> Result<(), ()> {
+    pub fn clear(&mut self) -> Result<()> {
         call! { sqlite3_clear_bindings(self.as_ptr()) }
     }
 
@@ -215,7 +208,7 @@ impl<'c> Statement<'c> {
             let connection_ptr = unsafe { self.connection_ptr() };
             Ok(unsafe { C::from_connection_ptr(connection_ptr) })
         } else if result == SQLITE_ROW {
-            Err(Error::misuse().into())
+            Err(ErrorCategory::Misuse.into())
         } else {
             Err(Error::from_connection(self, result).unwrap_or_default())
         }
@@ -229,7 +222,7 @@ impl<'c> Statement<'c> {
     ///
     /// Callers are responsible for managing the `ffi::Statement` lifecycle.
     #[doc(alias = "sqlite3_reset")]
-    pub unsafe fn reset(&mut self) -> Result<(), ()> {
+    pub unsafe fn reset(&mut self) -> Result<()> {
         call! { sqlite3_reset(self.as_ptr()) }
     }
 
@@ -304,7 +297,7 @@ pub trait Execute<'c>: Connected {
     /// # Safety
     ///
     /// Callers are responsible for managing the `ffi::Statement` lifecycle.
-    unsafe fn reset(&mut self) -> Result<(), ()>;
+    unsafe fn reset(&mut self) -> Result<()>;
 }
 
 impl<'c> Execute<'c> for Statement<'c> {
@@ -321,7 +314,7 @@ impl<'c> Execute<'c> for Statement<'c> {
     }
 
     #[inline(always)]
-    unsafe fn reset(&mut self) -> Result<(), ()> {
+    unsafe fn reset(&mut self) -> Result<()> {
         Ok(())
     }
 }
@@ -343,7 +336,7 @@ where
     }
 
     #[inline]
-    unsafe fn reset(&mut self) -> Result<(), ()> {
+    unsafe fn reset(&mut self) -> Result<()> {
         call! { sqlite3_reset(self.as_statement_ptr()) }
     }
 }

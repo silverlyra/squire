@@ -55,7 +55,7 @@ fn round_trip() -> Result {
             0,
         )?;
 
-        let index = BindIndex::new(1)?;
+        let index = BindIndex::new(1).unwrap();
         unsafe { select.bind(index, id) }?;
 
         let row = unsafe { select.row() }?;

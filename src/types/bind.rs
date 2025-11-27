@@ -1,6 +1,6 @@
 use core::{ffi::c_int, num::NonZero};
 
-use crate::error::{Error, Result};
+use crate::error::{Error, ErrorReason, ParameterError, Result};
 
 /// A SQLite [prepared statement](crate::Statement) parameter index, used when
 /// [binding](crate::Bind) values to a statement.
@@ -18,10 +18,10 @@ impl BindIndex {
     /// ```
     pub const INITIAL: Self = Self(NonZero::new(1).unwrap());
 
-    pub const fn new(value: c_int) -> Result<Self, ()> {
+    pub const fn new(value: c_int) -> Option<Self> {
         match NonZero::new(value) {
-            Some(value) => Ok(Self(value)),
-            None => Err(Error::range()),
+            Some(index) if value > 0 => Some(Self(index)),
+            _ => None,
         }
     }
 
@@ -105,70 +105,56 @@ impl From<BindIndex> for usize {
 }
 
 impl TryFrom<i32> for BindIndex {
-    type Error = Error<()>;
+    type Error = Error;
 
-    fn try_from(value: i32) -> Result<Self, ()> {
-        if value <= 0 {
-            Err(Error::range())
-        } else {
-            Self::new(value as c_int)
-        }
+    fn try_from(value: i32) -> Result<Self> {
+        Self::new(value as c_int).ok_or_else(invalid_index)
     }
 }
 
 impl TryFrom<i64> for BindIndex {
-    type Error = Error<()>;
+    type Error = Error;
 
-    fn try_from(value: i64) -> Result<Self, ()> {
-        match c_int::try_from(value) {
-            Ok(value) if value > 0 => Self::new(value),
-            _ => Err(Error::range()),
-        }
+    fn try_from(value: i64) -> Result<Self> {
+        Self::new(value as c_int).ok_or_else(invalid_index)
     }
 }
 
 impl TryFrom<isize> for BindIndex {
-    type Error = Error<()>;
+    type Error = Error;
 
-    fn try_from(value: isize) -> Result<Self, ()> {
-        match c_int::try_from(value) {
-            Ok(value) if value > 0 => Self::new(value),
-            _ => Err(Error::range()),
-        }
+    fn try_from(value: isize) -> Result<Self> {
+        Self::new(value as c_int).ok_or_else(invalid_index)
     }
 }
 
 impl TryFrom<u32> for BindIndex {
-    type Error = Error<()>;
+    type Error = Error;
 
-    fn try_from(value: u32) -> Result<Self, ()> {
-        match c_int::try_from(value) {
-            Ok(value) if value > 0 => Self::new(value),
-            _ => Err(Error::range()),
-        }
+    fn try_from(value: u32) -> Result<Self> {
+        Self::new(value as c_int).ok_or_else(invalid_index)
     }
 }
 
 impl TryFrom<u64> for BindIndex {
-    type Error = Error<()>;
+    type Error = Error;
 
-    fn try_from(value: u64) -> Result<Self, ()> {
-        match c_int::try_from(value) {
-            Ok(value) if value > 0 => Self::new(value),
-            _ => Err(Error::range()),
-        }
+    fn try_from(value: u64) -> Result<Self> {
+        Self::new(value as c_int).ok_or_else(invalid_index)
     }
 }
 
 impl TryFrom<usize> for BindIndex {
-    type Error = Error<()>;
+    type Error = Error;
 
-    fn try_from(value: usize) -> Result<Self, ()> {
-        match c_int::try_from(value) {
-            Ok(value) if value > 0 => Self::new(value),
-            _ => Err(Error::range()),
-        }
+    fn try_from(value: usize) -> Result<Self> {
+        Self::new(value as c_int).ok_or_else(invalid_index)
     }
+}
+
+#[cold]
+fn invalid_index() -> Error {
+    ErrorReason::Parameter(ParameterError::InvalidIndex).into()
 }
 
 #[cfg(feature = "lang-step-trait")]

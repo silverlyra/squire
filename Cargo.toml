@@ -19,7 +19,7 @@ license = "Apache-2.0"
 
 [features]
 # default = ["linked", "common", "multi-thread"]
-default = ["bundled", "common", "derive", "multi-thread"]
+default = ["bundled", "complete", "derive", "multi-thread"]
 derive = ["dep:squire-derive"]
 
 common = ["sqlite/common", "json", "mutex"]

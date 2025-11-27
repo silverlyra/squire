@@ -5,7 +5,7 @@ use crate::{
     bind::Bind,
     column::ColumnIndexes,
     connection::Connection,
-    error::{Error, ErrorLocation, ErrorMessage, Result},
+    error::{Error, ErrorCode, Result},
     ffi,
     param::Parameters,
     row::{Row, Rows},
@@ -42,7 +42,7 @@ impl<'c> Statement<'c> {
         connection: &'c Connection,
         query: impl AsRef<str>,
         options: PrepareOptions,
-    ) -> Result<Self, (ErrorMessage, Option<ErrorLocation>)> {
+    ) -> Result<Self> {
         ffi::Statement::prepare(
             connection.internal_ref(),
             query.as_ref(),
@@ -59,8 +59,10 @@ impl<'c> Statement<'c> {
     where
         P: Parameters<'s>,
     {
-        let indexes =
-            P::resolve(self).ok_or(Error::resolve("cannot resolve bind parameter indexes"))?;
+        let indexes = P::resolve(self).ok_or_else(
+            #[cold]
+            || Error::new(ErrorCode::SQUIRE_PARAMETER_RESOLVE),
+        )?;
 
         let mut binding = self.binding();
         parameters.bind(&mut binding, indexes)?;
@@ -101,7 +103,7 @@ impl<'c> Statement<'c> {
     /// [Finalize][] (i.e., destroy) the prepared statement.
     ///
     /// [Finalize]: https://sqlite.org/c3ref/finalize.html
-    pub fn finalize(mut self) -> Result<(), ()> {
+    pub fn finalize(mut self) -> Result<()> {
         let result = unsafe { self.internal_mut().finalize() };
         mem::forget(self); // or Drop will also try to finalize
         result
@@ -150,7 +152,7 @@ where
     where
         's: 'e;
 
-    fn reset(&mut self) -> Result<(), ()>;
+    fn reset(&mut self) -> Result<()>;
 }
 
 impl<'c, 's> Execute<'c, 's> for Statement<'c>
@@ -172,7 +174,7 @@ where
     }
 
     #[inline(always)]
-    fn reset(&mut self) -> Result<(), ()> {
+    fn reset(&mut self) -> Result<()> {
         Ok(())
     }
 }
@@ -193,7 +195,7 @@ impl<'c, 's> Execute<'c, 's> for &'s mut Statement<'c> {
     }
 
     #[inline(always)]
-    fn reset(&mut self) -> Result<(), ()> {
+    fn reset(&mut self) -> Result<()> {
         unsafe { self.internal_mut().reset() }
     }
 }
@@ -298,7 +300,7 @@ where
         self.statement
     }
 
-    fn reset(&mut self) -> Result<(), ()> {
+    fn reset(&mut self) -> Result<()> {
         let inner = self.statement.internal_mut();
 
         inner.clear()?;
@@ -331,7 +333,7 @@ where
         self.statement
     }
 
-    fn reset(&mut self) -> Result<(), ()> {
+    fn reset(&mut self) -> Result<()> {
         let inner = self.statement.internal_mut();
 
         unsafe { inner.reset() }
@@ -575,7 +577,7 @@ where
     }
 
     fn max(&self) -> Option<BindIndex> {
-        BindIndex::new(self.count()).ok()
+        BindIndex::new(self.count())
     }
 }
 
