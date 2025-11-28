@@ -120,6 +120,9 @@ impl Library {
             let name = key.as_str();
             println!("cargo:rustc-cfg=sqlite_has_{name}");
         }
+
+        // Include SQLite library version
+        println!("cargo::rustc-env=SQUIRE_SQLITE_VERSION={}", self.version());
     }
 
     #[cfg(feature = "metadata")]

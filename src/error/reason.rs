@@ -34,15 +34,15 @@ pub enum ErrorReason {
     /// Extended read-only error codes.
     ReadOnly(ReadOnlyError),
 
-    /// Extended [`ErrorReason::Fetch`] error codes.
+    /// Extended [`ErrorCategory::Fetch`] error codes.
     ///
     /// (This [error code](ErrorReason) is defined by Squire; not SQLite.
-    /// No SQLite [result codes][] correspond to `ErrorReason::Parameter`.)
+    /// No SQLite [result codes][] correspond to `ErrorReason::Fetch`.)
     ///
     /// [result codes]: https://sqlite.org/rescode.html
     Fetch(FetchError),
 
-    /// Extended [`ErrorReason::Parameter`] error codes.
+    /// Extended [`ErrorCategory::Parameter`] error codes.
     ///
     /// (This [error code](ErrorReason) is defined by Squire; not SQLite.
     /// No SQLite [result codes][] correspond to `ErrorReason::Parameter`.)
@@ -110,8 +110,8 @@ impl ErrorReason {
     /// Find the [`ErrorReason`] for a SQLite [result code][].
     ///
     /// [result code]: https://sqlite.org/rescode.html
-    #[allow(deprecated)]
     pub const fn from_raw_code(code: i32) -> Option<Self> {
+        #[allow(deprecated)]
         match code {
             // Abort errors
             sqlite::SQLITE_ABORT_ROLLBACK => Some(Self::Aborted(AbortError::Rollback)),

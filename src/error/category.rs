@@ -135,7 +135,7 @@ pub enum ErrorCategory {
     /// A column value stored in SQLite could not be read into a Rust type.
     ///
     /// (This [error category](ErrorCategory) is defined by Squire; not SQLite.
-    /// No SQLite [result codes][] correspond to `ErrorCategory::Parameter`.)
+    /// No SQLite [result codes][] correspond to `ErrorCategory::Fetch`.)
     ///
     /// [result codes]: https://sqlite.org/rescode.html
     Fetch = super::code::SQUIRE_ERROR_FETCH,

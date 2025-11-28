@@ -14,6 +14,29 @@ use crate::{
     statement::{PrepareOptions, Statement},
 };
 
+/// A _connection_ to one or more open SQLite database(s).
+///
+/// Use `Connection` to [prepare](Self::prepare) and [execute](Self::execute)
+/// SQL statements. A `Connection` will remain open until [closed](Self::close)
+/// or [dropped](core::ops::Drop).
+///
+/// (Even though SQLite is a local database, without a network or socket
+/// connection to a remote server, SQLite still uses the term “connection”.)
+///
+/// # Examples
+///
+/// ```rust
+/// use squire::{Connection, Database};
+///
+/// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+/// let connection = Connection::open(Database::memory())?;
+///
+/// let mut statement = connection.prepare("SELECT sqlite_version();")?;
+/// let version: String = statement.query(())?.one()?;
+#[doc = concat!("assert_eq!(\"", env!("SQUIRE_SQLITE_VERSION"), "\", version);")]
+/// # Ok(())
+/// # }
+/// ```
 #[derive(Debug)]
 pub struct Connection {
     inner: ffi::Connection,
