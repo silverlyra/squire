@@ -175,11 +175,11 @@ const ENCODING_UTF8: core::ffi::c_uchar = SQLITE_UTF8 as core::ffi::c_uchar;
 
 #[cfg_attr(
     target_pointer_width = "32",
-    doc = "[Binds](Bind) a [`String`] via [`sqlite3_bind_blob`]."
+    doc = "[Binds](Bind) a [`ffi::String`](String) via [`sqlite3_bind_text`]."
 )]
 #[cfg_attr(
     target_pointer_width = "64",
-    doc = "[Binds](Bind) a [`String`] via [`sqlite3_bind_blob64`]."
+    doc = "[Binds](Bind) a [`ffi::String`](String) via [`sqlite3_bind_text64`]."
 )]
 ///
 /// The string's memory is transferred to SQLite, which will free it via
@@ -230,7 +230,7 @@ impl StringBuilder {
     /// [Create][] a [`StringBuilder`].
     ///
     /// Strings built by this `StringBuilder` will have a maximum length of the
-    /// [`SQLITE_LIMIT_LENGTH`] limit of the `Connection`.
+    /// [`SQLITE_LIMIT_LENGTH`] limit of the [`Connection`](super::Connection).
     ///
     /// [create]: https://sqlite.org/c3ref/str_new.html
     /// [`SQLITE_LIMIT_LENGTH`]: https://sqlite.org/c3ref/c_limit_attached.html#sqlitelimitlength
@@ -246,7 +246,7 @@ impl StringBuilder {
     }
 
     /// [Create][] a new [`StringBuilder`] whose limits aren't defined
-    /// by a [`Connection`].
+    /// by a [`Connection`](super::Connection).
     ///
     /// [create]: https://sqlite.org/c3ref/str_new.html
     pub fn detached() -> Self {
@@ -282,11 +282,11 @@ impl StringBuilder {
         unsafe { text.append(self.ptr) };
     }
 
-    /// Consume the builder and return the [finished] string.
+    /// Consume the builder and return the [finished][] string.
     ///
     /// Returns an error if an allocation error occurred during building.
     ///
-    /// [finish]: https://sqlite.org/c3ref/str_finish.html
+    /// [finished]: https://sqlite.org/c3ref/str_finish.html
     #[doc(alias = "sqlite3_str_finish")]
     pub fn finish(self) -> Result<String> {
         let len = self.len();

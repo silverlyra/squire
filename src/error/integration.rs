@@ -24,7 +24,7 @@ pub enum IntegrationError {
 
     /// An error from [`serde_sqlite_jsonb`][].
     ///
-    /// [`serde_json`]: https://lib.rs/serde_sqlite_jsonb
+    /// [`serde_sqlite_jsonb`]: https://lib.rs/serde_sqlite_jsonb
     #[cfg(all(feature = "serde", feature = "jsonb"))]
     #[cfg_attr(docsrs, doc(cfg(all(feature = "serde", feature = "jsonb"))))]
     Jsonb(ErrorContainer<squire_serde::jsonb::Error>),

@@ -25,5 +25,5 @@ pub use connection::{Connected, Connection};
 #[cfg_attr(docsrs, doc(cfg(any(feature = "mutex", feature = "serialized"))))]
 pub use mutex::{Mutex, MutexGuard, MutexRef, StaticMutex};
 pub use statement::{Conclusion, Execute, Statement};
-pub use string::{String, StringBuilder};
+pub use string::{Append, String, StringBuilder};
 pub use value::Fetch;

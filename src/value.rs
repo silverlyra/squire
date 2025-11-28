@@ -79,13 +79,14 @@ identity!(i64);
 primitive!(i64 :> u64);
 identity!(Type);
 
-/// Read the column as an [`f64`] with
-/// [`sqlite3_column_double`](sqlite::sqlite3_column_double), and cast to
+/// Read the column as an [`f64`] with [`sqlite3_column_double`][], and cast to
 /// [`f32`] with `value as f32`.
 ///
 /// If the value overflows an `f32` (a previously [finite](f64::is_finite())
-/// `f64` became [infinite](f32::is_infinite())), returns a [range
-/// error](FetchError::Range).
+/// `f64` became [infinite](f32::is_infinite())), returns a [range error][].
+///
+/// [`sqlite3_column_double`]: sqlite::sqlite3_column_double
+/// [range error]: crate::FetchError::Range
 impl<'r> Fetch<'r> for f32 {
     type Value = f64;
 

@@ -140,8 +140,8 @@ pub enum ErrorCategory {
     /// [result codes]: https://sqlite.org/rescode.html
     Fetch = super::code::SQUIRE_ERROR_FETCH,
 
-    /// A parameter could not be [bound](crate::Bind); the [error
-    /// message](ErrorMessage) gives more detail about the underlying error.
+    /// A parameter could not be [bound](crate::Bind); the error message gives
+    /// more detail about the underlying error.
     ///
     /// (This [error category](ErrorCategory) is defined by Squire; not SQLite.
     /// No SQLite [result codes][] correspond to `ErrorCategory::Parameter`.)
