@@ -87,4 +87,4 @@ jobs:
         if: matrix.channel == 'nightly'
       - name: Run tests (minimal features)
         run: >-
-          cargo test --no-default-features --features '${{ matrix.sqlite }} single-thread'
+          cargo test --no-default-features --features '${{ matrix.sqlite }} single-thread' -- --test-threads=1
