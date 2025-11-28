@@ -1,6 +1,6 @@
 use core::ffi::c_int;
 
-use crate::error::{Error, Result};
+use crate::error::{Error, ErrorCategory, Result};
 
 /// A SQLite column index, used for [reading values][] out of queried rows.
 ///
@@ -81,70 +81,75 @@ impl From<ColumnIndex> for usize {
 }
 
 impl TryFrom<i32> for ColumnIndex {
-    type Error = Error<()>;
+    type Error = Error;
 
-    fn try_from(value: i32) -> Result<Self, ()> {
-        if value < 0 {
-            Err(Error::range())
-        } else {
+    fn try_from(value: i32) -> Result<Self> {
+        if value >= 0 {
             Ok(Self::new(value as c_int))
+        } else {
+            Err(invalid_index())
         }
     }
 }
 
 impl TryFrom<i64> for ColumnIndex {
-    type Error = Error<()>;
+    type Error = Error;
 
-    fn try_from(value: i64) -> Result<Self, ()> {
+    fn try_from(value: i64) -> Result<Self> {
         match c_int::try_from(value) {
             Ok(value) if value >= 0 => Ok(Self::new(value)),
-            _ => Err(Error::range()),
+            _ => Err(invalid_index()),
         }
     }
 }
 
 impl TryFrom<isize> for ColumnIndex {
-    type Error = Error<()>;
+    type Error = Error;
 
-    fn try_from(value: isize) -> Result<Self, ()> {
+    fn try_from(value: isize) -> Result<Self> {
         match c_int::try_from(value) {
             Ok(value) if value >= 0 => Ok(Self::new(value)),
-            _ => Err(Error::range()),
+            _ => Err(invalid_index()),
         }
     }
 }
 
 impl TryFrom<u32> for ColumnIndex {
-    type Error = Error<()>;
+    type Error = Error;
 
-    fn try_from(value: u32) -> Result<Self, ()> {
+    fn try_from(value: u32) -> Result<Self> {
         match c_int::try_from(value) {
             Ok(value) => Ok(Self::new(value)),
-            Err(_) => Err(Error::range()),
+            Err(_) => Err(invalid_index()),
         }
     }
 }
 
 impl TryFrom<u64> for ColumnIndex {
-    type Error = Error<()>;
+    type Error = Error;
 
-    fn try_from(value: u64) -> Result<Self, ()> {
+    fn try_from(value: u64) -> Result<Self> {
         match c_int::try_from(value) {
             Ok(value) => Ok(Self::new(value)),
-            Err(_) => Err(Error::range()),
+            Err(_) => Err(invalid_index()),
         }
     }
 }
 
 impl TryFrom<usize> for ColumnIndex {
-    type Error = Error<()>;
+    type Error = Error;
 
-    fn try_from(value: usize) -> Result<Self, ()> {
+    fn try_from(value: usize) -> Result<Self> {
         match c_int::try_from(value) {
             Ok(value) => Ok(Self::new(value)),
-            Err(_) => Err(Error::range()),
+            Err(_) => Err(invalid_index()),
         }
     }
+}
+
+#[cold]
+fn invalid_index() -> Error {
+    ErrorCategory::Range.into()
 }
 
 #[cfg(feature = "lang-step-trait")]

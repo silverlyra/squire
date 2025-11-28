@@ -18,8 +18,7 @@ repository = "https://github.com/silverlyra/squire"
 license = "Apache-2.0"
 
 [features]
-# default = ["linked", "common", "multi-thread"]
-default = ["bundled", "common", "derive", "multi-thread"]
+default = ["linked", "common", "derive", "multi-thread"]
 derive = ["dep:squire-derive"]
 
 common = ["sqlite/common", "json", "mutex"]
@@ -64,7 +63,8 @@ stat4 = ["sqlite/stat4"]
 trace = ["sqlite/trace"]
 utf-16 = ["sqlite/utf-16"]
 
-integrations = ["jsonb", "serde", "url", "widestring"]
+integrations = ["jiff", "jsonb", "serde", "url", "widestring"]
+jiff = ["dep:jiff"]
 jsonb = ["json", "squire-serde?/jsonb"]
 serde = ["dep:squire-serde"]
 url = ["dep:url"]
@@ -93,6 +93,10 @@ path = "crates/sys"
 version = "0.0.1-alpha.4"
 default-features = false
 
+[dependencies.jiff]
+version = "0.2"
+optional = true
+
 [dependencies.url]
 version = "^2.5"
 optional = true
@@ -114,6 +118,10 @@ features = ["derive"]
 [[test]]
 name = "columns"
 required-features = ["derive"]
+
+[[test]]
+name = "jiff"
+required-features = ["jiff"]
 
 [[test]]
 name = "json"

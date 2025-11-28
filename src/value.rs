@@ -1,5 +1,5 @@
 use crate::{
-    error::{Error, FetchError, Result},
+    error::{Error, ErrorCode, Result},
     ffi::{self, Fetch as _},
     statement::Statement,
     types::{Borrowed, ColumnIndex, RowId, Type},
@@ -56,7 +56,7 @@ macro_rules! primitive {
             fn from_column_value(value: Self::Value) -> Result<Self> {
                 <$t as TryFrom<$v>>::try_from(value).map_err(
                     #[cold]
-                    |err| Error::fetch(FetchError::Range, err.to_string()),
+                    |_| Error::new(ErrorCode::SQUIRE_FETCH_RANGE),
                 )
             }
         }
@@ -79,13 +79,14 @@ identity!(i64);
 primitive!(i64 :> u64);
 identity!(Type);
 
-/// Read the column as an [`f64`] with
-/// [`sqlite3_column_double`](sqlite::sqlite3_column_double), and cast to
+/// Read the column as an [`f64`] with [`sqlite3_column_double`][], and cast to
 /// [`f32`] with `value as f32`.
 ///
 /// If the value overflows an `f32` (a previously [finite](f64::is_finite())
-/// `f64` became [infinite](f32::is_infinite())), returns a [range
-/// error](FetchError::Range).
+/// `f64` became [infinite](f32::is_infinite())), returns a [range error][].
+///
+/// [`sqlite3_column_double`]: sqlite::sqlite3_column_double
+/// [range error]: crate::FetchError::Range
 impl<'r> Fetch<'r> for f32 {
     type Value = f64;
 
@@ -95,8 +96,8 @@ impl<'r> Fetch<'r> for f32 {
 
         // Check if a finite value became infinite (overflow)
         if value.is_finite() && result.is_infinite() {
-            Err(Error::fetch(
-                FetchError::Range,
+            Err(Error::with_detail(
+                ErrorCode::SQUIRE_FETCH_RANGE,
                 format!("f64 value {} overflows f32 range", value),
             ))
         } else {
@@ -126,7 +127,7 @@ impl<'r> Fetch<'r> for RowId {
     fn from_column_value(value: Self::Value) -> Result<Self> {
         RowId::new(value).ok_or_else(
             #[cold]
-            || Error::fetch(FetchError::Range, "SQLite row ID cannot be 0"),
+            || Error::with_detail(ErrorCode::SQUIRE_FETCH_RANGE, "SQLite row ID cannot be 0"),
         )
     }
 }

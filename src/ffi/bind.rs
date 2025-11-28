@@ -6,7 +6,7 @@ use core::{
 use super::statement::Statement;
 use crate::{
     blob::Reservation,
-    error::{Error, ErrorMessage, Result},
+    error::{Error, Result},
     types::BindIndex,
 };
 
@@ -89,13 +89,15 @@ macro_rules! bind {
         {
             let result = unsafe { $fn($stmt.as_ptr(), $index.value(), $($arg),*) };
 
-            match Error::<ErrorMessage>::from_connection($stmt, result) {
-                Some(err) => Err(err),
+            match Error::from_connection($stmt, result) {
                 None => Ok(()),
+                Some(err) => Err(err),
             }
         }
     };
 }
+
+pub(crate) use bind;
 
 /// [Binds](Bind) an [`i32`] via [`sqlite3_bind_int`].
 impl<'b> Bind<'b> for i32 {

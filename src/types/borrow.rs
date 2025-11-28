@@ -7,7 +7,7 @@ use sqlite::{SQLITE_UTF8, sqlite3_bind_blob64, sqlite3_bind_text64, sqlite3_uint
 use sqlite::{sqlite3_bind_blob, sqlite3_bind_text};
 
 use crate::{
-    error::Result,
+    error::{Error, Result},
     ffi::{Bind, Fetch, Statement},
     types::{BindIndex, ColumnIndex},
 };
@@ -59,8 +59,6 @@ impl<'a, T: ?Sized> Deref for Borrowed<'a, T> {
     }
 }
 
-// Bind implementations
-
 #[cfg_attr(
     target_pointer_width = "32",
     doc = "[Binds](Bind) a [`&str`](str) via [`sqlite3_bind_text`]."
@@ -81,7 +79,6 @@ impl<'b, 'a: 'b> Bind<'b> for Borrowed<'a, str> {
     {
         #[cfg(target_pointer_width = "32")]
         {
-            use crate::error::{Error, ErrorMessage};
             let result = unsafe {
                 sqlite3_bind_text(
                     statement.as_ptr(),
@@ -91,7 +88,7 @@ impl<'b, 'a: 'b> Bind<'b> for Borrowed<'a, str> {
                     SQLITE_STATIC,
                 )
             };
-            match Error::<ErrorMessage>::from_connection(statement, result) {
+            match Error::from_connection(statement, result) {
                 Some(err) => Err(err),
                 None => Ok(()),
             }
@@ -99,7 +96,6 @@ impl<'b, 'a: 'b> Bind<'b> for Borrowed<'a, str> {
 
         #[cfg(target_pointer_width = "64")]
         {
-            use crate::error::{Error, ErrorMessage};
             let result = unsafe {
                 sqlite3_bind_text64(
                     statement.as_ptr(),
@@ -110,7 +106,7 @@ impl<'b, 'a: 'b> Bind<'b> for Borrowed<'a, str> {
                     ENCODING_UTF8,
                 )
             };
-            match Error::<ErrorMessage>::from_connection(statement, result) {
+            match Error::from_connection(statement, result) {
                 Some(err) => Err(err),
                 None => Ok(()),
             }
@@ -138,7 +134,6 @@ impl<'b, 'a: 'b> Bind<'b> for Borrowed<'a, [u8]> {
     {
         #[cfg(target_pointer_width = "32")]
         {
-            use crate::error::{Error, ErrorMessage};
             use core::ffi::c_void;
             let result = unsafe {
                 sqlite3_bind_blob(
@@ -149,7 +144,7 @@ impl<'b, 'a: 'b> Bind<'b> for Borrowed<'a, [u8]> {
                     SQLITE_STATIC,
                 )
             };
-            match Error::<ErrorMessage>::from_connection(statement, result) {
+            match Error::from_connection(statement, result) {
                 Some(err) => Err(err),
                 None => Ok(()),
             }
@@ -157,7 +152,6 @@ impl<'b, 'a: 'b> Bind<'b> for Borrowed<'a, [u8]> {
 
         #[cfg(target_pointer_width = "64")]
         {
-            use crate::error::{Error, ErrorMessage};
             use core::ffi::c_void;
             let result = unsafe {
                 sqlite3_bind_blob64(
@@ -168,15 +162,13 @@ impl<'b, 'a: 'b> Bind<'b> for Borrowed<'a, [u8]> {
                     SQLITE_STATIC,
                 )
             };
-            match Error::<ErrorMessage>::from_connection(statement, result) {
+            match Error::from_connection(statement, result) {
                 Some(err) => Err(err),
                 None => Ok(()),
             }
         }
     }
 }
-
-// Fetch implementations
 
 impl<'r> Fetch<'r> for Borrowed<'r, str> {
     unsafe fn fetch<'c>(statement: &'r Statement<'c>, column: ColumnIndex) -> Self

@@ -6,7 +6,7 @@ use squire_serde::{Deserialize, Serialize};
 
 use crate::{
     bind::Bind,
-    error::{Error, FetchError, Result},
+    error::{Error, Result},
     types::Borrowed,
     value::Fetch,
 };
@@ -24,7 +24,7 @@ where
     type Value = Vec<u8>;
 
     fn into_bind_value(self) -> Result<Self::Value> {
-        json::to_vec(&self.0).map_err(|err| Error::bind(err.to_string()))
+        json::to_vec(&self.0).map_err(Error::from_bind)
     }
 }
 
@@ -38,7 +38,7 @@ where
     fn from_column_value(value: Self::Value) -> Result<Self> {
         match json::from_slice(value.into_inner()) {
             Ok(value) => Ok(Self(value)),
-            Err(err) => Err(Error::fetch(FetchError::Parse, err.to_string())),
+            Err(err) => Err(Error::from_fetch(err)),
         }
     }
 }
@@ -69,7 +69,7 @@ where
     type Value = Vec<u8>;
 
     fn into_bind_value(self) -> Result<Self::Value> {
-        jsonb::to_vec(&self.0).map_err(|err| Error::bind(err.to_string()))
+        jsonb::to_vec(&self.0).map_err(Error::from_bind)
     }
 }
 
@@ -83,7 +83,7 @@ where
     fn from_column_value(value: Self::Value) -> Result<Self> {
         match jsonb::from_slice(value.into_inner()) {
             Ok(value) => Ok(Self(value)),
-            Err(err) => Err(Error::fetch(FetchError::Parse, err.to_string())),
+            Err(err) => Err(Error::from_fetch(err)),
         }
     }
 }

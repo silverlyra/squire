@@ -1,6 +1,6 @@
 use crate::{
     blob::Reservation,
-    error::{Error, Result},
+    error::{Error, ErrorCode, Result},
     ffi,
     types::{Borrowed, RowId},
 };
@@ -88,7 +88,12 @@ impl<'b> Bind<'b> for u64 {
     fn into_bind_value(self) -> Result<Self::Value> {
         i64::try_from(self).map_err(
             #[cold]
-            |_| Error::bind("u64 value cannot fit in i64 parameter"),
+            |_| {
+                Error::with_detail(
+                    ErrorCode::SQUIRE_PARAMETER_RANGE,
+                    "u64 value cannot fit in i64 parameter",
+                )
+            },
         )
     }
 }
@@ -100,7 +105,12 @@ impl<'b> Bind<'b> for usize {
     fn into_bind_value(self) -> Result<Self::Value> {
         i64::try_from(self).map_err(
             #[cold]
-            |_| Error::bind("usize value cannot fit in i64 parameter"),
+            |_| {
+                Error::with_detail(
+                    ErrorCode::SQUIRE_PARAMETER_RANGE,
+                    "usize value cannot fit in i64 parameter",
+                )
+            },
         )
     }
 }

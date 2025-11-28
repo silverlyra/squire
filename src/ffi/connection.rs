@@ -56,13 +56,13 @@ impl Connection {
     /// Close the SQLite database connection.
     #[inline]
     #[doc(alias = "sqlite3_close")]
-    pub fn close(mut self) -> Result<(), ()> {
+    pub fn close(mut self) -> Result<()> {
         // SAFETY: We own `self` here and will let it be dropped.
         unsafe { self.dispose() }
     }
 
     #[inline]
-    pub(crate) unsafe fn dispose(&mut self) -> Result<(), ()> {
+    pub(crate) unsafe fn dispose(&mut self) -> Result<()> {
         call! { sqlite3_close(self.as_ptr()) }
     }
 
