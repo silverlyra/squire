@@ -146,12 +146,16 @@ impl From<url::ParseError> for IntegrationError {
 }
 
 impl fmt::Display for IntegrationError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            IntegrationError::Jiff(error) => error.fmt(f),
-            IntegrationError::Json(ErrorContainer(error)) => error.fmt(f),
-            IntegrationError::Jsonb(ErrorContainer(error)) => error.fmt(f),
-            IntegrationError::Url(error) => error.fmt(f),
+    fn fmt(&self, #[allow(unused_variables)] f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match *self {
+            #[cfg(feature = "jiff")]
+            IntegrationError::Jiff(ref error) => error.fmt(f),
+            #[cfg(all(feature = "serde", feature = "json"))]
+            IntegrationError::Json(ErrorContainer(ref error)) => error.fmt(f),
+            #[cfg(all(feature = "serde", feature = "jsonb"))]
+            IntegrationError::Jsonb(ErrorContainer(ref error)) => error.fmt(f),
+            #[cfg(feature = "url")]
+            IntegrationError::Url(ref error) => error.fmt(f),
         }
     }
 }

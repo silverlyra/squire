@@ -12,7 +12,7 @@ mod reason;
 
 pub use category::ErrorCategory;
 pub use code::ErrorCode;
-pub use integration::IntegrationError;
+pub use integration::{ErrorContainer, IntegrationError};
 pub use location::ErrorLocation;
 pub use reason::{
     AbortError, AuthorizationError, BusyError, CantOpenError, ConstraintError, CorruptError,
@@ -92,12 +92,14 @@ impl Error {
         })
     }
 
+    #[allow(dead_code)]
     #[cold]
     #[inline(never)]
     pub(crate) fn from_bind(source: impl Into<IntegrationError>) -> Self {
         Self::with_detail(ErrorCode::SQUIRE_PARAMETER_BIND, source.into())
     }
 
+    #[allow(dead_code)]
     #[cold]
     #[inline(never)]
     pub(crate) fn from_fetch(source: impl Into<IntegrationError>) -> Self {
@@ -198,15 +200,15 @@ impl core::error::Error for Error {
 
     fn source(&self) -> Option<&(dyn core::error::Error + 'static)> {
         if let Some(integration) = self.as_integration() {
-            match integration {
+            match *integration {
                 #[cfg(feature = "jiff")]
-                IntegrationError::Jiff(error) => Some(error),
+                IntegrationError::Jiff(ref error) => Some(error),
                 #[cfg(all(feature = "serde", feature = "json"))]
-                IntegrationError::Json(container) => Some(container.as_ref()),
+                IntegrationError::Json(ref container) => Some(container.as_ref()),
                 #[cfg(all(feature = "serde", feature = "jsonb"))]
-                IntegrationError::Jsonb(container) => Some(container.as_ref()),
+                IntegrationError::Jsonb(ref container) => Some(container.as_ref()),
                 #[cfg(feature = "url")]
-                IntegrationError::Url(error) => Some(error),
+                IntegrationError::Url(ref error) => Some(error),
             }
         } else {
             None

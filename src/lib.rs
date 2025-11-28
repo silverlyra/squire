@@ -30,7 +30,7 @@ pub use connection::{Connection, ConnectionBuilder};
 pub use database::{Database, IntoLocation};
 pub use error::{
     AbortError, AuthorizationError, BusyError, CantOpenError, ConstraintError, CorruptError, Error,
-    ErrorCategory, ErrorCode, ErrorLocation, ErrorReason, FetchError, GeneralError,
+    ErrorCategory, ErrorCode, ErrorContainer, ErrorLocation, ErrorReason, FetchError, GeneralError,
     IntegrationError, IoError, LockedError, ParameterError, ReadOnlyError, Result,
 };
 pub use param::Parameters;
