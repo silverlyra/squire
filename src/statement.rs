@@ -3,7 +3,7 @@ use sqlite::{SQLITE_PREPARE_NO_VTAB, SQLITE_PREPARE_PERSISTENT, sqlite3};
 
 use crate::{
     bind::Bind,
-    column::ColumnIndexes,
+    column::{ColumnIndexes, Columns},
     connection::Connection,
     error::{Error, ErrorCode, Result},
     ffi,
@@ -374,6 +374,17 @@ where
         C: ColumnIndexes,
     {
         Rows::new(self)
+    }
+
+    pub fn one<C>(self) -> Result<C>
+    where
+        C: for<'r> Columns<'r>,
+    {
+        match Rows::new(self)?.next() {
+            Ok(Some(row)) => Ok(row),
+            Ok(None) => Err(Error::row_not_returned()),
+            Err(err) => Err(err),
+        }
     }
 
     pub fn run(self) -> Result<isize> {

@@ -49,6 +49,14 @@ pub enum ErrorReason {
     ///
     /// [result codes]: https://sqlite.org/rescode.html
     Parameter(ParameterError),
+
+    /// Extended [`ErrorCategory::Row`] error codes.
+    ///
+    /// (This [error code](ErrorReason) is defined by Squire; not SQLite.
+    /// No SQLite [result codes][] correspond to `ErrorReason::Row`.)
+    ///
+    /// [result codes]: https://sqlite.org/rescode.html
+    Row(RowError),
 }
 
 impl ErrorReason {
@@ -68,6 +76,7 @@ impl ErrorReason {
 
             ErrorReason::Fetch(_) => ErrorCategory::Fetch,
             ErrorReason::Parameter(_) => ErrorCategory::Parameter,
+            ErrorReason::Row(_) => ErrorCategory::Parameter,
         }
     }
 
@@ -87,6 +96,7 @@ impl ErrorReason {
 
             Self::Fetch(err) => err as i32,
             Self::Parameter(err) => err as i32,
+            Self::Row(err) => err as i32,
         };
 
         unsafe { ErrorCode::new_unchecked(code) }
@@ -212,6 +222,7 @@ impl ErrorReason {
             super::code::SQUIRE_ERROR_PARAMETER_INVALID_INDEX => {
                 Some(Self::Parameter(ParameterError::InvalidIndex))
             }
+            super::code::SQUIRE_ERROR_ROW_NOT_RETURNED => Some(Self::Row(RowError::NotReturned)),
 
             _ => None,
         }
@@ -627,4 +638,17 @@ pub enum ParameterError {
     /// Creating a [`BindIndex`](crate::BindIndex) failed because the input
     /// value was zero or negative.
     InvalidIndex = super::code::SQUIRE_ERROR_PARAMETER_INVALID_INDEX,
+}
+
+/// An error retrieving a row from SQLite.
+///
+/// (This [error category](ErrorCategory) is defined by Squire; not SQLite.
+/// No SQLite [result codes][] correspond to `RowError`.)
+///
+/// [result codes]: https://sqlite.org/rescode.html
+#[derive(PartialEq, Eq, Copy, Clone, Debug)]
+#[repr(i32)]
+pub enum RowError {
+    /// The query didn't return a row.
+    NotReturned = super::code::SQUIRE_ERROR_ROW_NOT_RETURNED,
 }

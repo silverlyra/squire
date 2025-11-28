@@ -106,6 +106,12 @@ impl Error {
         Self::with_detail(ErrorCode::SQUIRE_FETCH_PARSE, source.into())
     }
 
+    #[cold]
+    #[inline(never)]
+    pub(crate) fn row_not_returned() -> Self {
+        Self::new(ErrorCode::SQUIRE_ROW_NOT_RETURNED)
+    }
+
     /// The [`ErrorCode`] identifying what error occurred.
     pub const fn code(&self) -> ErrorCode {
         self.inner.code

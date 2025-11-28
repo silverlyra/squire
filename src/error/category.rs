@@ -148,6 +148,14 @@ pub enum ErrorCategory {
     ///
     /// [result codes]: https://sqlite.org/rescode.html
     Parameter = super::code::SQUIRE_ERROR_PARAMETER,
+
+    /// A column value stored in SQLite could not be read into a Rust type.
+    ///
+    /// (This [error category](ErrorCategory) is defined by Squire; not SQLite.
+    /// No SQLite [result codes][] correspond to `ErrorCategory::Row`.)
+    ///
+    /// [result codes]: https://sqlite.org/rescode.html
+    Row = super::code::SQUIRE_ERROR_ROW,
 }
 
 impl ErrorCategory {
@@ -190,6 +198,7 @@ impl ErrorCategory {
             sqlite::SQLITE_NOTADB => Some(Self::InvalidDatabase),
             super::code::SQUIRE_ERROR_FETCH => Some(Self::Fetch),
             super::code::SQUIRE_ERROR_PARAMETER => Some(Self::Parameter),
+            super::code::SQUIRE_ERROR_ROW => Some(Self::Row),
             _ => None,
         }
     }
