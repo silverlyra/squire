@@ -98,7 +98,7 @@ impl String {
     ///
     /// [`sqlite3_free`]: https://sqlite.org/c3ref/free.html
     #[inline]
-    pub fn into_raw_parts(self) -> (*const c_char, usize) {
+    pub const fn into_raw_parts(self) -> (*const c_char, usize) {
         let (ptr, len) = (self.as_ptr(), self.len);
         mem::forget(self);
 
