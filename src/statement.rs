@@ -381,6 +381,14 @@ where
         Rows::new(self)
     }
 
+    pub fn all<T, C>(self) -> Result<T>
+    where
+        T: FromIterator<C>,
+        C: for<'r> Columns<'r> + 'static,
+    {
+        self.rows()?.into_iter().collect()
+    }
+
     pub fn one<C>(self) -> Result<C>
     where
         C: for<'r> Columns<'r>,
