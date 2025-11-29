@@ -48,6 +48,29 @@ fn fetch_named_struct() -> Result {
 }
 
 #[derive(Columns)]
+struct IdentifiedRow {
+    id: i64,
+    a: String,
+    b: i64,
+    c: f64,
+}
+
+#[test]
+fn fetch_named_struct_wildcard() -> Result {
+    let connection = setup()?;
+
+    let mut query = connection.prepare("SELECT * FROM example WHERE id = 1;")?;
+    let row: IdentifiedRow = query.query(())?.one()?;
+
+    assert_eq!(1, row.id);
+    assert_eq!("hello 🌎!", row.a);
+    assert_eq!(42, row.b);
+    assert_eq!(3.14, row.c);
+
+    Ok(())
+}
+
+#[derive(Columns)]
 struct BorrowedRow<'a> {
     #[squire(borrow)]
     a: &'a str,

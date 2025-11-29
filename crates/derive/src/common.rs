@@ -262,7 +262,7 @@ impl NamedIndexResolution {
     ) -> Self {
         let count = names.len();
 
-        let initializers = names.keys().enumerate().map(|(i, name)| {
+        let initializers = names.iter().map(|(name, i)| {
             quote! {
                 if let Some(index) = #which.index(#name) {
                     indexes[#i].write(index);
