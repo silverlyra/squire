@@ -1,5 +1,6 @@
 [package]
 name = "squire-serde"
+description = "Serde integration for Squire"
 version = "0.0.1-alpha.1"
 edition = "2024"
 readme = "Readme.md"
