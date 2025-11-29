@@ -10,7 +10,8 @@ keywords = ["sqlite", "database", "derive", "proc_macro"]
 
 [features]
 nightly = ["lang-array-assume-init"]
-lang-array-assume-init = []
+lang-array-assume-init = ["rustversion"]
+rustversion = ["dep:rustversion"]
 
 [lib]
 proc-macro = true
@@ -26,3 +27,7 @@ version = "^1.0.40"
 
 [dependencies.syn]
 version = "^2.0.100"
+
+[dependencies.rustversion]
+workspace = true
+optional = true

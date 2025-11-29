@@ -152,7 +152,7 @@ fn invalid_index() -> Error {
     ErrorCategory::Range.into()
 }
 
-#[cfg(feature = "lang-step-trait")]
+#[cfg(all(nightly, feature = "lang-step-trait"))]
 impl core::iter::Step for ColumnIndex {
     fn steps_between(start: &Self, end: &Self) -> (usize, Option<usize>) {
         if start.0 <= end.0 {

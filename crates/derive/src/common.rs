@@ -292,13 +292,23 @@ impl NamedIndexResolution {
 
 /// Generate [`MaybeUninit`](core::mem::MaybeUninit) array finalization code.
 fn assume_array_init(elem_type: TokenStream) -> TokenStream {
-    if cfg!(feature = "lang-array-assume-init") {
-        quote! {
-            unsafe {
-                Some(::core::mem::MaybeUninit::array_assume_init(indexes))
+    #[cfg(feature = "lang-array-assume-init")]
+    {
+        if rustversion::cfg!(nightly) {
+            quote! {
+                unsafe {
+                    Some(::core::mem::MaybeUninit::array_assume_init(indexes))
+                }
+            }
+        } else {
+            quote! {
+                Some(indexes.map(|i| unsafe { ::core::mem::MaybeUninit::<#elem_type>::assume_init(i) }))
             }
         }
-    } else {
+    }
+
+    #[cfg(not(feature = "lang-array-assume-init"))]
+    {
         quote! {
             Some(indexes.map(|i| unsafe { ::core::mem::MaybeUninit::<#elem_type>::assume_init(i) }))
         }

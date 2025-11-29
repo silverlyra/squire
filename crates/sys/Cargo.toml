@@ -23,9 +23,8 @@ bundled = ["dep:sqlite", "bindgen", "static"]
 linked = ["bindgen", "features/build"]
 static = []
 
-single-thread = []
 multi-thread = []
-serialized = []
+serialized = ["multi-thread"]
 
 core = [
     "json",
@@ -124,7 +123,7 @@ optional = true
 package = "squire-sqlite3-features"
 path = "../features"
 version = "0.0.1-alpha.1"
-features = ["inherent", "metadata"]
+features = ["inherent", "metadata", "build"]
 
 [package.metadata.docs.rs]
 features = ["bundled", "full", "serialized"]

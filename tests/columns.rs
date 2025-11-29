@@ -1,5 +1,5 @@
 #![cfg_attr(
-    feature = "lang-array-assume-init",
+    all(nightly, feature = "lang-array-assume-init"),
     feature(maybe_uninit_array_assume_init)
 )]
 #![allow(clippy::approx_constant)]

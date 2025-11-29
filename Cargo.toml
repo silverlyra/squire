@@ -17,8 +17,11 @@ members = ["crates/derive", "crates/features", "crates/serde", "crates/sys"]
 repository = "https://github.com/silverlyra/squire"
 license = "Apache-2.0"
 
+[workspace.dependencies.rustversion]
+version = "1.0"
+
 [features]
-default = ["linked", "common", "derive", "multi-thread"]
+default = ["common", "derive", "multi-thread"]
 derive = ["dep:squire-derive"]
 
 common = ["sqlite/common", "json", "mutex"]
@@ -26,12 +29,11 @@ full = ["sqlite/full", "common"]
 complete = ["full", "integrations"]
 
 bundled = ["sqlite/bundled"]
-linked = ["sqlite/linked"]
+bindgen = ["sqlite/bindgen"]
 static = ["sqlite/static"]
 
-single-thread = ["sqlite/single-thread"]
 multi-thread = ["sqlite/multi-thread"]
-serialized = ["sqlite/serialized", "mutex"]
+serialized = ["multi-thread", "sqlite/serialized", "mutex"]
 
 armor = ["sqlite/armor"]
 authorization = ["sqlite/authorization"]
@@ -71,10 +73,11 @@ url = ["dep:url"]
 widestring = ["utf-16", "dep:widestring"]
 
 nightly = ["lang-array-assume-init", "lang-rustc-scalar-valid-range", "lang-step-trait"]
-lang-array-assume-init = ["squire-derive?/lang-array-assume-init"]
-lang-iat = []
-lang-rustc-scalar-valid-range = []
-lang-step-trait = []
+lang-array-assume-init = ["rustversion", "squire-derive?/lang-array-assume-init"]
+lang-iat = ["rustversion"]
+lang-rustc-scalar-valid-range = ["rustversion"]
+lang-step-trait = ["rustversion"]
+rustversion = ["dep:rustversion"]
 
 [dependencies.squire-derive]
 path = "crates/derive"
@@ -110,6 +113,10 @@ package = "squire-sqlite3-features"
 path = "crates/features"
 version = "0.0.1-alpha.1"
 features = ["metadata"]
+
+[build-dependencies.rustversion]
+workspace = true
+optional = true
 
 [dev-dependencies.serde]
 version = "^1.0.220"

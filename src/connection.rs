@@ -43,7 +43,7 @@ pub struct Connection {
 }
 
 impl Connection {
-    #[cfg(feature = "lang-iat")]
+    #[cfg(all(nightly, feature = "lang-iat"))]
     type Builder<L = CString>
         = ConnectionBuilder<L>
     where
@@ -130,6 +130,27 @@ where
     vfs: Option<L>,
 }
 
+/// Default open mode flags for new connections.
+///
+/// When the `serialized` feature is enabled, connections are opened with
+/// `SQLITE_OPEN_FULLMUTEX` to ensure full mutex protection even if the
+/// underlying SQLite library was built with a less restrictive threading mode.
+#[cfg(feature = "serialized")]
+const DEFAULT_OPEN_MODE: i32 = SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE | SQLITE_OPEN_FULLMUTEX;
+
+/// Default open mode flags for new connections.
+///
+/// When only `multi-thread` is enabled (not `serialized`), connections are
+/// opened with `SQLITE_OPEN_NOMUTEX` to disable the recursive mutexes on
+/// database connections, matching the expected threading model.
+#[cfg(all(feature = "multi-thread", not(feature = "serialized")))]
+const DEFAULT_OPEN_MODE: i32 = SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE | SQLITE_OPEN_NOMUTEX;
+
+/// Default open mode flags for new connections.
+///
+/// When no threading features are enabled, connections use the default
+/// SQLite behavior without explicit mutex flags.
+#[cfg(not(feature = "multi-thread"))]
 const DEFAULT_OPEN_MODE: i32 = SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE;
 
 const FILE_OPEN_MODES: i32 = SQLITE_OPEN_READONLY | SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE;

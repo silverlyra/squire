@@ -1,11 +1,17 @@
 #![cfg_attr(
-    feature = "lang-array-assume-init",
+    all(nightly, feature = "lang-array-assume-init"),
     feature(maybe_uninit_array_assume_init)
 )]
-#![cfg_attr(feature = "lang-iat", feature(inherent_associated_types))]
-#![cfg_attr(feature = "lang-rustc-scalar-valid-range", allow(internal_features))]
-#![cfg_attr(feature = "lang-rustc-scalar-valid-range", feature(rustc_attrs))]
-#![cfg_attr(feature = "lang-step-trait", feature(step_trait))]
+#![cfg_attr(all(nightly, feature = "lang-iat"), feature(inherent_associated_types))]
+#![cfg_attr(
+    all(nightly, feature = "lang-rustc-scalar-valid-range"),
+    allow(internal_features)
+)]
+#![cfg_attr(
+    all(nightly, feature = "lang-rustc-scalar-valid-range"),
+    feature(rustc_attrs)
+)]
+#![cfg_attr(all(nightly, feature = "lang-step-trait"), feature(step_trait))]
 #![cfg_attr(docsrs, feature(doc_cfg), deny(rustdoc::broken_intra_doc_links))]
 
 mod bind;

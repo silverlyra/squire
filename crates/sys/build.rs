@@ -3,30 +3,6 @@ use std::{
     path::{Path, PathBuf},
 };
 
-#[cfg(all(not(feature = "bundled"), not(feature = "linked")))]
-compile_error!("no SQLite library selected: feature \"bundled\" or \"linked\" must be enabled");
-#[cfg(all(feature = "bundled", feature = "linked"))]
-compile_error!(
-    "ambiguous SQLite library selected: features \"bundled\" and \"linked\" are mutually exclusive"
-);
-
-#[cfg(all(
-    not(feature = "single-thread"),
-    not(feature = "multi-thread"),
-    not(feature = "serialized")
-))]
-compile_error!(
-    "no SQLite concurrency mode selected: feature \"single-thread\", \"multi-thread\", or \"serialized\" must be enabled"
-);
-#[cfg(any(
-    all(feature = "single-thread", feature = "multi-thread"),
-    all(feature = "multi-thread", feature = "serialized"),
-    all(feature = "single-thread", feature = "serialized"),
-))]
-compile_error!(
-    "ambuigous SQLite concurrency mode selected: features \"single-thread\", \"multi-thread\", and \"serialized\" are mutually exclusive"
-);
-
 #[cfg(not(feature = "bindgen"))]
 compile_error!("no SQLite bindings available: feature \"bindgen\" must be enabled");
 
@@ -61,7 +37,7 @@ fn main() -> Result {
         threading_mode(),
         bundled_features(),
     );
-    #[cfg(feature = "linked")]
+    #[cfg(not(feature = "bundled"))]
     let library = {
         use features::build;
         let probe = build::Library::probe(build::Build::default());
@@ -76,12 +52,12 @@ fn main() -> Result {
 
 #[cfg(feature = "bundled")]
 fn threading_mode() -> features::Threading {
-    #[cfg(feature = "single-thread")]
-    return features::Threading::SingleThread;
-    #[cfg(feature = "multi-thread")]
-    return features::Threading::MultiThread;
     #[cfg(feature = "serialized")]
     return features::Threading::Serialized;
+    #[cfg(all(feature = "multi-thread", not(feature = "serialized")))]
+    return features::Threading::MultiThread;
+    #[cfg(not(feature = "multi-thread"))]
+    return features::Threading::SingleThread;
 }
 
 #[cfg(feature = "bundled")]
@@ -110,12 +86,12 @@ fn build_bundled_sqlite(dest: &Path) -> Result<sqlite::Build> {
 
     let mut config = sqlite::Config::default();
 
-    #[cfg(feature = "single-thread")]
-    config.set(sqlite::Setting::Threading(sqlite::Threading::SingleThread));
-    #[cfg(feature = "multi-thread")]
-    config.set(sqlite::Setting::Threading(sqlite::Threading::MultiThread));
     #[cfg(feature = "serialized")]
     config.set(sqlite::Setting::Threading(sqlite::Threading::Serialized));
+    #[cfg(all(feature = "multi-thread", not(feature = "serialized")))]
+    config.set(sqlite::Setting::Threading(sqlite::Threading::MultiThread));
+    #[cfg(not(feature = "multi-thread"))]
+    config.set(sqlite::Setting::Threading(sqlite::Threading::SingleThread));
 
     #[cfg(feature = "armor")]
     config.set(sqlite::Setting::EnableApiArmor(true));
