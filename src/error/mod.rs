@@ -92,14 +92,14 @@ impl Error {
         })
     }
 
-    #[allow(dead_code)]
+    #[allow(dead_code, unreachable_code)]
     #[cold]
     #[inline(never)]
     pub(crate) fn from_bind(source: impl Into<IntegrationError>) -> Self {
         Self::with_detail(ErrorCode::SQUIRE_PARAMETER_BIND, source.into())
     }
 
-    #[allow(dead_code)]
+    #[allow(dead_code, unreachable_code)]
     #[cold]
     #[inline(never)]
     pub(crate) fn from_fetch(source: impl Into<IntegrationError>) -> Self {
@@ -318,6 +318,7 @@ impl<E> From<E> for ErrorDetail
 where
     IntegrationError: From<E>,
 {
+    #[allow(unreachable_code)]
     fn from(error: E) -> Self {
         Self::Integration(error.into())
     }
