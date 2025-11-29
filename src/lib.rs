@@ -52,7 +52,6 @@
     all(nightly, feature = "lang-array-assume-init"),
     feature(maybe_uninit_array_assume_init)
 )]
-#![cfg_attr(all(nightly, feature = "lang-iat"), feature(inherent_associated_types))]
 #![cfg_attr(
     all(nightly, feature = "lang-rustc-scalar-valid-range"),
     allow(internal_features)

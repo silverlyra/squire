@@ -74,7 +74,6 @@ widestring = ["utf-16", "dep:widestring"]
 
 nightly = ["lang-array-assume-init", "lang-rustc-scalar-valid-range", "lang-step-trait"]
 lang-array-assume-init = ["rustversion", "squire-derive?/lang-array-assume-init"]
-lang-iat = ["rustversion"]
 lang-rustc-scalar-valid-range = ["rustversion"]
 lang-step-trait = ["rustversion"]
 rustversion = ["dep:rustversion"]

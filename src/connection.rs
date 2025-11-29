@@ -42,12 +42,6 @@ pub struct Connection {
 }
 
 impl Connection {
-    #[cfg(all(nightly, feature = "lang-iat"))]
-    type Builder<L = CString>
-        = ConnectionBuilder<L>
-    where
-        L: AsRef<CStr> + Clone + fmt::Debug;
-
     #[inline]
     #[must_use]
     fn new(inner: ffi::Connection) -> Self {
