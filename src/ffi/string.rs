@@ -34,7 +34,6 @@ use crate::{
 ///
 /// [`sqlite3_malloc64`]: https://sqlite.org/c3ref/free.html
 /// [`sqlite3_free`]: https://sqlite.org/c3ref/free.html
-#[derive(Debug)]
 pub struct String {
     text: *const c_char,
     len: usize,
@@ -42,7 +41,7 @@ pub struct String {
 
 impl String {
     /// Build a [`String`] from the [`Display`](fmt::Display) of a value.
-    pub fn display<D: fmt::Display>(value: &D) -> Result<Self> {
+    pub fn display<D: fmt::Display + ?Sized>(value: &D) -> Result<Self> {
         use fmt::Write as _;
 
         let mut builder = StringBuilder::detached();
@@ -149,6 +148,18 @@ impl String {
         // SAFETY: A String can only be constructed from valid UTF-8 slices, or
         // via unsafe functions which stipulate the content must be UTF-8.
         unsafe { str::from_utf8_unchecked(self.bytes_until_nul()) }
+    }
+}
+
+impl fmt::Debug for String {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_tuple("String").field(&self.as_c_str()).finish()
+    }
+}
+
+impl fmt::Display for String {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.as_str())
     }
 }
 
@@ -425,6 +436,18 @@ mod tests {
         }
 
         conn.close().expect("close");
+    }
+
+    #[test]
+    fn test_display() {
+        let string = String::display("hello, world!").expect("string");
+        assert_eq!(format!("{string}"), string.as_str());
+    }
+
+    #[test]
+    fn test_debug() {
+        let string = String::display("hello, world!").expect("string");
+        assert_eq!(format!("{string:?}"), r#"String("hello, world!")"#);
     }
 
     #[test]

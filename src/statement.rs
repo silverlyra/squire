@@ -1,4 +1,4 @@
-use core::{ffi::c_int, marker::PhantomData, mem};
+use core::{ffi::c_int, fmt, marker::PhantomData, mem};
 use sqlite::{SQLITE_PREPARE_NO_VTAB, SQLITE_PREPARE_PERSISTENT, sqlite3};
 
 use crate::{
@@ -16,7 +16,6 @@ use crate::{
 /// ready to [bind](Self::bind()) and [execute](Execution).
 ///
 /// [prepared statement]: https://sqlite.org/c3ref/stmt.html
-#[derive(Debug)]
 #[repr(transparent)]
 pub struct Statement<'c> {
     inner: ffi::Statement<'c>,
@@ -134,7 +133,13 @@ impl<'c, 's> ffi::Connected for &'s mut Statement<'c> {
     }
 }
 
-impl<'c> Drop for Statement<'c> {
+impl fmt::Debug for Statement<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "Statement({:p})", self.internal_ref().as_ptr())
+    }
+}
+
+impl Drop for Statement<'_> {
     fn drop(&mut self) {
         let _ = unsafe { self.internal_mut().finalize() };
     }

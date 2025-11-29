@@ -1,4 +1,4 @@
-use core::{ffi::CStr, ptr};
+use core::{ffi::CStr, fmt, ptr};
 
 use sqlite::{SQLITE_OK, SQLITE_OPEN_EXRESCODE, sqlite3, sqlite3_close, sqlite3_open_v2};
 
@@ -8,7 +8,6 @@ use super::mutex::MutexRef;
 use crate::error::{Error, Result};
 
 /// A thin wrapper around a [`sqlite3`] connection pointer.
-#[derive(Debug)]
 #[repr(transparent)]
 pub struct Connection {
     handle: ptr::NonNull<sqlite3>,
@@ -77,6 +76,12 @@ impl Connection {
     #[inline]
     pub const fn as_ptr(&self) -> *mut sqlite3 {
         self.handle.as_ptr()
+    }
+}
+
+impl fmt::Debug for Connection {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "Connection({:p})", self.handle)
     }
 }
 

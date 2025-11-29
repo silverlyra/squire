@@ -37,7 +37,6 @@ use crate::{
 /// # Ok(())
 /// # }
 /// ```
-#[derive(Debug)]
 pub struct Connection {
     inner: ffi::Connection,
 }
@@ -111,6 +110,12 @@ impl Connection {
 impl ffi::Connected for Connection {
     fn as_connection_ptr(&self) -> *mut sqlite::sqlite3 {
         self.internal_ref().as_ptr()
+    }
+}
+
+impl fmt::Debug for Connection {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "Connection({:p})", self.internal_ref().as_ptr())
     }
 }
 
