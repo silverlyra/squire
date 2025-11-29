@@ -17,6 +17,7 @@ use crate::{
 pub struct Json<T>(pub T);
 
 #[cfg(feature = "json")]
+#[cfg_attr(docsrs, doc(cfg(all(feature = "jsonb", feature = "serde"))))]
 impl<'b, T> Bind<'b> for Json<T>
 where
     T: Serialize,
@@ -29,6 +30,7 @@ where
 }
 
 #[cfg(feature = "json")]
+#[cfg_attr(docsrs, doc(cfg(all(feature = "json", feature = "serde"))))]
 impl<'r, T> Fetch<'r> for Json<T>
 where
     T: Deserialize<'r>,
@@ -62,6 +64,7 @@ where
 pub struct Jsonb<T>(pub T);
 
 #[cfg(feature = "jsonb")]
+#[cfg_attr(docsrs, doc(cfg(all(feature = "jsonb", feature = "serde"))))]
 impl<'b, T> Bind<'b> for Jsonb<T>
 where
     T: Serialize,
@@ -74,6 +77,7 @@ where
 }
 
 #[cfg(feature = "jsonb")]
+#[cfg_attr(docsrs, doc(cfg(all(feature = "jsonb", feature = "serde"))))]
 impl<'r, T> Fetch<'r> for Jsonb<T>
 where
     T: Deserialize<'r>,

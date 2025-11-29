@@ -7,7 +7,7 @@ mod json;
 mod row_id;
 mod value;
 
-pub use bind::{BindIndex, BindIndexes};
+pub use bind::BindIndex;
 pub use borrow::Borrowed;
 pub use column::ColumnIndex;
 pub use row_id::RowId;

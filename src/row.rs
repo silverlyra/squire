@@ -7,6 +7,7 @@ use crate::{
     value::Fetch,
 };
 
+/// Access the [`Columns`] of each row returned by a [query](Execution).
 #[derive(Debug)]
 pub struct Rows<'c, 's, C: ColumnIndexes, S = Binding<'c, 's>>
 where
@@ -130,6 +131,7 @@ where
     }
 }
 
+/// Access individual columns in a row returned from [`Execution`].
 #[derive(Debug)]
 #[repr(transparent)]
 pub struct Row<'c, 's, 'r, S = Binding<'c, 's>>
@@ -152,6 +154,7 @@ where
         Self { execution }
     }
 
+    /// Fetch a single column from the [`Row`] by its [index](ColumnIndex).
     pub fn fetch<'a, T: Fetch<'r>>(&'a mut self, column: ColumnIndex) -> Result<T>
     where
         'a: 'r,
@@ -160,6 +163,7 @@ where
         T::fetch(statement, column)
     }
 
+    /// Unpack a full set of [`Columns`] from this [`Row`].
     pub fn unpack<'a, T: Columns<'r>>(&'a mut self, indexes: T::Indexes) -> Result<T>
     where
         'a: 'r,

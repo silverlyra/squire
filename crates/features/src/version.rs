@@ -55,7 +55,7 @@ impl Version {
         Self::new(major, minor, patch)
     }
 
-    /// Convert the version to an SQLite version number.
+    /// Convert the version to a SQLite version number.
     pub const fn to_number(&self) -> c_int {
         (self.major * Self::MAJOR_MAGNITUDE + self.minor * Self::MINOR_MAGNITUDE + self.patch)
             as c_int

@@ -27,7 +27,7 @@ pub type Result<T, E = Error> = core::result::Result<T, E>;
 /// An error returned by Squire.
 ///
 /// `Error` encapsulates errors returned by SQLite, translating its [return codes][]
-/// into general [category](ErrorCategory) and extended [code](ErrorCode).
+/// into general [category](ErrorCategory) and specific [reason](ErrorReason).
 ///
 /// `Error` can also represent an error encountered by Squire itself, or with any of
 /// the crates it integrates with (primarily to let their types be [bound](crate::Bind)

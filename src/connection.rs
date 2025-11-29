@@ -48,6 +48,7 @@ impl Connection {
         Self { inner }
     }
 
+    /// Open a read/write [`Connection`] to a [`Database`].
     #[must_use = "a Connection will be closed if dropped"]
     pub fn open<L>(database: impl AsRef<Database<L>>) -> Result<Self>
     where
@@ -62,6 +63,7 @@ impl Connection {
         Ok(Connection::new(connection))
     }
 
+    /// Customize a [`Connection`] by configuring a [`ConnectionBuilder`].
     #[must_use]
     pub fn builder<L>(database: impl ToOwned<Owned = Database<L>>) -> ConnectionBuilder<L>
     where
@@ -70,11 +72,13 @@ impl Connection {
         ConnectionBuilder::new(database.to_owned().into_endpoint())
     }
 
+    /// Prepare a SQL [`Statement`] to be executed as a query.
     #[must_use = "a Statement will be finalized if dropped"]
     pub fn prepare(&self, query: impl AsRef<str>) -> Result<Statement<'_>> {
         Statement::prepare(self, query, PrepareOptions::transient())
     }
 
+    /// Execute a SQL statement and return the number of affected rows.
     pub fn execute<P: for<'a> Parameters<'a>>(
         &self,
         query: impl AsRef<str>,
@@ -84,6 +88,9 @@ impl Connection {
         Ok(changes)
     }
 
+    /// Close this [`Connection`].
+    ///
+    /// A `Connection` is also closed when it is dropped.
     pub fn close(mut self) -> Result<()> {
         let result = unsafe { self.dispose() };
         mem::forget(self); // or Drop will close the connection agian
@@ -119,6 +126,24 @@ impl Drop for Connection {
     }
 }
 
+/// Configure a [`Connection`] to be opened.
+///
+/// Create a `ConnectionBuilder` with [`Connection::builder`].
+///
+/// # Example
+///
+/// ```no_run
+/// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+/// use squire::{Connection, Database};
+///
+/// let connection = Connection::builder(Database::path("./data.sqlite3"))
+///     .read_only()
+///     .follow_symbolic_links(false)
+///     .open()?;
+/// # let _ = connection;
+/// # Ok(())
+/// # }
+/// ```
 #[derive(PartialEq, Eq, Copy, Clone, Debug)]
 pub struct ConnectionBuilder<L = CString>
 where
@@ -181,11 +206,15 @@ where
         Ok(Connection::new(connection))
     }
 
+    /// Open the connection in read-only mode.
     #[doc(alias = "SQLITE_OPEN_READONLY")]
     pub fn read_only(self) -> Self {
         self.with_open_mode(SQLITE_OPEN_READONLY)
     }
 
+    /// Open the connection in read/write mode.
+    ///
+    /// If `create` is true, the database will be created if it doesn’t already exist.
     #[doc(alias = "SQLITE_OPEN_CREATE")]
     #[doc(alias = "SQLITE_OPEN_READWRITE")]
     pub fn read_write(self, create: bool) -> Self {
@@ -196,6 +225,7 @@ where
         })
     }
 
+    /// Enable or disable travsersing symbolic links to load a database file.
     #[doc(alias = "SQLITE_OPEN_NOFOLLOW")]
     pub fn follow_symbolic_links(self, follow: bool) -> Self {
         let flags = if follow {
@@ -206,6 +236,17 @@ where
         self.with_flags(flags)
     }
 
+    /// Enable or disable the serialized [threading mode][].
+    ///
+    /// > In serialized mode, API calls to affect or use any SQLite database
+    /// > [connection](crate::Connection) or any object derived from such a
+    /// > database connection can be made safely from multiple threads. The effect
+    /// > on an individual object is the same as if the API calls had all been
+    /// > made in the same order from a single thread. The name ”serialized”
+    /// > arises from the fact that SQLite uses mutexes to serialize access to
+    /// > each object.
+    ///
+    /// [threading mode]: https://sqlite.org/threadsafe.html
     #[doc(alias = "SQLITE_OPEN_FULLMUTEX")]
     #[doc(alias = "SQLITE_OPEN_NOMUTEX")]
     pub fn mutex(self, enable: bool) -> Self {
@@ -216,6 +257,9 @@ where
         })
     }
 
+    /// Enable or disable [URI][] database filename support.
+    ///
+    /// [URI]: https://sqlite.org/uri.html
     #[doc(alias = "SQLITE_OPEN_URI")]
     pub fn uri_filenames(self, enable: bool) -> Self {
         let flags = if enable {
@@ -226,6 +270,9 @@ where
         self.with_flags(flags)
     }
 
+    /// Select which [virtual filesystem][vfs] to use for the connection.
+    ///
+    /// [vfs]: https://sqlite.org/vfs.html
     pub fn vfs(self, vfs: impl IntoLocation<Location = L>) -> Self {
         Self {
             endpoint: self.endpoint,

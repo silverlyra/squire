@@ -3,8 +3,8 @@ use super::ErrorCode;
 /// The category of [`Error`](crate::Error) that occurred.
 ///
 /// Error categories correspond to a SQLite primary [result code][], except for
-/// those defined by Squire itself ([`Fetch`](Self::Fetch) and
-/// [`Parameter`](Self::Parameter)).
+/// those defined by Squire itself ([`Fetch`](Self::Fetch),
+/// [`Parameter`](Self::Parameter), and [`Row`](Self::Row)).
 ///
 /// [result code]: https://sqlite.org/rescode.html
 #[derive(PartialEq, Eq, Copy, Clone, Debug)]
@@ -94,7 +94,7 @@ pub enum ErrorCategory {
     #[doc(alias = "SQLITE_TOOBIG")]
     TooBig = sqlite::SQLITE_TOOBIG,
 
-    /// An SQL constraint violation occurred.
+    /// A SQL constraint violation occurred.
     #[doc(alias = "SQLITE_CONSTRAINT")]
     Constraint = sqlite::SQLITE_CONSTRAINT,
 
@@ -112,7 +112,7 @@ pub enum ErrorCategory {
     #[doc(alias = "SQLITE_NOLFS")]
     LargeFile = sqlite::SQLITE_NOLFS,
 
-    /// The authorizer callback indicates that an SQL statement being prepared
+    /// The authorizer callback indicates that a SQL statement being prepared
     /// is not authorized.
     #[doc(alias = "SQLITE_AUTH")]
     Authorization = sqlite::SQLITE_AUTH,
@@ -128,7 +128,7 @@ pub enum ErrorCategory {
     Range = sqlite::SQLITE_RANGE,
 
     /// When attempting to open a file, the file being opened does not appear
-    /// to be an SQLite database file.
+    /// to be a SQLite database file.
     #[doc(alias = "SQLITE_NOTADB")]
     InvalidDatabase = sqlite::SQLITE_NOTADB,
 

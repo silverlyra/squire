@@ -2,12 +2,14 @@ use core::fmt;
 
 use crate::{error::Result, statement::Statement, types::ColumnIndex, value::Fetch};
 
+/// Specifies the [`ColumnIndex`] values needed by [`Columns`].
 pub trait ColumnIndexes {
     type Indexes: Copy + fmt::Debug + Sized;
 
     fn resolve<'c>(statement: &Statement<'c>) -> Option<Self::Indexes>;
 }
 
+/// [Fetches](Fetch) the values of each column in a row.
 pub trait Columns<'r>: ColumnIndexes + Sized {
     fn fetch<'c>(statement: &'r Statement<'c>, indexes: Self::Indexes) -> Result<Self>
     where

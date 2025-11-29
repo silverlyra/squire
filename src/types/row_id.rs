@@ -4,6 +4,10 @@ use sqlite::{sqlite3, sqlite3_last_insert_rowid};
 
 use crate::ffi::Conclusion;
 
+/// A SQLite row ID.
+///
+/// The `RowId` is usually made available by adding an `INTEGER PRIMARY KEY`
+/// column to a table, or by a reference to such a column.
 #[derive(PartialEq, Eq, PartialOrd, Ord, Clone, Copy, Debug)]
 #[repr(transparent)]
 pub struct RowId(NonZero<i64>);

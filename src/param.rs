@@ -5,6 +5,7 @@ use crate::{
     types::BindIndex,
 };
 
+/// [Binds](Bind) the values of each parameter of a [`Statement`].
 pub trait Parameters<'s> {
     type Indexes: Copy + Sized;
 

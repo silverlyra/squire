@@ -5,7 +5,7 @@ use sqlite::sqlite3;
 #[cfg(sqlite_has_error_offset)]
 use sqlite::sqlite3_error_offset;
 
-/// The offset within an SQL source input of an [`Error`](crate::Error).
+/// The offset within a SQL source input of an [`Error`](crate::Error).
 #[derive(PartialEq, Eq, PartialOrd, Ord, Clone, Copy, Debug)]
 #[cfg_attr(
     all(nightly, feature = "lang-rustc-scalar-valid-range"),
