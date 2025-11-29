@@ -1,17 +1,20 @@
-use std::{
-    env,
-    path::{Path, PathBuf},
-};
-
-#[cfg(not(feature = "bindgen"))]
-compile_error!("no SQLite bindings available: feature \"bindgen\" must be enabled");
+#[cfg(any(feature = "bindgen", feature = "bundled"))]
+use std::env;
+#[cfg(feature = "bundled")]
+use std::path::Path;
+#[cfg(any(feature = "bindgen", feature = "bundled"))]
+use std::path::PathBuf;
 
 type Result<T = ()> = std::result::Result<T, Box<dyn std::error::Error>>;
 
 fn main() -> Result {
+    #[cfg(any(feature = "bindgen", feature = "bundled"))]
     let dest = out_path();
 
-    #[cfg(feature = "bundled")]
+    #[cfg(all(not(feature = "bindgen"), feature = "bundled"))]
+    build_bundled_sqlite(&dest)?;
+
+    #[cfg(all(feature = "bindgen", feature = "bundled"))]
     let header_path = {
         let build = build_bundled_sqlite(&dest)?;
         build.header()
@@ -69,6 +72,7 @@ fn bundled_features() -> impl Iterator<Item = features::FeatureKey> {
         .filter_map(|(key, enabled)| if enabled { Some(key) } else { None })
 }
 
+#[cfg(any(feature = "bindgen", feature = "bundled"))]
 fn out_path() -> PathBuf {
     env::var_os("OUT_DIR")
         .expect("cargo did not set $OUT_DIR")
@@ -308,53 +312,7 @@ fn generate_bindings(header: &Path, dest: &Path) -> Result {
     let mut modified_bindings = prettyplease::unparse(&syntax_tree);
 
     // Add our custom union type definition at the end
-    modified_bindings.push_str(
-        r#"
-/// A destructor / memory `free` function for a value passed to SQLite as a
-/// [bound parameter][bind] or a [function result][].
-///
-/// A destructor can either be a `func`tion, or one of the [special values][]
-/// `SQLITE_STATIC` (`0`) or `SQLITE_TRANSIENT` (`-1`).
-///
-/// [bind]: https://sqlite.org/c3ref/bind_blob.html
-/// [function result]: https://sqlite.org/c3ref/result_blob.html
-/// [special values]: https://sqlite.org/c3ref/c_static.html
-#[derive(Copy, Clone)]
-#[repr(C)]
-pub union sqlite3_destructor_type {
-    pub func: unsafe extern "C" fn(context: *mut ::std::os::raw::c_void),
-    pub sentinel: isize,
-}
-
-// Safety: The union only contains POD types
-unsafe impl Send for sqlite3_destructor_type {}
-unsafe impl Sync for sqlite3_destructor_type {}
-
-impl sqlite3_destructor_type {
-    /// Provide a custom [destructor](sqlite3_destructor_type) to SQLite.
-    pub const fn new(func: unsafe extern "C" fn(*mut ::std::os::raw::c_void)) -> Self {
-        sqlite3_destructor_type { func }
-    }
-
-    /// Construct `SQLITE_STATIC` or `SQLITE_TRANSIENT`.
-    pub(crate) const fn from_sentinel(sentinel: isize) -> Self {
-        sqlite3_destructor_type { sentinel }
-    }
-}
-
-impl ::core::fmt::Debug for sqlite3_destructor_type {
-    fn fmt(&self, f: &mut ::core::fmt::Formatter<'_>) -> ::core::fmt::Result {
-        // Safety: Both fields have the same size, so reading sentinel is always valid
-        let sentinel = unsafe { self.sentinel };
-        match sentinel {
-            0 => write!(f, "sqlite3_destructor_type::SQLITE_STATIC"),
-            -1 => write!(f, "sqlite3_destructor_type::SQLITE_TRANSIENT"),
-            _ => write!(f, "sqlite3_destructor_type::func({:p})", sentinel as *const ()),
-        }
-    }
-}
-"#,
-    );
+    modified_bindings.push_str(include_str!("src/bindings/destructor.rs"));
 
     std::fs::write(dest, modified_bindings)?;
 

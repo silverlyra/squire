@@ -19,8 +19,7 @@ bindgen = [
     "dep:proc-macro2",
     "dep:quote",
 ]
-bundled = ["dep:sqlite", "bindgen", "static"]
-linked = ["bindgen", "features/build"]
+bundled = ["dep:sqlite", "static"]
 static = []
 
 multi-thread = []

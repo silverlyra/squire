@@ -13,12 +13,7 @@
 #![allow(non_camel_case_types, non_snake_case, non_upper_case_globals)]
 #![cfg_attr(docsrs, feature(doc_cfg), deny(rustdoc::broken_intra_doc_links))]
 
-/// Generated `unsafe extern "C"` bindings from [bindgen][].
-///
-/// [bindgen]: https://rust-lang.github.io/rust-bindgen/
-mod bindings {
-    include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
-}
+mod bindings;
 
 pub use bindings::*;
 
