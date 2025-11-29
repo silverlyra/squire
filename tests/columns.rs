@@ -1,5 +1,5 @@
 #![cfg_attr(
-    feature = "lang-array-assume-init",
+    all(nightly, feature = "lang-array-assume-init"),
     feature(maybe_uninit_array_assume_init)
 )]
 #![allow(clippy::approx_constant)]
@@ -40,6 +40,29 @@ fn fetch_named_struct() -> Result {
     let mut query = connection.prepare("SELECT a, b, c FROM example WHERE id = 1;")?;
     let row: Row = query.query(())?.rows()?.next()?.ok_or("not found")?;
 
+    assert_eq!("hello 🌎!", row.a);
+    assert_eq!(42, row.b);
+    assert_eq!(3.14, row.c);
+
+    Ok(())
+}
+
+#[derive(Columns)]
+struct IdentifiedRow {
+    id: i64,
+    a: String,
+    b: i64,
+    c: f64,
+}
+
+#[test]
+fn fetch_named_struct_wildcard() -> Result {
+    let connection = setup()?;
+
+    let mut query = connection.prepare("SELECT * FROM example WHERE id = 1;")?;
+    let row: IdentifiedRow = query.query(())?.one()?;
+
+    assert_eq!(1, row.id);
     assert_eq!("hello 🌎!", row.a);
     assert_eq!(42, row.b);
     assert_eq!(3.14, row.c);

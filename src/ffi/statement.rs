@@ -1,5 +1,6 @@
 use core::{
     ffi::{CStr, c_char, c_int},
+    fmt,
     marker::PhantomData,
     ptr,
 };
@@ -27,7 +28,6 @@ use crate::{
 };
 
 /// A thin wrapper around a [`sqlite3_stmt`] prepared statement pointer.
-#[derive(Debug)]
 #[repr(transparent)]
 pub struct Statement<'c> {
     handle: ptr::NonNull<sqlite3_stmt>,
@@ -338,6 +338,12 @@ where
     #[inline]
     unsafe fn reset(&mut self) -> Result<()> {
         call! { sqlite3_reset(self.as_statement_ptr()) }
+    }
+}
+
+impl fmt::Debug for Statement<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "Statement({:p})", self.handle)
     }
 }
 

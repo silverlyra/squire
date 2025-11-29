@@ -1,9 +1,9 @@
-use core::{ffi::c_int, marker::PhantomData, mem};
+use core::{ffi::c_int, fmt, marker::PhantomData, mem};
 use sqlite::{SQLITE_PREPARE_NO_VTAB, SQLITE_PREPARE_PERSISTENT, sqlite3};
 
 use crate::{
     bind::Bind,
-    column::ColumnIndexes,
+    column::{ColumnIndexes, Columns},
     connection::Connection,
     error::{Error, ErrorCode, Result},
     ffi,
@@ -16,7 +16,6 @@ use crate::{
 /// ready to [bind](Self::bind()) and [execute](Execution).
 ///
 /// [prepared statement]: https://sqlite.org/c3ref/stmt.html
-#[derive(Debug)]
 #[repr(transparent)]
 pub struct Statement<'c> {
     inner: ffi::Statement<'c>,
@@ -134,7 +133,13 @@ impl<'c, 's> ffi::Connected for &'s mut Statement<'c> {
     }
 }
 
-impl<'c> Drop for Statement<'c> {
+impl fmt::Debug for Statement<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "Statement({:p})", self.internal_ref().as_ptr())
+    }
+}
+
+impl Drop for Statement<'_> {
     fn drop(&mut self) {
         let _ = unsafe { self.internal_mut().finalize() };
     }
@@ -374,6 +379,25 @@ where
         C: ColumnIndexes,
     {
         Rows::new(self)
+    }
+
+    pub fn all<T, C>(self) -> Result<T>
+    where
+        T: FromIterator<C>,
+        C: for<'r> Columns<'r> + 'static,
+    {
+        self.rows()?.into_iter().collect()
+    }
+
+    pub fn one<C>(self) -> Result<C>
+    where
+        C: for<'r> Columns<'r>,
+    {
+        match Rows::new(self)?.next() {
+            Ok(Some(row)) => Ok(row),
+            Ok(None) => Err(Error::row_not_returned()),
+            Err(err) => Err(err),
+        }
     }
 
     pub fn run(self) -> Result<isize> {

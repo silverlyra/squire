@@ -1,11 +1,66 @@
+//! Squire provides an idiomatic and performant Rust interface for [SQLite][].
+//!
+#![cfg_attr(feature = "derive", doc = "```rust")]
+#![cfg_attr(not(feature = "derive"), doc = "```ignore")]
+//! # #![cfg_attr(
+//! #     all(nightly, feature = "lang-array-assume-init"),
+//! #     feature(maybe_uninit_array_assume_init)
+//! # )]
+//! use squire::{Columns, Connection, Database};
+//!
+//! #[derive(Columns, PartialEq, Eq, Clone, Debug)]
+//! struct User {
+//!     id: u64,
+//!     username: String,
+//!     email: Option<String>,
+//! }
+//!
+//! # fn main() -> Result<(), Box<dyn std::error::Error>> {
+//! let connection = Connection::open(Database::memory())?;
+//!
+//! connection.execute(
+//!     "CREATE TABLE users (
+//!         id INTEGER PRIMARY KEY,
+//!         username TEXT NOT NULL,
+//!         email TEXT
+//!      ) STRICT",
+//!      (), // no parameters
+//! )?;
+//!
+//! let mut add_user = connection.prepare("INSERT INTO users (username, email) VALUES (?, ?)")?;
+//!
+//! add_user.execute(("alice", "alice@example.com"))?;
+//! add_user.execute(("bob", None::<&str>))?;
+//!
+//! let mut select_users = connection.prepare("SELECT * FROM users")?;
+//! let users: Vec<User> = select_users.query(())?.all()?;
+//!
+//! assert_eq!(
+//!     users,
+//!     vec![
+//!         User { id: 1, username: "alice".to_owned(), email: Some("alice@example.com".to_owned()) },
+//!         User { id: 2, username: "bob".to_owned(), email: None },
+//!     ],
+//! );
+//! # Ok(())
+//! # }
+//! ```
+//!
+//! [SQLite]: https://sqlite.org/
+
 #![cfg_attr(
-    feature = "lang-array-assume-init",
+    all(nightly, feature = "lang-array-assume-init"),
     feature(maybe_uninit_array_assume_init)
 )]
-#![cfg_attr(feature = "lang-iat", feature(inherent_associated_types))]
-#![cfg_attr(feature = "lang-rustc-scalar-valid-range", allow(internal_features))]
-#![cfg_attr(feature = "lang-rustc-scalar-valid-range", feature(rustc_attrs))]
-#![cfg_attr(feature = "lang-step-trait", feature(step_trait))]
+#![cfg_attr(
+    all(nightly, feature = "lang-rustc-scalar-valid-range"),
+    allow(internal_features)
+)]
+#![cfg_attr(
+    all(nightly, feature = "lang-rustc-scalar-valid-range"),
+    feature(rustc_attrs)
+)]
+#![cfg_attr(all(nightly, feature = "lang-step-trait"), feature(step_trait))]
 #![cfg_attr(docsrs, feature(doc_cfg), deny(rustdoc::broken_intra_doc_links))]
 
 mod bind;

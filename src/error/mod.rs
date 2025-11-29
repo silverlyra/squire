@@ -34,7 +34,7 @@ pub type Result<T, E = Error> = core::result::Result<T, E>;
 /// as parameters and [fetched](crate::Fetch) from column values).
 ///
 /// [return codes]: https://sqlite.org/rescode.html
-#[derive(Clone, Debug)]
+#[derive(Clone)]
 pub struct Error {
     inner: Box<ErrorInner>,
 }
@@ -92,18 +92,24 @@ impl Error {
         })
     }
 
-    #[allow(dead_code)]
+    #[allow(dead_code, unreachable_code)]
     #[cold]
     #[inline(never)]
     pub(crate) fn from_bind(source: impl Into<IntegrationError>) -> Self {
         Self::with_detail(ErrorCode::SQUIRE_PARAMETER_BIND, source.into())
     }
 
-    #[allow(dead_code)]
+    #[allow(dead_code, unreachable_code)]
     #[cold]
     #[inline(never)]
     pub(crate) fn from_fetch(source: impl Into<IntegrationError>) -> Self {
         Self::with_detail(ErrorCode::SQUIRE_FETCH_PARSE, source.into())
+    }
+
+    #[cold]
+    #[inline(never)]
+    pub(crate) fn row_not_returned() -> Self {
+        Self::new(ErrorCode::SQUIRE_ROW_NOT_RETURNED)
     }
 
     /// The [`ErrorCode`] identifying what error occurred.
@@ -172,6 +178,27 @@ impl Error {
 impl Default for Error {
     fn default() -> Self {
         Self::new(ErrorCode::default())
+    }
+}
+
+impl fmt::Debug for Error {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let code = self::code::ErrorCodeName(self.code());
+        let message = self.message().unwrap_or_else(|| self.code().description());
+
+        let mut tuple = f.debug_tuple("Error");
+
+        tuple.field(&code);
+        tuple.field(&message);
+
+        if let Some(location) = self.source_location() {
+            tuple.field(&location);
+        }
+        if let Some(integration) = self.as_integration() {
+            tuple.field(&integration);
+        }
+
+        tuple.finish()
     }
 }
 
@@ -291,6 +318,7 @@ impl<E> From<E> for ErrorDetail
 where
     IntegrationError: From<E>,
 {
+    #[allow(unreachable_code)]
     fn from(error: E) -> Self {
         Self::Integration(error.into())
     }

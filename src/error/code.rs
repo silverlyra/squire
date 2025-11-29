@@ -29,6 +29,8 @@ pub(crate) const SQUIRE_ERROR_PARAMETER_BIND: i32 = code!(2, 1);
 pub(crate) const SQUIRE_ERROR_PARAMETER_RANGE: i32 = code!(2, 2);
 pub(crate) const SQUIRE_ERROR_PARAMETER_RESOLVE: i32 = code!(2, 3);
 pub(crate) const SQUIRE_ERROR_PARAMETER_INVALID_INDEX: i32 = code!(2, 4);
+pub(crate) const SQUIRE_ERROR_ROW: i32 = code!(3);
+pub(crate) const SQUIRE_ERROR_ROW_NOT_RETURNED: i32 = code!(3, 1);
 
 impl ErrorCode {
     /// Wrap a return value from SQLite in an [`ErrorCode`].
@@ -205,6 +207,8 @@ impl ErrorCode {
             Self::SQUIRE_PARAMETER_BIND => Some("SQUIRE_ERROR_PARAMETER_BIND"),
             Self::SQUIRE_PARAMETER_RANGE => Some("SQUIRE_ERROR_PARAMETER_RANGE"),
             Self::SQUIRE_PARAMETER_RESOLVE => Some("SQUIRE_ERROR_PARAMETER_RESOLVE"),
+            Self::SQUIRE_ROW => Some("SQUIRE_ERROR_ROW"),
+            Self::SQUIRE_ROW_NOT_RETURNED => Some("SQUIRE_ERROR_ROW_NOT_RETURNED"),
 
             // Unrecognized code
             _ => None,
@@ -222,6 +226,8 @@ impl ErrorCode {
             Self::SQUIRE_PARAMETER_RANGE => "parameter value out of range",
             Self::SQUIRE_PARAMETER_RESOLVE => "error resolving parameter index",
             Self::SQUIRE_PARAMETER_INVALID_INDEX => "parameter index must be > 0",
+            Self::SQUIRE_ROW => "error retrieving selected row",
+            Self::SQUIRE_ROW_NOT_RETURNED => "query returned no rows",
 
             _ => {
                 let ptr = unsafe { sqlite3_errstr(self.raw()) };
@@ -348,6 +354,8 @@ impl ErrorCode {
     pub(crate) const SQUIRE_PARAMETER_RESOLVE: Self = Self::define(SQUIRE_ERROR_PARAMETER_RESOLVE);
     pub(crate) const SQUIRE_PARAMETER_INVALID_INDEX: Self =
         Self::define(SQUIRE_ERROR_PARAMETER_INVALID_INDEX);
+    pub(crate) const SQUIRE_ROW: Self = Self::define(SQUIRE_ERROR_ROW);
+    pub(crate) const SQUIRE_ROW_NOT_RETURNED: Self = Self::define(SQUIRE_ERROR_ROW_NOT_RETURNED);
 }
 
 impl Default for ErrorCode {
@@ -362,5 +370,13 @@ impl fmt::Display for ErrorCode {
             Some(name) => write!(f, "{name}"),
             None => write!(f, "0x{:04x}", self.raw()),
         }
+    }
+}
+
+pub(super) struct ErrorCodeName(pub(super) ErrorCode);
+
+impl fmt::Debug for ErrorCodeName {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt::Display::fmt(&self.0, f)
     }
 }

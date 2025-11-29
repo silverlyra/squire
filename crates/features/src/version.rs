@@ -38,7 +38,7 @@ impl Version {
         }
     }
 
-    /// Create a [`Version`] from `major`.`minor`.`0.`
+    /// Create a [`Version`] from `major`.`minor`.`0`.
     #[inline]
     pub const fn release(major: usize, minor: usize) -> Self {
         Self::new(major, minor, 0)

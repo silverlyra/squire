@@ -34,7 +34,6 @@ use crate::{
 ///
 /// [`sqlite3_malloc64`]: https://sqlite.org/c3ref/free.html
 /// [`sqlite3_free`]: https://sqlite.org/c3ref/free.html
-#[derive(Debug)]
 pub struct String {
     text: *const c_char,
     len: usize,
@@ -42,7 +41,7 @@ pub struct String {
 
 impl String {
     /// Build a [`String`] from the [`Display`](fmt::Display) of a value.
-    pub fn display<D: fmt::Display>(value: &D) -> Result<Self> {
+    pub fn display<D: fmt::Display + ?Sized>(value: &D) -> Result<Self> {
         use fmt::Write as _;
 
         let mut builder = StringBuilder::detached();
@@ -149,6 +148,18 @@ impl String {
         // SAFETY: A String can only be constructed from valid UTF-8 slices, or
         // via unsafe functions which stipulate the content must be UTF-8.
         unsafe { str::from_utf8_unchecked(self.bytes_until_nul()) }
+    }
+}
+
+impl fmt::Debug for String {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_tuple("String").field(&self.as_c_str()).finish()
+    }
+}
+
+impl fmt::Display for String {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.as_str())
     }
 }
 
@@ -261,14 +272,14 @@ impl StringBuilder {
     /// Returns the current error for this builder.
     #[doc(alias = "sqlite3_str_errcode")]
     pub fn error(&self) -> Option<Error> {
-        let code = unsafe { sqlite3_str_errcode(self.ptr.as_ptr()) };
+        let code = unsafe { sqlite3_str_errcode(self.as_ptr()) };
         Error::from_code(code)
     }
 
     /// Returns the current length of the string being built.
     #[doc(alias = "sqlite3_str_length")]
     pub fn len(&self) -> usize {
-        unsafe { sqlite3_str_length(self.ptr.as_ptr()) as usize }
+        unsafe { sqlite3_str_length(self.as_ptr()) as usize }
     }
 
     /// Returns `true` if the builder is empty.
@@ -282,6 +293,13 @@ impl StringBuilder {
         unsafe { text.append(self.ptr) };
     }
 
+    /// Access the underlying [`*mut sqlite3_str`][string].
+    ///
+    /// [string]: https://sqlite.org/c3ref/str.html
+    pub const fn as_ptr(&self) -> *mut sqlite3_str {
+        self.ptr.as_ptr()
+    }
+
     /// Consume the builder and return the [finished][] string.
     ///
     /// Returns an error if an allocation error occurred during building.
@@ -292,7 +310,7 @@ impl StringBuilder {
         let len = self.len();
         let error = self.error();
 
-        let ptr = unsafe { sqlite3_str_finish(self.ptr.as_ptr()) };
+        let ptr = unsafe { sqlite3_str_finish(self.as_ptr()) };
         mem::forget(self);
 
         if let Some(error) = error {
@@ -311,6 +329,11 @@ impl StringBuilder {
 
 /// A type which can be appended to a [`StringBuilder`].
 pub trait Append {
+    /// Append `self` to the [string builder](sqlite3_str).
+    ///
+    /// # Safety
+    ///
+    /// Callers must ensure the `string` pointer remains valid.
     unsafe fn append(&self, string: ptr::NonNull<sqlite3_str>);
 }
 
@@ -358,11 +381,7 @@ impl fmt::Write for StringBuilder {
         // `sqlite3_str` pointer. The length must be non-negative.
         debug_assert!(s.len() <= c_int::MAX as usize);
         unsafe {
-            sqlite3_str_append(
-                self.ptr.as_ptr(),
-                s.as_ptr() as *const c_char,
-                s.len() as c_int,
-            );
+            sqlite3_str_append(self.as_ptr(), s.as_ptr() as *const c_char, s.len() as c_int);
         }
         // Errors are deferred to finish(); fmt::Write::write_str succeeds
         Ok(())
@@ -373,7 +392,7 @@ impl Drop for StringBuilder {
     fn drop(&mut self) {
         // `finish` calls `mem::forget`; if we're here, the String is being
         // dropped without being `finish`ed. Free its memory.
-        let ptr = unsafe { sqlite3_str_finish(self.ptr.as_ptr()) };
+        let ptr = unsafe { sqlite3_str_finish(self.as_ptr()) };
         unsafe { sqlite3_free(ptr as *mut c_void) };
     }
 }
@@ -417,6 +436,18 @@ mod tests {
         }
 
         conn.close().expect("close");
+    }
+
+    #[test]
+    fn test_display() {
+        let string = String::display("hello, world!").expect("string");
+        assert_eq!(format!("{string}"), string.as_str());
+    }
+
+    #[test]
+    fn test_debug() {
+        let string = String::display("hello, world!").expect("string");
+        assert_eq!(format!("{string:?}"), r#"String("hello, world!")"#);
     }
 
     #[test]

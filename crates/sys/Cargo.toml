@@ -1,7 +1,7 @@
 [package]
 name = "squire-sqlite3-sys"
 description = "External FFI bindings for the SQLite C API"
-version = "0.0.1-alpha.4"
+version = "0.0.1-alpha.5"
 edition = "2024"
 links = "sqlite3"
 readme = "Readme.md"
@@ -19,13 +19,11 @@ bindgen = [
     "dep:proc-macro2",
     "dep:quote",
 ]
-bundled = ["dep:sqlite", "bindgen", "static"]
-linked = ["bindgen", "features/build"]
+bundled = ["dep:sqlite", "static"]
 static = []
 
-single-thread = []
 multi-thread = []
-serialized = []
+serialized = ["multi-thread"]
 
 core = [
     "json",
@@ -123,8 +121,8 @@ optional = true
 [build-dependencies.features]
 package = "squire-sqlite3-features"
 path = "../features"
-version = "0.0.1-alpha.1"
-features = ["inherent", "metadata"]
+version = "0.0.1-alpha.2"
+features = ["inherent", "metadata", "build"]
 
 [package.metadata.docs.rs]
 features = ["bundled", "full", "serialized"]

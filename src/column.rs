@@ -14,6 +14,30 @@ pub trait Columns<'r>: ColumnIndexes + Sized {
         'c: 'r;
 }
 
+impl<'r, T> ColumnIndexes for T
+where
+    T: Fetch<'r>,
+{
+    type Indexes = ();
+
+    #[inline(always)]
+    fn resolve<'c>(_statement: &Statement<'c>) -> Option<Self::Indexes> {
+        Some(())
+    }
+}
+
+impl<'r, T> Columns<'r> for T
+where
+    T: Fetch<'r>,
+{
+    fn fetch<'c>(statement: &'r Statement<'c>, _indexes: Self::Indexes) -> Result<Self>
+    where
+        'c: 'r,
+    {
+        <T as Fetch<'r>>::fetch(statement, ColumnIndex::INITIAL)
+    }
+}
+
 /// Implement [`Columns`] for a tuple type.
 macro_rules! tuple {
     ($i:ident: $t:ident) => {

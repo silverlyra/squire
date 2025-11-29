@@ -1,7 +1,7 @@
 [package]
 name = "squire-derive"
 description = "Procedural macros for Squire"
-version = "0.0.1-alpha.1"
+version = "0.0.1-alpha.2"
 edition = "2024"
 repository.workspace = true
 license.workspace = true
@@ -10,7 +10,8 @@ keywords = ["sqlite", "database", "derive", "proc_macro"]
 
 [features]
 nightly = ["lang-array-assume-init"]
-lang-array-assume-init = []
+lang-array-assume-init = ["rustversion"]
+rustversion = ["dep:rustversion"]
 
 [lib]
 proc-macro = true
@@ -26,3 +27,7 @@ version = "^1.0.40"
 
 [dependencies.syn]
 version = "^2.0.100"
+
+[dependencies.rustversion]
+workspace = true
+optional = true

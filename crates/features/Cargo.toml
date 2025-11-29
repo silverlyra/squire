@@ -1,7 +1,7 @@
 [package]
 name = "squire-sqlite3-features"
 description = "Detect available features and options in a copy of SQLite"
-version = "0.0.1-alpha.1"
+version = "0.0.1-alpha.2"
 edition = "2024"
 readme = "Readme.md"
 repository.workspace = true

@@ -14,18 +14,34 @@ use crate::{
     statement::{PrepareOptions, Statement},
 };
 
-#[derive(Debug)]
+/// A _connection_ to one or more open SQLite database(s).
+///
+/// Use `Connection` to [prepare](Self::prepare) and [execute](Self::execute)
+/// SQL statements. A `Connection` will remain open until [closed](Self::close)
+/// or [dropped](core::ops::Drop).
+///
+/// (Even though SQLite is a local database, without a network or socket
+/// connection to a remote server, SQLite still uses the term “connection”.)
+///
+/// # Examples
+///
+/// ```rust
+/// use squire::{Connection, Database};
+///
+/// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+/// let connection = Connection::open(Database::memory())?;
+///
+/// let mut statement = connection.prepare("SELECT sqlite_version();")?;
+/// let version: String = statement.query(())?.one()?;
+#[doc = concat!("assert_eq!(\"", env!("SQUIRE_SQLITE_VERSION"), "\", version);")]
+/// # Ok(())
+/// # }
+/// ```
 pub struct Connection {
     inner: ffi::Connection,
 }
 
 impl Connection {
-    #[cfg(feature = "lang-iat")]
-    type Builder<L = CString>
-        = ConnectionBuilder<L>
-    where
-        L: AsRef<CStr> + Clone + fmt::Debug;
-
     #[inline]
     #[must_use]
     fn new(inner: ffi::Connection) -> Self {
@@ -91,6 +107,12 @@ impl ffi::Connected for Connection {
     }
 }
 
+impl fmt::Debug for Connection {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "Connection({:p})", self.internal_ref().as_ptr())
+    }
+}
+
 impl Drop for Connection {
     fn drop(&mut self) {
         let _ = unsafe { self.dispose() };
@@ -107,6 +129,27 @@ where
     vfs: Option<L>,
 }
 
+/// Default open mode flags for new connections.
+///
+/// When the `serialized` feature is enabled, connections are opened with
+/// `SQLITE_OPEN_FULLMUTEX` to ensure full mutex protection even if the
+/// underlying SQLite library was built with a less restrictive threading mode.
+#[cfg(feature = "serialized")]
+const DEFAULT_OPEN_MODE: i32 = SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE | SQLITE_OPEN_FULLMUTEX;
+
+/// Default open mode flags for new connections.
+///
+/// When only `multi-thread` is enabled (not `serialized`), connections are
+/// opened with `SQLITE_OPEN_NOMUTEX` to disable the recursive mutexes on
+/// database connections, matching the expected threading model.
+#[cfg(all(feature = "multi-thread", not(feature = "serialized")))]
+const DEFAULT_OPEN_MODE: i32 = SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE | SQLITE_OPEN_NOMUTEX;
+
+/// Default open mode flags for new connections.
+///
+/// When no threading features are enabled, connections use the default
+/// SQLite behavior without explicit mutex flags.
+#[cfg(not(feature = "multi-thread"))]
 const DEFAULT_OPEN_MODE: i32 = SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE;
 
 const FILE_OPEN_MODES: i32 = SQLITE_OPEN_READONLY | SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE;
