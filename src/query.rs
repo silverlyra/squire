@@ -5,7 +5,7 @@ use crate::{
     statement::{Execution, Statement},
 };
 
-/// An SQL query which can [prepare](Statement::prepare) itself into a
+/// A SQL query which can [prepare](Statement::prepare) itself into a
 /// [`Statement`], bind itself as [`Parameters`] to the statement (if any), and
 /// read any desired output from the statement [execution](Execution).
 pub trait Query<'s>: Parameters<'s> {

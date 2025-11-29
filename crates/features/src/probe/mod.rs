@@ -15,7 +15,7 @@ pub trait Probe {
     /// Get the [`Version`] of the SQLite library.
     fn version(&self) -> Version;
 
-    /// Check if a SQLite [compile-time option][] ([`Flag`) was set.
+    /// Check if a SQLite [compile-time option][] ([`Flag`]) was set.
     ///
     /// [compile-time option]: https://sqlite.org/compile.html
     fn is_set(&self, flag: Flag) -> bool;

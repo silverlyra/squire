@@ -1,6 +1,9 @@
 use core::{ffi::c_int, num::NonZero};
 
-use crate::error::{Error, ErrorReason, ParameterError, Result};
+use crate::{
+    error::{Error, ErrorReason, ParameterError, Result},
+    iter::BindIndexes,
+};
 
 /// A SQLite [prepared statement](crate::Statement) parameter index, used when
 /// [binding](crate::Bind) values to a statement.
@@ -178,29 +181,5 @@ impl core::iter::Step for BindIndex {
         let count = c_int::try_from(count).ok()?;
         let new_value = start.0.get().checked_sub(count)?;
         NonZero::new(new_value).map(Self)
-    }
-}
-
-pub struct BindIndexes {
-    current: BindIndex,
-}
-
-impl BindIndexes {
-    const fn new(initial: BindIndex) -> Self {
-        Self { current: initial }
-    }
-}
-
-impl Iterator for BindIndexes {
-    type Item = BindIndex;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        let current = self.current;
-        self.current = self.current.next();
-        Some(current)
-    }
-
-    fn size_hint(&self) -> (usize, Option<usize>) {
-        (usize::MAX, None)
     }
 }

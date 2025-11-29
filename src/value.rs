@@ -5,6 +5,19 @@ use crate::{
     types::{Borrowed, ColumnIndex, RowId, Type},
 };
 
+/// A value which can be read from a column.
+///
+/// Squire’s underlying [`ffi::Fetch`] trait is implemented for each type that
+/// can be directly read through the [SQLite C API][column]. To implement
+/// `Fetch`, set `type Value` to the actual column value (e.g., `i64`), and
+/// implement `from_column_value` to translate from the stored column value to
+/// `Self`.
+///
+/// The lifetime parameter `'r` represents the lifetime of the current row. Any
+/// `blob` or `text` values [borrowed](Borrowed) from the current row must be
+/// read or cloned before the query [continues](crate::Rows::next) to the next row.
+///
+/// [column]: https://sqlite.org/c3ref/column_blob.html
 pub trait Fetch<'r>: Sized {
     type Value: ffi::Fetch<'r>;
 

@@ -1,10 +1,14 @@
-//! [`Iterator`] implementations for [`Rows`].
+//! [`Iterator`] implementations.
+//!
+//! These concrete types are exposed in Squire’s API, but they don’t normally
+//! need to be referenced by name.
 
 use crate::{
     column::{ColumnIndexes, Columns},
     error::Result,
     row::Rows,
     statement::{Binding, Execute},
+    types::BindIndex,
 };
 
 /// Map over [`Rows`].
@@ -80,5 +84,30 @@ where
                 Err(e) => return Some(Err(e)),
             }
         }
+    }
+}
+
+/// An [`Iterator`] of [parameter indexes](BindIndex).
+pub struct BindIndexes {
+    current: BindIndex,
+}
+
+impl BindIndexes {
+    pub(crate) const fn new(initial: BindIndex) -> Self {
+        Self { current: initial }
+    }
+}
+
+impl Iterator for BindIndexes {
+    type Item = BindIndex;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let current = self.current;
+        self.current = self.current.next();
+        Some(current)
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        (usize::MAX, None)
     }
 }

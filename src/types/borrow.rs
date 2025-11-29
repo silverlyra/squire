@@ -15,8 +15,8 @@ use crate::{
 #[cfg(target_pointer_width = "64")]
 const ENCODING_UTF8: u8 = SQLITE_UTF8 as u8;
 
-/// A borrowed reference that can be used for zero-copy parameter binding and
-/// column value access.
+/// A reference that can be used for zero-copy parameter [binding](Bind) and
+/// column value [access](Fetch).
 ///
 /// When used for [binding](Bind), `Borrowed` marks a reference as outliving a
 /// SQLite [prepared statement](Statement), which SQLite does not need to copy

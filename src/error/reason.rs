@@ -4,37 +4,37 @@ use super::{ErrorCategory, ErrorCode};
 #[derive(PartialEq, Eq, Copy, Clone, Debug)]
 #[non_exhaustive]
 pub enum ErrorReason {
-    /// Extended abort error codes.
+    /// Specific reasons for an [`ErrorCategory::Aborted`].
     Aborted(AbortError),
 
-    /// Extended authorization error codes.
+    /// Specific reason for an [`ErrorCategory::Authorization`].
     Authorization(AuthorizationError),
 
-    /// Extended busy error codes.
+    /// Specific reason for an [`ErrorCategory::Busy`].
     Busy(BusyError),
 
-    /// Extended "can't open" error codes.
+    /// Specific reason for an [`ErrorCategory::CantOpen`].
     CantOpen(CantOpenError),
 
-    /// Extended constraint error codes.
+    /// Specific reason for an [`ErrorCategory::Constraint`].
     Constraint(ConstraintError),
 
-    /// Extended corruption error codes.
+    /// Specific reason for an [`ErrorCategory::Corrupt`].
     Corrupt(CorruptError),
 
-    /// Extended general error codes.
+    /// Specific reason for an [`ErrorCategory::Unknown`].
     Error(GeneralError),
 
-    /// Extended I/O error codes.
+    /// Specific reason for an [`ErrorCategory::Io`].
     Io(IoError),
 
-    /// Extended locked error codes.
+    /// Specific reason for an [`ErrorCategory::Locked`].
     Locked(LockedError),
 
-    /// Extended read-only error codes.
+    /// Specific reason for an [`ErrorCategory::ReadOnly`].
     ReadOnly(ReadOnlyError),
 
-    /// Extended [`ErrorCategory::Fetch`] error codes.
+    /// Specific reason for an [`ErrorCategory::Fetch`].
     ///
     /// (This [error code](ErrorReason) is defined by Squire; not SQLite.
     /// No SQLite [result codes][] correspond to `ErrorReason::Fetch`.)
@@ -42,7 +42,7 @@ pub enum ErrorReason {
     /// [result codes]: https://sqlite.org/rescode.html
     Fetch(FetchError),
 
-    /// Extended [`ErrorCategory::Parameter`] error codes.
+    /// Specific reason for an [`ErrorCategory::Parameter`].
     ///
     /// (This [error code](ErrorReason) is defined by Squire; not SQLite.
     /// No SQLite [result codes][] correspond to `ErrorReason::Parameter`.)
@@ -50,7 +50,7 @@ pub enum ErrorReason {
     /// [result codes]: https://sqlite.org/rescode.html
     Parameter(ParameterError),
 
-    /// Extended [`ErrorCategory::Row`] error codes.
+    /// Specific reason for an [`ErrorCategory::Row`].
     ///
     /// (This [error code](ErrorReason) is defined by Squire; not SQLite.
     /// No SQLite [result codes][] correspond to `ErrorReason::Row`.)
@@ -229,15 +229,17 @@ impl ErrorReason {
     }
 }
 
+/// Specific reasons for an [`ErrorCategory::Aborted`].
 #[derive(PartialEq, Eq, Copy, Clone, Debug)]
 #[repr(i32)]
 pub enum AbortError {
-    /// An SQL statement aborted because the transaction that was active when
+    /// A SQL statement aborted because the transaction that was active when
     /// the SQL statement first started was rolled back.
     #[doc(alias = "SQLITE_ABORT_ROLLBACK")]
     Rollback = sqlite::SQLITE_ABORT_ROLLBACK,
 }
 
+/// Specific reasons for an [`ErrorCategory::Aborted`].
 #[derive(PartialEq, Eq, Copy, Clone, Debug)]
 #[repr(i32)]
 pub enum AuthorizationError {
@@ -247,6 +249,7 @@ pub enum AuthorizationError {
     User = sqlite::SQLITE_AUTH_USER,
 }
 
+/// Specific reason for an [`ErrorCategory::Busy`].
 #[derive(PartialEq, Eq, Copy, Clone, Debug)]
 #[repr(i32)]
 pub enum BusyError {
@@ -267,6 +270,7 @@ pub enum BusyError {
     Timeout = sqlite::SQLITE_BUSY_TIMEOUT,
 }
 
+/// Specific reason for an [`ErrorCategory::CantOpen`].
 #[derive(PartialEq, Eq, Copy, Clone, Debug)]
 #[repr(i32)]
 pub enum CantOpenError {
@@ -298,6 +302,7 @@ pub enum CantOpenError {
     Symlink = sqlite::SQLITE_CANTOPEN_SYMLINK,
 }
 
+/// Specific reason for an [`ErrorCategory::Constraint`].
 #[derive(PartialEq, Eq, Copy, Clone, Debug)]
 #[repr(i32)]
 pub enum ConstraintError {
@@ -353,6 +358,7 @@ pub enum ConstraintError {
     VTab = sqlite::SQLITE_CONSTRAINT_VTAB,
 }
 
+/// Specific reason for an [`ErrorCategory::Corrupt`].
 #[derive(PartialEq, Eq, Copy, Clone, Debug)]
 #[repr(i32)]
 pub enum CorruptError {
@@ -370,10 +376,11 @@ pub enum CorruptError {
     VTab = sqlite::SQLITE_CORRUPT_VTAB,
 }
 
+/// Specific reason for an [`ErrorCategory::Unknown`].
 #[derive(PartialEq, Eq, Copy, Clone, Debug)]
 #[repr(i32)]
 pub enum GeneralError {
-    /// An SQL statement could not be prepared because a collating sequence
+    /// A SQL statement could not be prepared because a collating sequence
     /// named in that SQL statement could not be located.
     #[doc(alias = "SQLITE_ERROR_MISSING_COLLSEQ")]
     MissingCollSeq = sqlite::SQLITE_ERROR_MISSING_COLLSEQ,
@@ -389,6 +396,7 @@ pub enum GeneralError {
     Snapshot = sqlite::SQLITE_ERROR_SNAPSHOT,
 }
 
+/// Specific reason for an [`ErrorCategory::Io`].
 #[derive(PartialEq, Eq, Copy, Clone, Debug)]
 #[repr(i32)]
 pub enum IoError {
@@ -545,10 +553,11 @@ pub enum IoError {
     DirFSync = sqlite::SQLITE_IOERR_DIR_FSYNC,
 }
 
+/// Specific reason for an [`ErrorCategory::Locked`].
 #[derive(PartialEq, Eq, Copy, Clone, Debug)]
 #[repr(i32)]
 pub enum LockedError {
-    /// Access to an SQLite data record is blocked by another database connection
+    /// Access to a SQLite data record is blocked by another database connection
     /// that is using the same record in shared cache mode.
     #[doc(alias = "SQLITE_LOCKED_SHAREDCACHE")]
     SharedCache = sqlite::SQLITE_LOCKED_SHAREDCACHE,
@@ -558,6 +567,7 @@ pub enum LockedError {
     VTab = sqlite::SQLITE_LOCKED_VTAB,
 }
 
+/// Specific reason for an [`ErrorCategory::ReadOnly`].
 #[derive(PartialEq, Eq, Copy, Clone, Debug)]
 #[repr(i32)]
 pub enum ReadOnlyError {

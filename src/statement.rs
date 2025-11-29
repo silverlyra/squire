@@ -12,7 +12,7 @@ use crate::{
     types::{BindIndex, ColumnIndex, RowId},
 };
 
-/// A [prepared statement][]; an SQL statement that SQLite has compiled and made
+/// A [prepared statement][]; a SQL statement that SQLite has compiled and made
 /// ready to [bind](Self::bind()) and [execute](Execution).
 ///
 /// [prepared statement]: https://sqlite.org/c3ref/stmt.html
@@ -50,10 +50,12 @@ impl<'c> Statement<'c> {
         .map(|(statement, _)| Self::new(statement))
     }
 
+    /// Create a mutable [`Binding`] to set parameters individually.
     pub fn binding(&mut self) -> Binding<'c, '_> {
         Binding { statement: self }
     }
 
+    /// Create a mutable [`Binding`] initialized with [`Parameters`].
     pub fn bind<'s, P>(&'s mut self, parameters: P) -> Result<Binding<'c, 's>>
     where
         P: Parameters<'s>,
@@ -68,6 +70,7 @@ impl<'c> Statement<'c> {
         Ok(binding)
     }
 
+    /// Bind [parameters](Parameters) to begin [executing](Execution) the statement.
     pub fn query<'s, P>(&'s mut self, parameters: P) -> Result<Execution<'c, 's>>
     where
         P: Parameters<'s>,
@@ -75,6 +78,7 @@ impl<'c> Statement<'c> {
         self.bind(parameters).map(Binding::done)
     }
 
+    /// Execute the statement, and return the number of affected rows.
     pub fn execute<P>(&mut self, parameters: P) -> Result<isize>
     where
         P: for<'a> Parameters<'a>,
@@ -82,6 +86,15 @@ impl<'c> Statement<'c> {
         self.query(parameters)?.run()
     }
 
+    /// Execute an `INSERT` statement, and return the ID of the last
+    /// newly-inserted row.
+    ///
+    /// **Note:** If the underlying `Connection` is used to `INSERT` other rows
+    /// concurrently, the returned [`RowId`] may be for a different `INSERT`.
+    /// (This is due to limitations in the SQLite [API][].) To deterministically
+    /// retrieve the inserted ID, use a `RETURNING ...` [query](Self::query).
+    ///
+    /// [API]: https://sqlite.org/c3ref/last_insert_rowid.html
     pub fn insert<P>(&mut self, parameters: P) -> Result<Option<RowId>>
     where
         P: for<'a> Parameters<'a>,
@@ -245,6 +258,7 @@ impl PrepareOptions {
     }
 }
 
+/// A mutable set of parameters bound to a [`Statement`].
 #[derive(Debug)]
 #[repr(transparent)]
 pub struct Binding<'c, 's>
@@ -345,6 +359,17 @@ where
     }
 }
 
+/// An executing [query](Statement::query) of a [`Statement`].
+///
+/// Use [`rows`](Self::rows) to iterate over each row returned by a `SELECT`
+/// query, [`all`](Self::all) to [collect](std::iter::FromIterator) all rows,
+/// [`one`](Self::one) to fetch a single row, or [`row`](Self::row) to step
+/// through each raw row individually.
+///
+/// For non-`SELECT` statements, [`run`](Self::run) executes it and returns the
+/// number of affected rows, and [`insert`](Self::insert) returns the
+/// last-inserted row ID. (Note this may be unreliable in multi-threaded builds;
+/// see the note on [`Statement::insert`].)
 #[derive(Debug)]
 #[repr(transparent)]
 pub struct Execution<'c, 's, S = Binding<'c, 's>>
@@ -439,6 +464,7 @@ where
     }
 }
 
+/// Inspect the columns that a [`Statement`] will return.
 #[derive(Debug)]
 pub struct StatementColumns<'c, 's>
 where
@@ -533,6 +559,7 @@ impl Iterator for StatementColumnIter {
     }
 }
 
+/// Inspect the binding parameters that a [`Statement`] accepts.
 #[derive(Debug)]
 pub struct StatementParameters<'c, 's>
 where

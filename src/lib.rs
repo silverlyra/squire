@@ -94,7 +94,7 @@ pub use row::{Row, Rows};
 pub use statement::{
     Binding, Execution, PrepareOptions, Statement, StatementColumns, StatementParameters,
 };
-pub use types::{BindIndex, BindIndexes, Borrowed, ColumnIndex, RowId, Type};
+pub use types::{BindIndex, Borrowed, ColumnIndex, RowId, Type};
 pub use value::Fetch;
 
 #[cfg(all(feature = "json", feature = "serde"))]

@@ -13,7 +13,7 @@ unsafe extern "C" {
 
     /// The full [build version][] of the SQLite library.
     ///
-    /// [version]: https://sqlite.org/c3ref/libversion.html
+    /// [build version]: https://sqlite.org/c3ref/libversion.html
     pub fn sqlite3_sourceid() -> *const c_char;
 
     /// Check if a SQLite [compile-time option][] was used.
@@ -21,7 +21,7 @@ unsafe extern "C" {
     /// [compile-time option]: https://sqlite.org/c3ref/compileoption_get.html
     pub fn sqlite3_compileoption_used(zOptName: *const c_char) -> c_int;
 
-    /// Enumerate SQLite [compile-time options][] was used.
+    /// Enumerate the [compile-time options][] SQLite was built with.
     ///
     /// [compile-time options]: https://sqlite.org/c3ref/compileoption_get.html
     pub fn sqlite3_compileoption_get(n: c_int) -> *const c_char;

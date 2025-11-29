@@ -38,6 +38,12 @@ where
     }
 }
 
+/// A [path][] or [URI][] to a SQLite database, or a request to make a temporary
+/// [in-memory database][].
+///
+/// [path]: std::path::Path
+/// [URI]: https://sqlite.org/uri.html
+/// [in-memory database]: https://sqlite.org/inmemorydb.html
 #[derive(PartialEq, Eq, Copy, Clone, Debug)]
 pub struct Database<L = CString>
 where
@@ -47,6 +53,10 @@ where
 }
 
 impl Database<&'static CStr> {
+    /// A request to [connect](crate::Connection) to a temporary
+    /// [in-memory][] database.
+    ///
+    /// [in-memory]: https://sqlite.org/inmemorydb.html
     pub const fn memory() -> Self {
         Self {
             endpoint: Endpoint::Memory(None),
@@ -69,12 +79,16 @@ impl<L> Database<L>
 where
     L: AsRef<CStr> + Clone + fmt::Debug,
 {
+    /// Open a filesystem path as a SQLite database.
     pub fn path(path: impl IntoLocation<Location = L>) -> Self {
         Self {
             endpoint: Endpoint::Path(path.into_location()),
         }
     }
 
+    /// Open a [URI][] as a SQLite database.
+    ///
+    /// [URI]: https://sqlite.org/uri.html
     pub fn uri(path: impl IntoLocation<Location = L>) -> Self {
         Self {
             endpoint: Endpoint::Uri(path.into_location()),
@@ -99,6 +113,9 @@ where
     }
 }
 
+/// A type which can be used as a [`Database`] location.
+///
+/// SQLite needs a [null-terminated string](CStr) to open a database connection.
 pub trait IntoLocation {
     type Location: AsRef<CStr> + Clone + fmt::Debug;
 
