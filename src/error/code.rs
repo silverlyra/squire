@@ -372,3 +372,11 @@ impl fmt::Display for ErrorCode {
         }
     }
 }
+
+pub(super) struct ErrorCodeName(pub(super) ErrorCode);
+
+impl fmt::Debug for ErrorCodeName {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt::Display::fmt(&self.0, f)
+    }
+}

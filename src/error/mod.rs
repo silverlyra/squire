@@ -34,7 +34,7 @@ pub type Result<T, E = Error> = core::result::Result<T, E>;
 /// as parameters and [fetched](crate::Fetch) from column values).
 ///
 /// [return codes]: https://sqlite.org/rescode.html
-#[derive(Clone, Debug)]
+#[derive(Clone)]
 pub struct Error {
     inner: Box<ErrorInner>,
 }
@@ -178,6 +178,27 @@ impl Error {
 impl Default for Error {
     fn default() -> Self {
         Self::new(ErrorCode::default())
+    }
+}
+
+impl fmt::Debug for Error {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let code = self::code::ErrorCodeName(self.code());
+        let message = self.message().unwrap_or_else(|| self.code().description());
+
+        let mut tuple = f.debug_tuple("Error");
+
+        tuple.field(&code);
+        tuple.field(&message);
+
+        if let Some(location) = self.source_location() {
+            tuple.field(&location);
+        }
+        if let Some(integration) = self.as_integration() {
+            tuple.field(&integration);
+        }
+
+        tuple.finish()
     }
 }
 
