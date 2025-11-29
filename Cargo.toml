@@ -65,11 +65,12 @@ stat4 = ["sqlite/stat4"]
 trace = ["sqlite/trace"]
 utf-16 = ["sqlite/utf-16"]
 
-integrations = ["jiff", "jsonb", "serde", "url", "widestring"]
+integrations = ["jiff", "jsonb", "serde", "url", "uuid", "widestring"]
 jiff = ["dep:jiff"]
 jsonb = ["json", "squire-serde?/jsonb"]
 serde = ["dep:squire-serde"]
 url = ["dep:url"]
+uuid = ["dep:uuid"]
 widestring = ["utf-16", "dep:widestring"]
 
 nightly = ["lang-array-assume-init", "lang-rustc-scalar-valid-range", "lang-step-trait"]
@@ -101,6 +102,10 @@ optional = true
 
 [dependencies.url]
 version = "^2.5"
+optional = true
+
+[dependencies.uuid]
+version = "^1.14"
 optional = true
 
 [dependencies.widestring]

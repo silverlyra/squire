@@ -35,6 +35,13 @@ pub enum IntegrationError {
     #[cfg(feature = "url")]
     #[cfg_attr(docsrs, doc(cfg(feature = "url")))]
     Url(url::ParseError),
+
+    /// An error from the [`uuid`][] crate.
+    ///
+    /// [`uuid`]: https://lib.rs/uuid
+    #[cfg(feature = "uuid")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "uuid")))]
+    Uuid(Box<uuid::Error>),
 }
 
 #[cfg(feature = "jiff")]
@@ -145,6 +152,33 @@ impl From<url::ParseError> for IntegrationError {
     }
 }
 
+#[cfg(feature = "uuid")]
+#[cfg_attr(docsrs, doc(cfg(feature = "uuid")))]
+impl IntegrationError {
+    /// `true` if this is a [`uuid::Error`]; `false` if otherwise.
+    pub fn is_uuid(&self) -> bool {
+        matches!(self, Self::Uuid(_))
+    }
+
+    /// Access the [`uuid::Error`] contained in this [`IntegrationError`].
+    ///
+    /// Returns `None` if this is not a `Uuid` error.
+    pub fn as_uuid(&self) -> Option<&uuid::Error> {
+        match self {
+            Self::Uuid(bx) => Some(bx.as_ref()),
+            _ => None,
+        }
+    }
+}
+
+#[cfg(feature = "uuid")]
+#[cfg_attr(docsrs, doc(cfg(feature = "uuid")))]
+impl From<uuid::Error> for IntegrationError {
+    fn from(error: uuid::Error) -> Self {
+        Self::Uuid(Box::new(error))
+    }
+}
+
 impl fmt::Display for IntegrationError {
     fn fmt(&self, #[allow(unused_variables)] f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match *self {
@@ -156,6 +190,8 @@ impl fmt::Display for IntegrationError {
             IntegrationError::Jsonb(ErrorContainer(ref error)) => error.fmt(f),
             #[cfg(feature = "url")]
             IntegrationError::Url(ref error) => error.fmt(f),
+            #[cfg(feature = "uuid")]
+            IntegrationError::Uuid(ref bx) => bx.fmt(f),
         }
     }
 }

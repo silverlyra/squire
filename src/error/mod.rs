@@ -236,6 +236,8 @@ impl core::error::Error for Error {
                 IntegrationError::Jsonb(ref container) => Some(container.as_ref()),
                 #[cfg(feature = "url")]
                 IntegrationError::Url(ref error) => Some(error),
+                #[cfg(feature = "uuid")]
+                IntegrationError::Uuid(ref bx) => Some(bx.as_ref()),
             }
         } else {
             None

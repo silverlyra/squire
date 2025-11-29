@@ -90,7 +90,7 @@ fn timestamp_column_representation() -> Result {
     let mut stmt = conn.prepare("SELECT ?")?;
     let (value,): (i64,) = stmt.query(ts)?.rows()?.next()?.ok_or("no row")?;
 
-    assert_eq!(value, 1000_500_000_000); // nanoseconds
+    assert_eq!(value, 1_000_500_000_000); // nanoseconds
     Ok(())
 }
 
