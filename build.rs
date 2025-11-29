@@ -5,6 +5,7 @@ fn main() -> Result {
     let library = features::Library::from_cargo_metadata()?;
 
     // Verify threading mode compatibility
+    #[cfg(feature = "multi-thread")]
     check_threading_mode(&library);
 
     // Emit cfg attributes for SQLite feature detection
@@ -27,29 +28,16 @@ fn emit_nightly_cfg() {
     }
 }
 
-/// Check that the SQLite library's threading mode is compatible with the
-/// requested features.
-///
-/// The `multi-thread` feature (which `serialized` implies) requires SQLite
-/// built with SQLITE_THREADSAFE=1 or 2. If the library is single-threaded,
-/// we fail the build.
-///
-/// Note: We don't require serialized mode even when the `serialized` feature
-/// is enabled, because we pass `SQLITE_OPEN_FULLMUTEX` at connection open time
-/// to upgrade multi-thread mode to serialized behavior.
+#[cfg(feature = "multi-thread")]
 fn check_threading_mode(library: &features::Library) {
     use features::Threading;
 
-    #[allow(unused_variables)]
     let actual = library.threading();
 
-    #[cfg(feature = "multi-thread")]
-    {
-        if actual == Threading::SingleThread {
-            panic!(
-                "multi-thread feature enabled, but SQLite was built with \
+    if actual == Threading::SingleThread {
+        panic!(
+            "multi-thread feature enabled, but SQLite was built with \
                 SQLITE_THREADSAFE=0, and can only be used single-threaded"
-            );
-        }
+        );
     }
 }

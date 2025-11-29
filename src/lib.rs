@@ -1,6 +1,7 @@
 //! Squire provides an idiomatic and performant Rust interface for [SQLite][].
 //!
-//! ```rust
+#![cfg_attr(feature = "derive", doc = "```rust")]
+#![cfg_attr(not(feature = "derive"), doc = "```ignore")]
 //! # #![cfg_attr(
 //! #     all(nightly, feature = "lang-array-assume-init"),
 //! #     feature(maybe_uninit_array_assume_init)
