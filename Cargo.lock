@@ -575,7 +575,7 @@ checksum = "67b1b7a3b5fe4f1376887184045fcf45c69e92af734b7aaddc05fb777b6fbd03"
 
 [[package]]
 name = "squire"
-version = "0.0.1-alpha.4"
+version = "0.0.1-alpha.5"
 dependencies = [
  "jiff",
  "rustversion",
@@ -590,7 +590,7 @@ dependencies = [
 
 [[package]]
 name = "squire-derive"
-version = "0.0.1-alpha.1"
+version = "0.0.1-alpha.2"
 dependencies = [
  "darling",
  "proc-macro2",
@@ -610,7 +610,7 @@ dependencies = [
 
 [[package]]
 name = "squire-sqlite3-features"
-version = "0.0.1-alpha.1"
+version = "0.0.1-alpha.2"
 dependencies = [
  "cc",
  "inherent",
@@ -630,7 +630,7 @@ dependencies = [
 
 [[package]]
 name = "squire-sqlite3-sys"
-version = "0.0.1-alpha.4"
+version = "0.0.1-alpha.5"
 dependencies = [
  "bindgen",
  "pkg-config",

@@ -1,6 +1,6 @@
 [package]
 name = "squire"
-version = "0.0.1-alpha.4"
+version = "0.0.1-alpha.5"
 edition = "2024"
 description = "Safe and idiomatic SQLite bindings"
 readme = "Readme.md"
@@ -81,7 +81,7 @@ rustversion = ["dep:rustversion"]
 
 [dependencies.squire-derive]
 path = "crates/derive"
-version = "0.0.1-alpha.1"
+version = "0.0.1-alpha.2"
 optional = true
 default-features = false
 
@@ -93,7 +93,7 @@ optional = true
 [dependencies.sqlite]
 package = "squire-sqlite3-sys"
 path = "crates/sys"
-version = "0.0.1-alpha.4"
+version = "0.0.1-alpha.5"
 default-features = false
 
 [dependencies.jiff]
@@ -111,7 +111,7 @@ optional = true
 [build-dependencies.features]
 package = "squire-sqlite3-features"
 path = "crates/features"
-version = "0.0.1-alpha.1"
+version = "0.0.1-alpha.2"
 features = ["metadata"]
 
 [build-dependencies.rustversion]

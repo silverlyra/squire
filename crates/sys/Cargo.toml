@@ -1,7 +1,7 @@
 [package]
 name = "squire-sqlite3-sys"
 description = "External FFI bindings for the SQLite C API"
-version = "0.0.1-alpha.4"
+version = "0.0.1-alpha.5"
 edition = "2024"
 links = "sqlite3"
 readme = "Readme.md"
@@ -121,7 +121,7 @@ optional = true
 [build-dependencies.features]
 package = "squire-sqlite3-features"
 path = "../features"
-version = "0.0.1-alpha.1"
+version = "0.0.1-alpha.2"
 features = ["inherent", "metadata", "build"]
 
 [package.metadata.docs.rs]
