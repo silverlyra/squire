@@ -4,7 +4,7 @@ use crate::{
     iter,
     statement::{Binding, Execute, Execution, Statement},
     types::ColumnIndex,
-    value::Fetch,
+    fetch::Fetch,
 };
 
 /// Access the [`Columns`] of each row returned by a [query](Execution).

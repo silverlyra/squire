@@ -1,6 +1,6 @@
 use url::Url;
 
-use crate::{bind::Bind, error::Error, types::Borrowed, value::Fetch};
+use crate::{bind::Bind, error::Error, types::Borrowed, fetch::Fetch};
 
 #[cfg_attr(docsrs, doc(cfg(feature = "url")))]
 impl<'b> Bind<'b> for Url {

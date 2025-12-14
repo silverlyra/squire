@@ -13,19 +13,19 @@ mod bind;
 mod bytes;
 mod call;
 mod connection;
+mod fetch;
 #[cfg(feature = "mutex")]
 mod mutex;
 mod statement;
 mod string;
-mod value;
 
 pub use crate::types::ColumnIndex;
 pub use bind::{Bind, destructor};
 pub use bytes::Bytes;
 pub use connection::{Connected, Connection};
+pub use fetch::Fetch;
 #[cfg(feature = "mutex")]
 #[cfg_attr(docsrs, doc(cfg(any(feature = "mutex", feature = "serialized"))))]
 pub use mutex::{Mutex, MutexGuard, MutexRef, StaticMutex};
 pub use statement::{Conclusion, Execute, Statement};
 pub use string::{Append, String, StringBuilder};
-pub use value::Fetch;

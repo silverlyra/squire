@@ -69,14 +69,15 @@ mod column;
 mod connection;
 mod database;
 mod error;
+mod fetch;
 pub mod ffi;
+pub mod func;
 pub mod iter;
 mod param;
 mod query;
 mod row;
 mod statement;
 mod types;
-mod value;
 
 pub use bind::Bind;
 pub use blob::Reservation;
@@ -88,6 +89,7 @@ pub use error::{
     ErrorCategory, ErrorCode, ErrorContainer, ErrorLocation, ErrorReason, FetchError, GeneralError,
     IntegrationError, IoError, LockedError, ParameterError, ReadOnlyError, Result,
 };
+pub use fetch::Fetch;
 pub use param::Parameters;
 pub use query::Query;
 pub use row::{Row, Rows};
@@ -95,7 +97,6 @@ pub use statement::{
     Binding, Execution, PrepareOptions, Statement, StatementColumns, StatementParameters,
 };
 pub use types::{BindIndex, Borrowed, ColumnIndex, RowId, Type};
-pub use value::Fetch;
 
 #[cfg(all(feature = "json", feature = "serde"))]
 pub use types::Json;

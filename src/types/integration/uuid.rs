@@ -1,6 +1,6 @@
 use uuid::Uuid;
 
-use crate::{bind::Bind, error::Error, ffi, types::Borrowed, value::Fetch};
+use crate::{bind::Bind, error::Error, fetch::Fetch, ffi, types::Borrowed};
 
 #[cfg_attr(docsrs, doc(cfg(feature = "uuid")))]
 impl Bind<'_> for Uuid {
