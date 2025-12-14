@@ -1,6 +1,6 @@
 use core::fmt;
 
-use crate::{error::Result, statement::Statement, types::ColumnIndex, value::Fetch};
+use crate::{error::Result, statement::Statement, types::ColumnIndex, fetch::Fetch};
 
 /// Specifies the [`ColumnIndex`] values needed by [`Columns`].
 pub trait ColumnIndexes {

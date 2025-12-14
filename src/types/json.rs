@@ -8,7 +8,7 @@ use crate::{
     bind::Bind,
     error::{Error, Result},
     types::Borrowed,
-    value::Fetch,
+    fetch::Fetch,
 };
 
 /// A value which is stored in SQLite [serialized](Serialize) as JSON.

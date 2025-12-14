@@ -1,6 +1,6 @@
 use jiff::{SignedDuration, Span, Timestamp, Zoned};
 
-use crate::{bind::Bind, error::Error, ffi, types::Borrowed, value::Fetch};
+use crate::{bind::Bind, error::Error, ffi, types::Borrowed, fetch::Fetch};
 
 #[cfg_attr(docsrs, doc(cfg(feature = "jiff")))]
 impl Bind<'_> for SignedDuration {

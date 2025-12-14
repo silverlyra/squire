@@ -20,7 +20,7 @@ use super::{
     bind::Bind,
     call::call,
     connection::{Connected, Connection},
-    value::Fetch,
+    fetch::Fetch,
 };
 use crate::{
     error::{Error, ErrorCategory, Result},

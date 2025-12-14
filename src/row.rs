@@ -1,10 +1,10 @@
 use crate::{
     column::{ColumnIndexes, Columns},
     error::{Error, ErrorCode, Result},
+    fetch::Fetch,
     iter,
     statement::{Binding, Execute, Execution, Statement},
     types::ColumnIndex,
-    value::Fetch,
 };
 
 /// Access the [`Columns`] of each row returned by a [query](Execution).
