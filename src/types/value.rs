@@ -40,7 +40,10 @@ impl Type {
     /// # Safety
     ///
     /// The column index must be valid for the statement.
-    pub(crate) unsafe fn fetch<'r, 'c>(statement: &'r Statement<'c>, column: ColumnIndex) -> Self
+    pub(crate) unsafe fn fetch_column<'r, 'c>(
+        statement: &'r Statement<'c>,
+        column: ColumnIndex,
+    ) -> Self
     where
         'c: 'r,
     {

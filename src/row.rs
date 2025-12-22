@@ -160,7 +160,7 @@ where
         'a: 'r,
     {
         let statement = self.execution.cursor();
-        T::fetch(statement, column)
+        T::fetch_column(statement, column)
     }
 
     /// Unpack a full set of [`Columns`] from this [`Row`].

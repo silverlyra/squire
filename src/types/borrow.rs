@@ -171,7 +171,7 @@ impl<'b, 'a: 'b> Bind<'b> for Borrowed<'a, [u8]> {
 }
 
 impl<'r> Fetch<'r> for Borrowed<'r, str> {
-    unsafe fn fetch<'c>(statement: &'r Statement<'c>, column: ColumnIndex) -> Self
+    unsafe fn fetch_column<'c>(statement: &'r Statement<'c>, column: ColumnIndex) -> Self
     where
         'c: 'r,
     {
@@ -186,7 +186,7 @@ impl<'r> Fetch<'r> for Borrowed<'r, str> {
 }
 
 impl<'r> Fetch<'r> for Borrowed<'r, [u8]> {
-    unsafe fn fetch<'c>(statement: &'r Statement<'c>, column: ColumnIndex) -> Self
+    unsafe fn fetch_column<'c>(statement: &'r Statement<'c>, column: ColumnIndex) -> Self
     where
         'c: 'r,
     {

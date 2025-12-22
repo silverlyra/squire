@@ -29,13 +29,13 @@ pub trait Fetch<'r> {
     /// > than `SQLITE_ROW`, results are undefined. If `sqlite3_step` or
     /// > `sqlite3_reset` or `sqlite3_finalize` are called from a different thread
     /// > while any of these routines are pending, then the results are undefined.
-    unsafe fn fetch<'c>(statement: &'r Statement<'c>, column: ColumnIndex) -> Self
+    unsafe fn fetch_column<'c>(statement: &'r Statement<'c>, column: ColumnIndex) -> Self
     where
         'c: 'r;
 }
 
 impl<'r> Fetch<'r> for i32 {
-    unsafe fn fetch<'c>(statement: &'r Statement<'c>, column: ColumnIndex) -> Self
+    unsafe fn fetch_column<'c>(statement: &'r Statement<'c>, column: ColumnIndex) -> Self
     where
         'c: 'r,
     {
@@ -44,7 +44,7 @@ impl<'r> Fetch<'r> for i32 {
 }
 
 impl<'r> Fetch<'r> for i64 {
-    unsafe fn fetch<'c>(statement: &'r Statement<'c>, column: ColumnIndex) -> Self
+    unsafe fn fetch_column<'c>(statement: &'r Statement<'c>, column: ColumnIndex) -> Self
     where
         'c: 'r,
     {
@@ -53,7 +53,7 @@ impl<'r> Fetch<'r> for i64 {
 }
 
 impl<'r> Fetch<'r> for f64 {
-    unsafe fn fetch<'c>(statement: &'r Statement<'c>, column: ColumnIndex) -> Self
+    unsafe fn fetch_column<'c>(statement: &'r Statement<'c>, column: ColumnIndex) -> Self
     where
         'c: 'r,
     {
@@ -62,11 +62,11 @@ impl<'r> Fetch<'r> for f64 {
 }
 
 impl<'r> Fetch<'r> for Type {
-    unsafe fn fetch<'c>(statement: &'r Statement<'c>, column: ColumnIndex) -> Self
+    unsafe fn fetch_column<'c>(statement: &'r Statement<'c>, column: ColumnIndex) -> Self
     where
         'c: 'r,
     {
-        unsafe { Type::fetch(statement, column) }
+        unsafe { Type::fetch_column(statement, column) }
     }
 }
 
@@ -74,14 +74,14 @@ impl<'r, T> Fetch<'r> for Option<T>
 where
     T: Fetch<'r>,
 {
-    unsafe fn fetch<'c>(statement: &'r Statement<'c>, column: ColumnIndex) -> Self
+    unsafe fn fetch_column<'c>(statement: &'r Statement<'c>, column: ColumnIndex) -> Self
     where
         'c: 'r,
     {
-        let column_type = unsafe { Type::fetch(statement, column) };
+        let column_type = unsafe { Type::fetch_column(statement, column) };
 
         if column_type.has_value() {
-            Some(unsafe { T::fetch(statement, column) })
+            Some(unsafe { T::fetch_column(statement, column) })
         } else {
             None
         }

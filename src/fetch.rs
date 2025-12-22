@@ -21,8 +21,8 @@ use crate::{
 pub trait Fetch<'r>: Sized {
     type Value: ffi::Fetch<'r>;
 
-    fn fetch<'c>(statement: &'r Statement<'c>, column: ColumnIndex) -> Result<Self> {
-        let value = unsafe { Self::Value::fetch(statement.internal_ref(), column) };
+    fn fetch_column<'c>(statement: &'r Statement<'c>, column: ColumnIndex) -> Result<Self> {
+        let value = unsafe { Self::Value::fetch_column(statement.internal_ref(), column) };
         Self::from_column_value(value)
     }
 
