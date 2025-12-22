@@ -165,11 +165,9 @@ impl Deref for Bytes {
 
 impl Drop for Bytes {
     fn drop(&mut self) {
-        // Don't free zero-length Bytes; they point to a static empty slice.
-        if self.len > 0 {
-            // SAFETY: `self.data` was allocated via `sqlite3_malloc64`.
-            unsafe { sqlite3_free(self.as_ptr() as *mut c_void) }
-        }
+        // SAFETY: `self.data` was allocated via `sqlite3_malloc64`
+        // (or is a null pointer, which `sqlite3_free` ignores).
+        unsafe { sqlite3_free(self.as_ptr() as *mut c_void) }
     }
 }
 
