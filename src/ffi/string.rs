@@ -196,7 +196,7 @@ const ENCODING_UTF8: core::ffi::c_uchar = SQLITE_UTF8 as core::ffi::c_uchar;
 /// The string's memory is transferred to SQLite, which will free it via
 /// [`sqlite3_free`] when the binding is no longer needed.
 impl<'b> Bind<'b> for String {
-    unsafe fn bind<'s>(self, statement: &Statement<'s>, index: BindIndex) -> Result<()>
+    unsafe fn bind_parameter<'s>(self, statement: &Statement<'s>, index: BindIndex) -> Result<()>
     where
         's: 'b,
     {

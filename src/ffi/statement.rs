@@ -151,7 +151,7 @@ impl<'c> Statement<'c> {
         B: Bind<'b>,
         'c: 'b,
     {
-        unsafe { value.bind(self, index) }
+        unsafe { value.bind_parameter(self, index) }
     }
 
     #[doc(alias = "sqlite3_clear_bindings")]

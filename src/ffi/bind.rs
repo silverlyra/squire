@@ -78,7 +78,7 @@ pub trait Bind<'b> {
     /// responsible for ensuring the pointer remains valid for the duration of
     /// the binding; and if a [destructor](sqlite3_destructor_type) is used, for
     /// SQLite to call it at the end of the binding lifecycle.
-    unsafe fn bind<'c>(self, statement: &Statement<'c>, index: BindIndex) -> Result<()>
+    unsafe fn bind_parameter<'c>(self, statement: &Statement<'c>, index: BindIndex) -> Result<()>
     where
         'c: 'b;
 }
@@ -101,7 +101,7 @@ pub(crate) use bind;
 
 /// [Binds](Bind) an [`i32`] via [`sqlite3_bind_int`].
 impl<'b> Bind<'b> for i32 {
-    unsafe fn bind<'c>(self, statement: &Statement<'c>, index: BindIndex) -> Result<()>
+    unsafe fn bind_parameter<'c>(self, statement: &Statement<'c>, index: BindIndex) -> Result<()>
     where
         'c: 'b,
     {
@@ -111,7 +111,7 @@ impl<'b> Bind<'b> for i32 {
 
 /// [Binds](Bind) an [`i64`] via [`sqlite3_bind_int64`].
 impl<'b> Bind<'b> for i64 {
-    unsafe fn bind<'c>(self, statement: &Statement<'c>, index: BindIndex) -> Result<()>
+    unsafe fn bind_parameter<'c>(self, statement: &Statement<'c>, index: BindIndex) -> Result<()>
     where
         'c: 'b,
     {
@@ -121,7 +121,7 @@ impl<'b> Bind<'b> for i64 {
 
 /// [Binds](Bind) an [`f64`] via [`sqlite3_bind_double`].
 impl<'b> Bind<'b> for f64 {
-    unsafe fn bind<'c>(self, statement: &Statement<'c>, index: BindIndex) -> Result<()>
+    unsafe fn bind_parameter<'c>(self, statement: &Statement<'c>, index: BindIndex) -> Result<()>
     where
         'c: 'b,
     {
@@ -144,7 +144,7 @@ impl<'b> Bind<'b> for f64 {
 ///
 /// [clone]: https://sqlite.org/c3ref/c_static.html
 impl<'b> Bind<'b> for &str {
-    unsafe fn bind<'c>(self, statement: &Statement<'c>, index: BindIndex) -> Result<()>
+    unsafe fn bind_parameter<'c>(self, statement: &Statement<'c>, index: BindIndex) -> Result<()>
     where
         'c: 'b,
     {
@@ -173,7 +173,7 @@ impl<'b> Bind<'b> for &str {
 ///
 /// [clone]: https://sqlite.org/c3ref/c_static.html
 impl<'b> Bind<'b> for &[u8] {
-    unsafe fn bind<'c>(self, statement: &Statement<'c>, index: BindIndex) -> Result<()>
+    unsafe fn bind_parameter<'c>(self, statement: &Statement<'c>, index: BindIndex) -> Result<()>
     where
         'c: 'b,
     {
@@ -199,11 +199,11 @@ impl<'b> Bind<'b> for &[u8] {
 ///
 /// [clone]: https://sqlite.org/c3ref/c_static.html
 impl<'b> Bind<'b> for String {
-    unsafe fn bind<'c>(self, statement: &Statement<'c>, index: BindIndex) -> Result<()>
+    unsafe fn bind_parameter<'c>(self, statement: &Statement<'c>, index: BindIndex) -> Result<()>
     where
         'c: 'b,
     {
-        unsafe { self.as_str().bind(statement, index) }
+        unsafe { self.as_str().bind_parameter(statement, index) }
     }
 }
 
@@ -221,11 +221,11 @@ impl<'b> Bind<'b> for String {
 ///
 /// [clone]: https://sqlite.org/c3ref/c_static.html
 impl<'b> Bind<'b> for Vec<u8> {
-    unsafe fn bind<'c>(self, statement: &Statement<'c>, index: BindIndex) -> Result<()>
+    unsafe fn bind_parameter<'c>(self, statement: &Statement<'c>, index: BindIndex) -> Result<()>
     where
         'c: 'b,
     {
-        unsafe { self.as_slice().bind(statement, index) }
+        unsafe { self.as_slice().bind_parameter(statement, index) }
     }
 }
 
@@ -242,7 +242,7 @@ impl<'b> Bind<'b> for Vec<u8> {
 /// parameter, SQLite will create a `BLOB` of the [requested length](Reservation::len())
 /// and set every byte in the blob to `\0`.
 impl<'b> Bind<'b> for Reservation {
-    unsafe fn bind<'c>(self, statement: &Statement<'c>, index: BindIndex) -> Result<()>
+    unsafe fn bind_parameter<'c>(self, statement: &Statement<'c>, index: BindIndex) -> Result<()>
     where
         'c: 'b,
     {
@@ -260,14 +260,14 @@ impl<'b, T> Bind<'b> for Option<T>
 where
     T: Bind<'b>,
 {
-    unsafe fn bind<'c>(self, statement: &Statement<'c>, index: BindIndex) -> Result<()>
+    unsafe fn bind_parameter<'c>(self, statement: &Statement<'c>, index: BindIndex) -> Result<()>
     where
         'c: 'b,
     {
         if let Some(value) = self {
-            unsafe { value.bind(statement, index) }
+            unsafe { value.bind_parameter(statement, index) }
         } else {
-            unsafe { Null.bind(statement, index) }
+            unsafe { Null.bind_parameter(statement, index) }
         }
     }
 }
@@ -275,7 +275,7 @@ where
 pub(crate) struct Null;
 
 impl<'b> Bind<'b> for Null {
-    unsafe fn bind<'c>(self, statement: &Statement<'c>, index: BindIndex) -> Result<()>
+    unsafe fn bind_parameter<'c>(self, statement: &Statement<'c>, index: BindIndex) -> Result<()>
     where
         'c: 'b,
     {

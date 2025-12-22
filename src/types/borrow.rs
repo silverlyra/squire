@@ -73,7 +73,7 @@ impl<'a, T: ?Sized> Deref for Borrowed<'a, T> {
 ///
 /// [cloning]: https://sqlite.org/c3ref/c_static.html
 impl<'b, 'a: 'b> Bind<'b> for Borrowed<'a, str> {
-    unsafe fn bind<'c>(self, statement: &Statement<'c>, index: BindIndex) -> Result<()>
+    unsafe fn bind_parameter<'c>(self, statement: &Statement<'c>, index: BindIndex) -> Result<()>
     where
         'c: 'b,
     {
@@ -128,7 +128,7 @@ impl<'b, 'a: 'b> Bind<'b> for Borrowed<'a, str> {
 ///
 /// [cloning]: https://sqlite.org/c3ref/c_static.html
 impl<'b, 'a: 'b> Bind<'b> for Borrowed<'a, [u8]> {
-    unsafe fn bind<'c>(self, statement: &Statement<'c>, index: BindIndex) -> Result<()>
+    unsafe fn bind_parameter<'c>(self, statement: &Statement<'c>, index: BindIndex) -> Result<()>
     where
         'c: 'b,
     {
