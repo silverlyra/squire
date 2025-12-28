@@ -7,8 +7,8 @@ use squire_serde::{Deserialize, Serialize};
 use crate::{
     bind::Bind,
     error::{Error, Result},
-    types::Borrowed,
     fetch::Fetch,
+    types::Borrowed,
 };
 
 /// A value which is stored in SQLite [serialized](Serialize) as JSON.
@@ -37,7 +37,7 @@ where
 {
     type Value = Borrowed<'r, [u8]>;
 
-    fn from_column_value(value: Self::Value) -> Result<Self> {
+    fn from_value(value: Self::Value) -> Result<Self> {
         match json::from_slice(value.into_inner()) {
             Ok(value) => Ok(Self(value)),
             Err(err) => Err(Error::from_fetch(err)),
@@ -84,7 +84,7 @@ where
 {
     type Value = Borrowed<'r, [u8]>;
 
-    fn from_column_value(value: Self::Value) -> Result<Self> {
+    fn from_value(value: Self::Value) -> Result<Self> {
         match jsonb::from_slice(value.into_inner()) {
             Ok(value) => Ok(Self(value)),
             Err(err) => Err(Error::from_fetch(err)),

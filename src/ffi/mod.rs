@@ -13,19 +13,29 @@ mod bind;
 mod bytes;
 mod call;
 mod connection;
+#[cfg(feature = "functions")]
+mod context;
 mod fetch;
 #[cfg(feature = "mutex")]
 mod mutex;
 mod statement;
 mod string;
+#[cfg(feature = "value")]
+mod value;
 
 pub use crate::types::ColumnIndex;
 pub use bind::{Bind, destructor};
 pub use bytes::Bytes;
 pub use connection::{Connected, Connection};
+#[cfg(feature = "functions")]
+#[cfg_attr(docsrs, doc(cfg(feature = "functions")))]
+pub use context::ContextRef;
 pub use fetch::Fetch;
 #[cfg(feature = "mutex")]
 #[cfg_attr(docsrs, doc(cfg(any(feature = "mutex", feature = "serialized"))))]
 pub use mutex::{Mutex, MutexGuard, MutexRef, StaticMutex};
 pub use statement::{Conclusion, Execute, Statement};
 pub use string::{Append, String, StringBuilder};
+#[cfg(feature = "value")]
+#[cfg_attr(docsrs, doc(cfg(any(feature = "functions", feature = "value"))))]
+pub use value::{OpaqueValueRef, Value, ValueRef};

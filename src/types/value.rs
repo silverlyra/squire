@@ -1,9 +1,13 @@
+#[cfg(feature = "value")]
+use sqlite::sqlite3_value_type;
 use sqlite::{
     SQLITE_BLOB, SQLITE_FLOAT, SQLITE_INTEGER, SQLITE_NULL, SQLITE_TEXT, sqlite3_column_type,
 };
 
 use super::ColumnIndex;
 use crate::ffi::Statement;
+#[cfg(feature = "value")]
+use crate::ffi::ValueRef;
 
 /// The datatype of a SQLite column value.
 ///
@@ -25,6 +29,17 @@ pub enum Type {
 }
 
 impl Type {
+    const fn from_code(value: i32) -> Self {
+        match value {
+            SQLITE_INTEGER => Type::Integer,
+            SQLITE_FLOAT => Type::Float,
+            SQLITE_TEXT => Type::Text,
+            SQLITE_BLOB => Type::Blob,
+            SQLITE_NULL => Type::Null,
+            _ => panic!("unknown sqlite3_column_type"),
+        }
+    }
+
     /// `true` unless this [`Type`] is [`NULL`](Self::Null); `false` for `NULL`.
     pub const fn has_value(&self) -> bool {
         !self.is_null()
@@ -47,15 +62,21 @@ impl Type {
     where
         'c: 'r,
     {
-        let value = unsafe { sqlite3_column_type(statement.as_ptr(), column.value()) };
+        let code = unsafe { sqlite3_column_type(statement.as_ptr(), column.value()) };
+        Self::from_code(code)
+    }
 
-        match value {
-            SQLITE_INTEGER => Type::Integer,
-            SQLITE_FLOAT => Type::Float,
-            SQLITE_TEXT => Type::Text,
-            SQLITE_BLOB => Type::Blob,
-            SQLITE_NULL => Type::Null,
-            _ => panic!("unknown sqlite3_column_type {value}"),
-        }
+    /// Fetches the type of a dynamic [`Value`].
+    ///
+    /// # Safety
+    ///
+    /// The `Value` pointer must remain valid.
+    #[cfg(feature = "value")]
+    pub(crate) unsafe fn fetch_value<'r, 'c>(value: &'r ValueRef<'c>) -> Self
+    where
+        'c: 'r,
+    {
+        let code = unsafe { sqlite3_value_type(value.as_ptr()) };
+        Self::from_code(code)
     }
 }

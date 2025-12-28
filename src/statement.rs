@@ -568,7 +568,10 @@ where
     statement: &'s Statement<'c>,
 }
 
+#[cfg(sqlite_has_tcl_variables)]
 const SIGILS: &[char] = &[':', '@', '$'];
+#[cfg(not(sqlite_has_tcl_variables))]
+const SIGILS: &[char] = &[':', '@'];
 
 impl<'c, 's> StatementParameters<'c, 's>
 where
@@ -620,9 +623,10 @@ where
 
     #[must_use]
     pub fn is_empty(&self) -> bool {
-        self.len() == 0
+        self.count() == 0
     }
 
+    #[inline]
     fn count(&self) -> c_int {
         self.statement.internal_ref().parameter_count()
     }
