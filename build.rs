@@ -30,11 +30,7 @@ fn emit_nightly_cfg() {
 
 #[cfg(feature = "multi-thread")]
 fn check_threading_mode(library: &features::Library) {
-    use features::Threading;
-
-    let actual = library.threading();
-
-    if actual == Threading::SingleThread {
+    if library.threading().is_single_threaded() {
         panic!(
             "multi-thread feature enabled, but SQLite was built with \
                 SQLITE_THREADSAFE=0, and can only be used single-threaded"
