@@ -8,6 +8,7 @@ use sqlite::sqlite3_errstr;
 ///
 /// [return code]: https://sqlite.org/rescode.html
 #[derive(PartialEq, Eq, Copy, Clone, Debug)]
+#[repr(transparent)]
 pub struct ErrorCode(NonZero<i32>);
 
 macro_rules! code {

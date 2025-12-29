@@ -24,20 +24,20 @@ unsafe extern "C" {
         pApp: *mut c_void,
         xFunc: Option<
             unsafe extern "C" fn(
-                arg1: *mut sqlite3_context,
-                arg2: c_int,
-                arg3: *mut *mut sqlite3_value,
+                context: *mut sqlite3_context,
+                nArg: c_int,
+                args: *mut *mut sqlite3_value,
             ),
         >,
         xStep: Option<
             unsafe extern "C" fn(
-                arg1: *mut sqlite3_context,
-                arg2: c_int,
-                arg3: *mut *mut sqlite3_value,
+                context: *mut sqlite3_context,
+                nArg: c_int,
+                args: *mut *mut sqlite3_value,
             ),
         >,
-        xFinal: Option<unsafe extern "C" fn(arg1: *mut sqlite3_context)>,
-        xDestroy: Option<unsafe extern "C" fn(arg1: *mut c_void)>,
+        xFinal: Option<unsafe extern "C" fn(context: *mut sqlite3_context)>,
+        xDestroy: Option<unsafe extern "C" fn(pApp: *mut c_void)>,
     ) -> c_int;
 
     pub fn sqlite3_create_window_function(
@@ -48,21 +48,21 @@ unsafe extern "C" {
         pApp: *mut c_void,
         xStep: Option<
             unsafe extern "C" fn(
-                arg1: *mut sqlite3_context,
-                arg2: c_int,
-                arg3: *mut *mut sqlite3_value,
+                context: *mut sqlite3_context,
+                nArg: c_int,
+                args: *mut *mut sqlite3_value,
             ),
         >,
-        xFinal: Option<unsafe extern "C" fn(arg1: *mut sqlite3_context)>,
-        xValue: Option<unsafe extern "C" fn(arg1: *mut sqlite3_context)>,
+        xFinal: Option<unsafe extern "C" fn(context: *mut sqlite3_context)>,
+        xValue: Option<unsafe extern "C" fn(context: *mut sqlite3_context)>,
         xInverse: Option<
             unsafe extern "C" fn(
-                arg1: *mut sqlite3_context,
+                conte: *mut sqlite3_context,
                 arg2: c_int,
                 arg3: *mut *mut sqlite3_value,
             ),
         >,
-        xDestroy: Option<unsafe extern "C" fn(arg1: *mut c_void)>,
+        xDestroy: Option<unsafe extern "C" fn(pApp: *mut c_void)>,
     ) -> c_int;
 
     pub fn sqlite3_context_db_handle(pCtx: *mut sqlite3_context) -> *mut sqlite3;
@@ -121,4 +121,13 @@ unsafe extern "C" {
     );
 
     pub fn sqlite3_aggregate_context(context: *mut sqlite3_context, nBytes: c_int) -> *mut c_void;
+
+    pub fn sqlite3_user_data(context: *mut sqlite3_context) -> *mut c_void;
 }
+
+pub const SQLITE_DETERMINISTIC: i32 = 1 << 11;
+pub const SQLITE_DIRECTONLY: i32 = 1 << 19;
+pub const SQLITE_SUBTYPE: i32 = 1 << 20;
+pub const SQLITE_INNOCUOUS: i32 = 1 << 21;
+pub const SQLITE_RESULT_SUBTYPE: i32 = 1 << 24;
+pub const SQLITE_SELFORDER1: i32 = 1 << 25;

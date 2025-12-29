@@ -4,10 +4,11 @@ use sqlite::{
 };
 #[cfg(feature = "value")]
 use sqlite::{
-    sqlite3_value_blob, sqlite3_value_bytes, sqlite3_value_double, sqlite3_value_int,
-    sqlite3_value_int64, sqlite3_value_text,
+    sqlite3_column_value, sqlite3_value_blob, sqlite3_value_bytes, sqlite3_value_double,
+    sqlite3_value_int, sqlite3_value_int64, sqlite3_value_pointer, sqlite3_value_text,
 };
 
+use super::pointer::{Pointee, Pointer, PointerMut};
 use super::statement::Statement;
 #[cfg(feature = "value")]
 use super::value::ValueRef;
@@ -212,5 +213,53 @@ impl<'r> Fetch<'r> for Borrowed<'r, [u8]> {
         let len = unsafe { sqlite3_value_bytes(value.as_ptr()) };
 
         unsafe { Self::from_raw_bytes(data, len) }
+    }
+}
+
+#[cfg(feature = "value")]
+impl<'r, T: Pointee> Fetch<'r> for Pointer<'r, T> {
+    unsafe fn fetch_column<'c>(statement: &'r Statement<'c>, column: ColumnIndex) -> Self
+    where
+        'c: 'r,
+    {
+        let value = unsafe { sqlite3_column_value(statement.as_ptr(), column.value()) };
+        let value = ValueRef::new(value).expect("sqlite3_value");
+
+        unsafe {
+            let value = core::mem::transmute::<&'_ ValueRef<'_>, &'r ValueRef<'c>>(&value);
+            Self::fetch_value(value)
+        }
+    }
+
+    unsafe fn fetch_value<'c>(value: &'r ValueRef<'c>) -> Self
+    where
+        'c: 'r,
+    {
+        let ptr = unsafe { sqlite3_value_pointer(value.as_ptr(), T::TYPE.as_ptr()) as *mut T };
+        unsafe { Pointer::new(ptr as *const T).expect("non-null pointer") }
+    }
+}
+
+#[cfg(feature = "value")]
+impl<'r, T: Pointee> Fetch<'r> for PointerMut<'r, T> {
+    unsafe fn fetch_column<'c>(statement: &'r Statement<'c>, column: ColumnIndex) -> Self
+    where
+        'c: 'r,
+    {
+        let value = unsafe { sqlite3_column_value(statement.as_ptr(), column.value()) };
+        let value = ValueRef::new(value).expect("sqlite3_value");
+
+        unsafe {
+            let value = core::mem::transmute::<&'_ ValueRef<'_>, &'r ValueRef<'c>>(&value);
+            Self::fetch_value(value)
+        }
+    }
+
+    unsafe fn fetch_value<'c>(value: &'r ValueRef<'c>) -> Self
+    where
+        'c: 'r,
+    {
+        let ptr = unsafe { sqlite3_value_pointer(value.as_ptr(), T::TYPE.as_ptr()) as *mut T };
+        unsafe { PointerMut::new(ptr).expect("non-null pointer") }
     }
 }

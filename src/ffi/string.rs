@@ -18,7 +18,7 @@ use sqlite::{
 };
 
 #[cfg(feature = "functions")]
-use super::{bind::result, context::ContextRef};
+use super::{bind::result, func::ContextRef};
 use super::{
     bind::{Bind, bind},
     connection::Connected,
@@ -218,7 +218,7 @@ impl<'b> Bind<'b> for String {
     #[cfg(feature = "functions")]
     unsafe fn bind_return<'c>(self, context: &ContextRef<'c>)
     where
-        'c: 'b,
+        'b: 'c,
     {
         let (ptr, len) = self.into_raw_parts();
 

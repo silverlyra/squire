@@ -5,38 +5,71 @@ use core::{error::Error, fmt, str::FromStr};
 /// A compile-time flag which enables or omits a SQLite feature.
 #[derive(PartialEq, Eq, Hash, Copy, Clone, Debug)]
 pub enum Flag {
+    /// `SQLITE_ENABLE_API_ARMOR`
     EnableApiArmor,
+    /// `SQLITE_CASE_SENSITIVE_LIKE`
     EnableCaseSensitiveLike,
+    /// `SQLITE_ENABLE_COLUMN_METADATA`
     EnableColumnMetadata,
+    /// `SQLITE_ENABLE_FTS3`
     EnableFts3,
+    /// `SQLITE_ENABLE_FTS5`
     EnableFts5,
+    /// `SQLITE_ENABLE_JSON1`
     EnableJson,
+    /// `SQLITE_ENABLE_MEMORY_MANAGEMENT`
     EnableMemoryManagement,
+    /// `SQLITE_ENABLE_NORMALIZE`
     EnableNormalizeSql,
+    /// `SQLITE_ENABLE_PREUPDATE_HOOK`
     EnablePreUpdateHook,
+    /// `SQLITE_ENABLE_PROGRESS_CALLBACK`
     EnableProgressCallback,
+    /// `SQLITE_ENABLE_SESSION`
     EnableSession,
+    /// `SQLITE_ENABLE_SNAPSHOT`
     EnableSnapshot,
+    /// `SQLITE_SOUNDEX`
     EnableSoundex,
+    /// `SQLITE_ENABLE_STAT4`
     EnableStat4,
+    /// `SQLITE_OMIT_ATTACH`
     OmitAttach,
+    /// `SQLITE_OMIT_AUTHORIZATION`
     OmitAuthorization,
+    /// `SQLITE_OMIT_AUTOINIT`
     OmitAutomaticInitialize,
+    /// `SQLITE_OMIT_AUTORESET`
     OmitAutomaticReset,
+    /// `SQLITE_OMIT_BLOB_LITERAL`
     OmitBlobIo,
+    /// `SQLITE_OMIT_LIKE_OPTIMIZATION`
     OmitBlobLike,
+    /// `SQLITE_OMIT_DECLTYPE`
     OmitColumnDeclaredType,
+    /// `SQLITE_OMIT_COMPLETE`
     OmitComplete,
+    /// `SQLITE_OMIT_DEPRECATED`
     OmitDeprecated,
+    /// `SQLITE_OMIT_GET_TABLE`
     OmitGetTable,
+    /// `SQLITE_OMIT_JSON`
     OmitJson,
+    /// `SQLITE_OMIT_LOAD_EXTENSION`
     OmitLoadExtension,
+    /// `SQLITE_OMIT_MEMORYDB`
     OmitMemoryDatabases,
+    /// `SQLITE_OMIT_DESERIALIZE`
     OmitSerialize,
+    /// `SQLITE_OMIT_SHARED_CACHE`
     OmitSharedCache,
+    /// `SQLITE_OMIT_TCL_VARIABLE`
     OmitTclVariables,
+    /// `SQLITE_OMIT_TEMPDB`
     OmitTemporaryDatabase,
+    /// `SQLITE_OMIT_TRACE`
     OmitTrace,
+    /// `SQLITE_OMIT_UTF16`
     OmitUtf16,
 }
 

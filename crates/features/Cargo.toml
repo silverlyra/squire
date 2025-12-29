@@ -36,3 +36,8 @@ optional = true
 [dependencies.pkg-config]
 version = "0.3"
 optional = true
+
+[package.metadata.docs.rs]
+all-features = true
+
+rustdoc-args = ["--cfg", "docsrs"]

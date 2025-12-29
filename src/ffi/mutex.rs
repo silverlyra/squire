@@ -100,6 +100,20 @@ impl<'a> MutexRef<'a> {
 }
 
 impl MutexRef<'static> {
+    /// The [`SQLITE_MUTEX_STATIC_APP1`](StaticMutex::App1) static mutex.
+    ///
+    /// # Panics
+    ///
+    /// Panics if [`MutexRef::global`] returns `None`.
+    pub fn app() -> Self {
+        Self::global(StaticMutex::App1).expect("SQLITE_MUTEX_STATIC_APP1")
+    }
+
+    /// Access a SQLite [static mutex](StaticMutex).
+    ///
+    /// Returns `None` if [`sqlite3_mutex_alloc`][mutex] returns `NULL`.
+    ///
+    /// [mutex]: https://sqlite.org/c3ref/mutex_alloc.html
     pub fn global(mutex: StaticMutex) -> Option<Self> {
         MutexInner::global(mutex).map(|inner| Self {
             inner,

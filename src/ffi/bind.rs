@@ -3,7 +3,7 @@ use core::{
     ptr,
 };
 
-use super::{context::ContextRef, statement::Statement};
+use super::{func::ContextRef, pointer::Pointee, statement::Statement};
 use crate::{
     blob::Reservation,
     error::{Error, Result},
@@ -12,7 +12,7 @@ use crate::{
 
 use sqlite::{
     SQLITE_STATIC, SQLITE_TRANSIENT, sqlite3_bind_double, sqlite3_bind_int, sqlite3_bind_int64,
-    sqlite3_bind_null, sqlite3_destructor_type,
+    sqlite3_bind_null, sqlite3_bind_pointer, sqlite3_destructor_type, sqlite3_result_pointer,
 };
 #[cfg(target_pointer_width = "64")]
 use sqlite::{
@@ -105,15 +105,15 @@ pub trait Bind<'b> {
     /// # Safety
     ///
     /// Implementations access the `sqlite3_result_*` API’s directly. If these
-    /// API’s are used to bind a pointer non-`SQLITE_TRANSIENT`ly, the caller is
-    /// responsible for ensuring the pointer remains valid for the duration of
-    /// the binding; and if a [destructor](sqlite3_destructor_type) is used, for
-    /// SQLite to call it at the end of the binding lifecycle.
+    /// API’s are used to return a pointer non-`SQLITE_TRANSIENT`ly, the caller
+    /// is responsible for ensuring the pointer remains valid for the duration
+    /// of the context; and if a [destructor](sqlite3_destructor_type) is used,
+    /// for SQLite to call it at the end of the function evaluation.
     #[cfg(feature = "functions")]
     #[cfg_attr(docsrs, doc(cfg(feature = "functions")))]
     unsafe fn bind_return<'c>(self, context: &ContextRef<'c>)
     where
-        'c: 'b;
+        'b: 'c;
 }
 
 /// Call a `sqlite3_bind_…` function and handle any possible [`Error`].
@@ -154,7 +154,7 @@ impl<'b> Bind<'b> for i32 {
     #[cfg(feature = "functions")]
     unsafe fn bind_return<'c>(self, context: &ContextRef<'c>)
     where
-        'c: 'b,
+        'b: 'c,
     {
         result! { sqlite3_result_int(context, self) }
     }
@@ -172,7 +172,7 @@ impl<'b> Bind<'b> for i64 {
     #[cfg(feature = "functions")]
     unsafe fn bind_return<'c>(self, context: &ContextRef<'c>)
     where
-        'c: 'b,
+        'b: 'c,
     {
         result! { sqlite3_result_int64(context, self) }
     }
@@ -190,7 +190,7 @@ impl<'b> Bind<'b> for f64 {
     #[cfg(feature = "functions")]
     unsafe fn bind_return<'c>(self, context: &ContextRef<'c>)
     where
-        'c: 'b,
+        'b: 'c,
     {
         result! { sqlite3_result_double(context, self) }
     }
@@ -227,7 +227,7 @@ impl<'b> Bind<'b> for &str {
     #[cfg(feature = "functions")]
     unsafe fn bind_return<'c>(self, context: &ContextRef<'c>)
     where
-        'c: 'b,
+        'b: 'c,
     {
         #[cfg(target_pointer_width = "32")]
         result! { sqlite3_result_text(context, self.as_ptr() as *const c_char, self.len() as c_int, SQLITE_TRANSIENT) }
@@ -266,7 +266,7 @@ impl<'b> Bind<'b> for &[u8] {
     #[cfg(feature = "functions")]
     unsafe fn bind_return<'c>(self, context: &ContextRef<'c>)
     where
-        'c: 'b,
+        'b: 'c,
     {
         #[cfg(target_pointer_width = "32")]
         result! { sqlite3_result_blob(context, self.as_ptr() as *const c_void, self.len() as c_int, SQLITE_TRANSIENT) }
@@ -300,7 +300,7 @@ impl<'b> Bind<'b> for String {
     #[cfg(feature = "functions")]
     unsafe fn bind_return<'c>(self, context: &ContextRef<'c>)
     where
-        'c: 'b,
+        'b: 'c,
     {
         unsafe { self.as_str().bind_return(context) }
     }
@@ -330,7 +330,7 @@ impl<'b> Bind<'b> for Vec<u8> {
     #[cfg(feature = "functions")]
     unsafe fn bind_return<'c>(self, context: &ContextRef<'c>)
     where
-        'c: 'b,
+        'b: 'c,
     {
         unsafe { self.as_slice().bind_return(context) }
     }
@@ -363,7 +363,7 @@ impl<'b> Bind<'b> for Reservation {
     #[cfg(feature = "functions")]
     unsafe fn bind_return<'c>(self, context: &ContextRef<'c>)
     where
-        'c: 'b,
+        'b: 'c,
     {
         #[cfg(target_pointer_width = "32")]
         result! { sqlite3_result_zeroblob(context, self.0 as c_int) }
@@ -393,7 +393,7 @@ where
     #[cfg(feature = "functions")]
     unsafe fn bind_return<'c>(self, context: &ContextRef<'c>)
     where
-        'c: 'b,
+        'b: 'c,
     {
         if let Some(value) = self {
             unsafe { value.bind_return(context) }
@@ -433,7 +433,7 @@ impl<'b, 'a: 'b> Bind<'b> for Borrowed<'a, str> {
     #[cfg(feature = "functions")]
     unsafe fn bind_return<'c>(self, context: &ContextRef<'c>)
     where
-        'c: 'b,
+        'b: 'c,
     {
         #[cfg(target_pointer_width = "32")]
         result! { sqlite3_result_text(context, self.as_ptr() as *const c_char, self.len() as c_int, SQLITE_STATIC) }
@@ -471,13 +471,78 @@ impl<'b, 'a: 'b> Bind<'b> for Borrowed<'a, [u8]> {
     #[cfg(feature = "functions")]
     unsafe fn bind_return<'c>(self, context: &ContextRef<'c>)
     where
-        'c: 'b,
+        'b: 'c,
     {
         #[cfg(target_pointer_width = "32")]
         result! { sqlite3_result_blob(context, self.as_ptr() as *const c_void, self.len() as c_int, SQLITE_STATIC) }
 
         #[cfg(target_pointer_width = "64")]
         result! { sqlite3_result_blob64(context, self.as_ptr() as *const c_void, self.len() as sqlite3_uint64, SQLITE_STATIC) }
+    }
+}
+
+/// [Binds](Bind) a reference using the [pointer passing interface].
+///
+/// [pointer passing interface]: https://sqlite.org/bindptr.html
+impl<'b, 'a: 'b, T: Pointee + ?Sized> Bind<'b> for &'a T {
+    unsafe fn bind_parameter<'c>(self, statement: &Statement<'c>, index: BindIndex) -> Result<()>
+    where
+        'c: 'b,
+    {
+        let pointer = self as *const T;
+        bind! { sqlite3_bind_pointer(statement, index, pointer as *mut c_void, T::TYPE.as_ptr(), SQLITE_STATIC) }
+    }
+
+    unsafe fn bind_return<'c>(self, context: &ContextRef<'c>)
+    where
+        'b: 'c,
+    {
+        let pointer = self as *const T;
+        result! { sqlite3_result_pointer(context, pointer as *mut c_void, T::TYPE.as_ptr(), SQLITE_STATIC) }
+    }
+}
+
+/// [Binds](Bind) a mutable reference using the [pointer passing interface].
+///
+/// [pointer passing interface]: https://sqlite.org/bindptr.html
+impl<'b, 'a: 'b, T: Pointee + ?Sized> Bind<'b> for &'a mut T {
+    unsafe fn bind_parameter<'c>(self, statement: &Statement<'c>, index: BindIndex) -> Result<()>
+    where
+        'c: 'b,
+    {
+        let pointer = self as *const T;
+        bind! { sqlite3_bind_pointer(statement, index, pointer as *mut c_void, T::TYPE.as_ptr(), SQLITE_STATIC) }
+    }
+
+    unsafe fn bind_return<'c>(self, context: &ContextRef<'c>)
+    where
+        'b: 'c,
+    {
+        let pointer = self as *const T;
+        result! { sqlite3_result_pointer(context, pointer as *mut c_void, T::TYPE.as_ptr(), SQLITE_STATIC) }
+    }
+}
+
+/// [Binds](Bind) an owned value using the [pointer passing interface].
+///
+/// [pointer passing interface]: https://sqlite.org/bindptr.html
+impl<'b, T: Pointee> Bind<'b> for Box<T> {
+    unsafe fn bind_parameter<'c>(self, statement: &Statement<'c>, index: BindIndex) -> Result<()>
+    where
+        'c: 'b,
+    {
+        let pointer = Box::into_raw(self);
+        let destructor = sqlite3_destructor_type::new(destroy_box::<T>);
+        bind! { sqlite3_bind_pointer(statement, index, pointer as *mut c_void, T::TYPE.as_ptr(), destructor) }
+    }
+
+    unsafe fn bind_return<'c>(self, context: &ContextRef<'c>)
+    where
+        'b: 'c,
+    {
+        let pointer = Box::into_raw(self);
+        let destructor = sqlite3_destructor_type::new(destroy_box::<T>);
+        result! { sqlite3_result_pointer(context, pointer as *mut c_void, T::TYPE.as_ptr(), destructor) }
     }
 }
 
@@ -494,7 +559,7 @@ impl<'b> Bind<'b> for Null {
     #[cfg(feature = "functions")]
     unsafe fn bind_return<'c>(self, context: &ContextRef<'c>)
     where
-        'c: 'b,
+        'b: 'c,
     {
         result! { sqlite3_result_null(context,) }
     }
@@ -511,4 +576,8 @@ pub const fn destructor<T>() -> sqlite3_destructor_type {
 
 unsafe extern "C" fn destroy<T>(p: *mut c_void) {
     unsafe { ptr::drop_in_place(p as *mut T) };
+}
+
+pub(super) unsafe extern "C" fn destroy_box<T>(p: *mut c_void) {
+    let _ = unsafe { Box::from_raw(p as *mut T) };
 }

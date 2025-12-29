@@ -12,7 +12,7 @@ use sqlite::{sqlite3_bind_blob64, sqlite3_result_blob64, sqlite3_uint64};
 use sqlite::{sqlite3_destructor_type, sqlite3_free, sqlite3_malloc64};
 
 #[cfg(feature = "functions")]
-use super::{bind::result, context::ContextRef};
+use super::{bind::result, func::ContextRef};
 use super::{
     bind::{Bind, bind},
     statement::Statement,
@@ -221,7 +221,7 @@ impl<'b> Bind<'b> for Bytes {
     #[cfg(feature = "functions")]
     unsafe fn bind_return<'c>(self, context: &ContextRef<'c>)
     where
-        'c: 'b,
+        'b: 'c,
     {
         let (ptr, len) = self.into_raw_parts();
         let ptr = ptr as *const c_void;
