@@ -15,12 +15,12 @@ use crate::ffi::ValueRef;
 
 #[cfg(not(feature = "multi-thread"))]
 pub trait Function: 'static {
-    unsafe fn call<'a>(&self, context: &'a mut ContextRef<'a>, arguments: &'a [ValueRef<'a>]);
+    fn call<'a>(&self, context: &'a mut ContextRef<'a>, arguments: &'a [ValueRef<'a>]);
 }
 
 #[cfg(feature = "multi-thread")]
 pub trait Function: Send + 'static {
-    unsafe fn call<'a>(&self, context: &'a mut ContextRef<'a>, arguments: &'a [ValueRef<'a>]);
+    fn call<'a>(&self, context: &'a mut ContextRef<'a>, arguments: &'a [ValueRef<'a>]);
 }
 
 pub(super) unsafe extern "C" fn call<F: Function>(

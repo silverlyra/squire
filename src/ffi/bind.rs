@@ -3,7 +3,9 @@ use core::{
     ptr,
 };
 
-use super::{func::ContextRef, pointer::Pointee, statement::Statement};
+#[cfg(feature = "functions")]
+use super::func::ContextRef;
+use super::{pointer::Pointee, statement::Statement};
 use crate::{
     blob::Reservation,
     error::{Error, Result},
@@ -12,7 +14,7 @@ use crate::{
 
 use sqlite::{
     SQLITE_STATIC, SQLITE_TRANSIENT, sqlite3_bind_double, sqlite3_bind_int, sqlite3_bind_int64,
-    sqlite3_bind_null, sqlite3_bind_pointer, sqlite3_destructor_type, sqlite3_result_pointer,
+    sqlite3_bind_null, sqlite3_bind_pointer, sqlite3_destructor_type,
 };
 #[cfg(target_pointer_width = "64")]
 use sqlite::{
@@ -27,6 +29,7 @@ use sqlite::{sqlite3_result_blob64, sqlite3_result_text64, sqlite3_result_zerobl
 #[cfg(feature = "functions")]
 use sqlite::{
     sqlite3_result_double, sqlite3_result_int, sqlite3_result_int64, sqlite3_result_null,
+    sqlite3_result_pointer,
 };
 
 const ENCODING_UTF8: c_uchar = SQLITE_UTF8 as c_uchar;
@@ -493,6 +496,7 @@ impl<'b, 'a: 'b, T: Pointee + ?Sized> Bind<'b> for &'a T {
         bind! { sqlite3_bind_pointer(statement, index, pointer as *mut c_void, T::TYPE.as_ptr(), SQLITE_STATIC) }
     }
 
+    #[cfg(feature = "functions")]
     unsafe fn bind_return<'c>(self, context: &ContextRef<'c>)
     where
         'b: 'c,
@@ -514,6 +518,7 @@ impl<'b, 'a: 'b, T: Pointee + ?Sized> Bind<'b> for &'a mut T {
         bind! { sqlite3_bind_pointer(statement, index, pointer as *mut c_void, T::TYPE.as_ptr(), SQLITE_STATIC) }
     }
 
+    #[cfg(feature = "functions")]
     unsafe fn bind_return<'c>(self, context: &ContextRef<'c>)
     where
         'b: 'c,
@@ -536,6 +541,7 @@ impl<'b, T: Pointee> Bind<'b> for Box<T> {
         bind! { sqlite3_bind_pointer(statement, index, pointer as *mut c_void, T::TYPE.as_ptr(), destructor) }
     }
 
+    #[cfg(feature = "functions")]
     unsafe fn bind_return<'c>(self, context: &ContextRef<'c>)
     where
         'b: 'c,

@@ -7,10 +7,14 @@ use core::{
     ptr, slice,
 };
 
-#[cfg(target_pointer_width = "64")]
-use sqlite::{SQLITE_UTF8, sqlite3_bind_text64, sqlite3_result_text64, sqlite3_uint64};
 #[cfg(target_pointer_width = "32")]
-use sqlite::{sqlite3_bind_text, sqlite3_result_text};
+use sqlite::sqlite3_bind_text;
+#[cfg(all(feature = "functions", target_pointer_width = "32"))]
+use sqlite::sqlite3_result_text;
+#[cfg(all(feature = "functions", target_pointer_width = "64"))]
+use sqlite::sqlite3_result_text64;
+#[cfg(target_pointer_width = "64")]
+use sqlite::{SQLITE_UTF8, sqlite3_bind_text64, sqlite3_uint64};
 use sqlite::{
     sqlite3_destructor_type, sqlite3_free, sqlite3_malloc, sqlite3_str, sqlite3_str_append,
     sqlite3_str_appendall, sqlite3_str_appendchar, sqlite3_str_errcode, sqlite3_str_finish,

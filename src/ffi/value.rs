@@ -154,6 +154,13 @@ impl<'a> ValueRef<'a> {
         unsafe { T::fetch_value(self) }
     }
 
+    pub(super) fn as_opaque(&self) -> OpaqueValueRef<'a> {
+        OpaqueValueRef {
+            handle: self.handle,
+            _value: PhantomData,
+        }
+    }
+
     /// Access the raw [`sqlite3_value`] pointer.
     #[inline]
     pub const fn as_ptr(&self) -> *mut sqlite3_value {

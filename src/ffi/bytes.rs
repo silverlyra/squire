@@ -6,9 +6,13 @@ use core::{
 };
 
 #[cfg(target_pointer_width = "32")]
-use sqlite::{sqlite3_bind_blob, sqlite3_result_blob};
+use sqlite::sqlite3_result_blob;
+#[cfg(all(feature = "functions", target_pointer_width = "32"))]
+use sqlite::sqlite3_result_blob;
+#[cfg(all(feature = "functions", target_pointer_width = "64"))]
+use sqlite::sqlite3_result_blob64;
 #[cfg(target_pointer_width = "64")]
-use sqlite::{sqlite3_bind_blob64, sqlite3_result_blob64, sqlite3_uint64};
+use sqlite::{sqlite3_bind_blob64, sqlite3_uint64};
 use sqlite::{sqlite3_destructor_type, sqlite3_free, sqlite3_malloc64};
 
 #[cfg(feature = "functions")]

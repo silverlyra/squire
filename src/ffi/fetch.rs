@@ -8,10 +8,11 @@ use sqlite::{
     sqlite3_value_int, sqlite3_value_int64, sqlite3_value_pointer, sqlite3_value_text,
 };
 
+#[cfg(feature = "value")]
 use super::pointer::{Pointee, Pointer, PointerMut};
 use super::statement::Statement;
 #[cfg(feature = "value")]
-use super::value::ValueRef;
+use super::value::{OpaqueValueRef, ValueRef};
 use crate::types::{Borrowed, ColumnIndex, Type};
 
 #[cfg_attr(
@@ -261,5 +262,23 @@ impl<'r, T: Pointee> Fetch<'r> for PointerMut<'r, T> {
     {
         let ptr = unsafe { sqlite3_value_pointer(value.as_ptr(), T::TYPE.as_ptr()) as *mut T };
         unsafe { PointerMut::new(ptr).expect("non-null pointer") }
+    }
+}
+
+#[cfg(feature = "value")]
+impl<'r> Fetch<'r> for OpaqueValueRef<'r> {
+    unsafe fn fetch_column<'c>(statement: &'r Statement<'c>, column: ColumnIndex) -> Self
+    where
+        'c: 'r,
+    {
+        let value = unsafe { sqlite3_column_value(statement.as_ptr(), column.value()) };
+        OpaqueValueRef::new(value).expect("sqlite3_value")
+    }
+
+    unsafe fn fetch_value<'c>(value: &'r ValueRef<'c>) -> Self
+    where
+        'c: 'r,
+    {
+        value.as_opaque()
     }
 }

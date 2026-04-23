@@ -167,11 +167,7 @@ mod test {
         struct Maximum;
 
         impl Function for Maximum {
-            unsafe fn call<'a>(
-                &self,
-                context: &'a mut ContextRef<'a>,
-                arguments: &'a [ValueRef<'a>],
-            ) {
+            fn call<'a>(&self, context: &'a mut ContextRef<'a>, arguments: &'a [ValueRef<'a>]) {
                 if arguments.is_empty() {
                     return;
                 }

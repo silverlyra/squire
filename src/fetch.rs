@@ -1,6 +1,8 @@
+#[cfg(feature = "value")]
+use crate::ffi::ValueRef;
 use crate::{
     error::{Error, ErrorCode, Result},
-    ffi::{self, Fetch as _, ValueRef},
+    ffi::{self, Fetch as _},
     statement::Statement,
     types::{Borrowed, ColumnIndex, RowId, Type},
 };
