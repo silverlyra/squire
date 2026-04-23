@@ -1,6 +1,6 @@
 use core::fmt;
 
-use crate::{error::Result, statement::Statement, types::ColumnIndex, value::Fetch};
+use crate::{error::Result, fetch::Fetch, statement::Statement, types::ColumnIndex};
 
 /// Specifies the [`ColumnIndex`] values needed by [`Columns`].
 pub trait ColumnIndexes {
@@ -36,7 +36,7 @@ where
     where
         'c: 'r,
     {
-        <T as Fetch<'r>>::fetch(statement, ColumnIndex::INITIAL)
+        <T as Fetch<'r>>::fetch_column(statement, ColumnIndex::INITIAL)
     }
 }
 
@@ -61,7 +61,7 @@ macro_rules! tuple {
                 'c: 'r,
             {
                 let column = ColumnIndex::INITIAL;
-                let $i = <$t as Fetch<'r>>::fetch(statement, column)?;
+                let $i = <$t as Fetch<'r>>::fetch_column(statement, column)?;
                 Ok(($i,))
             }
         }
@@ -88,11 +88,11 @@ macro_rules! tuple {
                 'c: 'r,
             {
                 let column = ColumnIndex::INITIAL;
-                let $ih = <$th as Fetch<'r>>::fetch(statement, column)?;
+                let $ih = <$th as Fetch<'r>>::fetch_column(statement, column)?;
 
                 $(
                     let column = column.next();
-                    let $it = <$tt as Fetch<'r>>::fetch(statement, column)?;
+                    let $it = <$tt as Fetch<'r>>::fetch_column(statement, column)?;
                 )*
 
                 Ok(($ih, $($it),+))

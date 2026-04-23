@@ -9,6 +9,7 @@ pub mod blob;
 pub mod database;
 pub mod extension;
 pub mod fts;
+pub mod functions;
 pub mod hooks;
 pub mod json;
 pub mod metadata;
@@ -30,6 +31,7 @@ pub trait Feature {
 /// Identifies each detectable SQLite [`Feature`].
 #[derive(PartialEq, Eq, PartialOrd, Ord, Hash, Copy, Clone, Debug)]
 pub enum FeatureKey {
+    AggregateFunctionSelfOrdered,
     ApiArmor,
     Attach,
     AuthorizationCallback,
@@ -45,6 +47,10 @@ pub enum FeatureKey {
     ErrorOffset,
     Fts3,
     Fts5,
+    FunctionDirectOnlyOption,
+    FunctionInnocuousOption,
+    FunctionStrictSubtypes,
+    FunctionSubtypeOption,
     GetTable,
     Json,
     Jsonb,
@@ -72,6 +78,7 @@ impl FeatureKey {
     pub fn all() -> impl Iterator<Item = Self> {
         use FeatureKey::*;
         [
+            AggregateFunctionSelfOrdered,
             ApiArmor,
             Attach,
             AuthorizationCallback,
@@ -87,6 +94,10 @@ impl FeatureKey {
             ErrorOffset,
             Fts3,
             Fts5,
+            FunctionDirectOnlyOption,
+            FunctionInnocuousOption,
+            FunctionStrictSubtypes,
+            FunctionSubtypeOption,
             GetTable,
             Json,
             Jsonb,
@@ -119,6 +130,9 @@ impl FeatureKey {
     /// [Probe] if this [`FeatureKey`] is supported.
     pub fn is_supported<P: Probe>(&self, probe: &P) -> bool {
         match *self {
+            FeatureKey::AggregateFunctionSelfOrdered => {
+                functions::AggregateFunctionSelfOrdered.is_supported(probe)
+            }
             FeatureKey::ApiArmor => api::ApiArmor.is_supported(probe),
             FeatureKey::Attach => database::Attach.is_supported(probe),
             FeatureKey::AuthorizationCallback => hooks::AuthorizationCallback.is_supported(probe),
@@ -134,6 +148,18 @@ impl FeatureKey {
             FeatureKey::ErrorOffset => api::ErrorOffset.is_supported(probe),
             FeatureKey::Fts3 => fts::Fts3.is_supported(probe),
             FeatureKey::Fts5 => fts::Fts5.is_supported(probe),
+            FeatureKey::FunctionDirectOnlyOption => {
+                functions::FunctionDirectOnlyOption.is_supported(probe)
+            }
+            FeatureKey::FunctionInnocuousOption => {
+                functions::FunctionInnocuousOption.is_supported(probe)
+            }
+            FeatureKey::FunctionStrictSubtypes => {
+                functions::FunctionStrictSubtypes.is_supported(probe)
+            }
+            FeatureKey::FunctionSubtypeOption => {
+                functions::FunctionSubtypeOption.is_supported(probe)
+            }
             FeatureKey::GetTable => api::GetTable.is_supported(probe),
             FeatureKey::Json => json::Json.is_supported(probe),
             FeatureKey::Jsonb => json::Jsonb.is_supported(probe),
@@ -165,6 +191,7 @@ impl FeatureKey {
     /// ```
     pub const fn as_str(&self) -> &'static str {
         match *self {
+            FeatureKey::AggregateFunctionSelfOrdered => "aggregate_self_ordered",
             FeatureKey::ApiArmor => "api_armor",
             FeatureKey::Attach => "attach",
             FeatureKey::AuthorizationCallback => "authorization_callback",
@@ -180,6 +207,10 @@ impl FeatureKey {
             FeatureKey::ErrorOffset => "error_offset",
             FeatureKey::Fts3 => "fts3",
             FeatureKey::Fts5 => "fts5",
+            FeatureKey::FunctionDirectOnlyOption => "direct_only_function_option",
+            FeatureKey::FunctionInnocuousOption => "innocuous_function_option",
+            FeatureKey::FunctionStrictSubtypes => "strict_subtypes",
+            FeatureKey::FunctionSubtypeOption => "subtype_function_option",
             FeatureKey::GetTable => "get_table",
             FeatureKey::Json => "json",
             FeatureKey::Jsonb => "jsonb",
@@ -209,6 +240,7 @@ impl FromStr for FeatureKey {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
+            "aggregate_self_ordered" => Ok(FeatureKey::AggregateFunctionSelfOrdered),
             "api_armor" => Ok(FeatureKey::ApiArmor),
             "attach" => Ok(FeatureKey::Attach),
             "authorization_callback" => Ok(FeatureKey::AuthorizationCallback),
@@ -225,6 +257,9 @@ impl FromStr for FeatureKey {
             "fts3" => Ok(FeatureKey::Fts3),
             "fts5" => Ok(FeatureKey::Fts5),
             "get_table" => Ok(FeatureKey::GetTable),
+            "direct_only_function_option" => Ok(FeatureKey::FunctionDirectOnlyOption),
+            "innocuous_function_option" => Ok(FeatureKey::FunctionInnocuousOption),
+            "subtype_function_option" => Ok(FeatureKey::FunctionSubtypeOption),
             "json" => Ok(FeatureKey::Json),
             "jsonb" => Ok(FeatureKey::Jsonb),
             "load_extension" => Ok(FeatureKey::LoadExtension),
@@ -240,6 +275,7 @@ impl FromStr for FeatureKey {
             "snapshot" => Ok(FeatureKey::Snapshot),
             "soundex" => Ok(FeatureKey::Soundex),
             "stat4" => Ok(FeatureKey::Stat4),
+            "strict_subtypes" => Ok(FeatureKey::FunctionStrictSubtypes),
             "tcl_variables" => Ok(FeatureKey::TclVariables),
             "temporary_database" => Ok(FeatureKey::TemporaryDatabase),
             "trace" => Ok(FeatureKey::Trace),

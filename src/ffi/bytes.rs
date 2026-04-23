@@ -6,11 +6,17 @@ use core::{
 };
 
 #[cfg(target_pointer_width = "32")]
-use sqlite::sqlite3_bind_blob;
+use sqlite::sqlite3_result_blob;
+#[cfg(all(feature = "functions", target_pointer_width = "32"))]
+use sqlite::sqlite3_result_blob;
+#[cfg(all(feature = "functions", target_pointer_width = "64"))]
+use sqlite::sqlite3_result_blob64;
 #[cfg(target_pointer_width = "64")]
 use sqlite::{sqlite3_bind_blob64, sqlite3_uint64};
 use sqlite::{sqlite3_destructor_type, sqlite3_free, sqlite3_malloc64};
 
+#[cfg(feature = "functions")]
+use super::{bind::result, func::ContextRef};
 use super::{
     bind::{Bind, bind},
     statement::Statement,
@@ -165,11 +171,9 @@ impl Deref for Bytes {
 
 impl Drop for Bytes {
     fn drop(&mut self) {
-        // Don't free zero-length Bytes; they point to a static empty slice.
-        if self.len > 0 {
-            // SAFETY: `self.data` was allocated via `sqlite3_malloc64`.
-            unsafe { sqlite3_free(self.as_ptr() as *mut c_void) }
-        }
+        // SAFETY: `self.data` was allocated via `sqlite3_malloc64`
+        // (or is a null pointer, which `sqlite3_free` ignores).
+        unsafe { sqlite3_free(self.as_ptr() as *mut c_void) }
     }
 }
 
@@ -201,7 +205,7 @@ impl fmt::Debug for Bytes {
 /// The memory is transferred to SQLite, which will free it via [`sqlite3_free`]
 /// when the binding is no longer needed.
 impl<'b> Bind<'b> for Bytes {
-    unsafe fn bind<'s>(self, statement: &Statement<'s>, index: BindIndex) -> Result<()>
+    unsafe fn bind_parameter<'s>(self, statement: &Statement<'s>, index: BindIndex) -> Result<()>
     where
         's: 'b,
     {
@@ -216,6 +220,22 @@ impl<'b> Bind<'b> for Bytes {
         bind! { sqlite3_bind_blob64(statement, index, ptr, len as sqlite3_uint64, destructor) }?;
 
         Ok(())
+    }
+
+    #[cfg(feature = "functions")]
+    unsafe fn bind_return<'c>(self, context: &ContextRef<'c>)
+    where
+        'b: 'c,
+    {
+        let (ptr, len) = self.into_raw_parts();
+        let ptr = ptr as *const c_void;
+        let destructor = sqlite3_destructor_type::new(sqlite3_free);
+
+        #[cfg(target_pointer_width = "32")]
+        result! { sqlite3_result_blob(context, ptr, len as c_int, destructor) };
+
+        #[cfg(target_pointer_width = "64")]
+        result! { sqlite3_result_blob64(context, ptr, len as sqlite3_uint64, destructor) };
     }
 }
 

@@ -1,3 +1,5 @@
+#[cfg(feature = "value")]
+use crate::ffi::ValueRef;
 use crate::{
     error::{Error, ErrorCode, Result},
     ffi::{self, Fetch as _},
@@ -5,13 +7,19 @@ use crate::{
     types::{Borrowed, ColumnIndex, RowId, Type},
 };
 
-/// A value which can be read from a column.
+#[cfg_attr(
+    not(feature = "value"),
+    doc = "A value which can be read from a column."
+)]
+#[cfg_attr(
+    feature = "value",
+    doc = "A value which can be read from a column or function argument."
+)]
 ///
 /// Squire’s underlying [`ffi::Fetch`] trait is implemented for each type that
 /// can be directly read through the [SQLite C API][column]. To implement
 /// `Fetch`, set `type Value` to the actual column value (e.g., `i64`), and
-/// implement `from_column_value` to translate from the stored column value to
-/// `Self`.
+/// implement `from_value` to translate from the stored column value to `Self`.
 ///
 /// The lifetime parameter `'r` represents the lifetime of the current row. Any
 /// `blob` or `text` values [borrowed](Borrowed) from the current row must be
@@ -21,12 +29,19 @@ use crate::{
 pub trait Fetch<'r>: Sized {
     type Value: ffi::Fetch<'r>;
 
-    fn fetch<'c>(statement: &'r Statement<'c>, column: ColumnIndex) -> Result<Self> {
-        let value = unsafe { Self::Value::fetch(statement.internal_ref(), column) };
-        Self::from_column_value(value)
+    fn fetch_column<'c>(statement: &'r Statement<'c>, column: ColumnIndex) -> Result<Self> {
+        let value = unsafe { Self::Value::fetch_column(statement.internal_ref(), column) };
+        Self::from_value(value)
     }
 
-    fn from_column_value(value: Self::Value) -> Result<Self>;
+    #[cfg(feature = "value")]
+    #[cfg_attr(docsrs, doc(cfg(any(feature = "functions", feature = "value"))))]
+    fn fetch_value<'c>(value: &'r ValueRef<'c>) -> Result<Self> {
+        let value = unsafe { Self::Value::fetch_value(value) };
+        Self::from_value(value)
+    }
+
+    fn from_value(value: Self::Value) -> Result<Self>;
 }
 
 /// Defines [`Fetch`] for a type that implements [`ffi::Fetch`].
@@ -37,7 +52,7 @@ macro_rules! identity {
                 type Value = Self;
 
                 #[inline]
-                fn from_column_value(value: Self::Value) -> Result<Self> {
+                fn from_value(value: Self::Value) -> Result<Self> {
                     Ok(value)
                 }
             }
@@ -55,7 +70,7 @@ macro_rules! primitive {
             type Value = $v;
 
             #[inline]
-            fn from_column_value(value: Self::Value) -> Result<Self> {
+            fn from_value(value: Self::Value) -> Result<Self> {
                 Ok($t::from(value))
             }
         }
@@ -66,7 +81,7 @@ macro_rules! primitive {
             type Value = $v;
 
             #[inline]
-            fn from_column_value(value: Self::Value) -> Result<Self> {
+            fn from_value(value: Self::Value) -> Result<Self> {
                 <$t as TryFrom<$v>>::try_from(value).map_err(
                     #[cold]
                     |_| Error::new(ErrorCode::SQUIRE_FETCH_RANGE),
@@ -104,7 +119,7 @@ impl<'r> Fetch<'r> for f32 {
     type Value = f64;
 
     #[inline]
-    fn from_column_value(value: Self::Value) -> Result<Self> {
+    fn from_value(value: Self::Value) -> Result<Self> {
         let result = value as f32;
 
         // Check if a finite value became infinite (overflow)
@@ -129,7 +144,7 @@ impl<'r> Fetch<'r> for f32 {
 impl<'r> Fetch<'r> for bool {
     type Value = i32;
 
-    fn from_column_value(value: Self::Value) -> Result<Self> {
+    fn from_value(value: Self::Value) -> Result<Self> {
         Ok(value != 0)
     }
 }
@@ -137,7 +152,7 @@ impl<'r> Fetch<'r> for bool {
 impl<'r> Fetch<'r> for RowId {
     type Value = i64;
 
-    fn from_column_value(value: Self::Value) -> Result<Self> {
+    fn from_value(value: Self::Value) -> Result<Self> {
         RowId::new(value).ok_or_else(
             #[cold]
             || Error::with_detail(ErrorCode::SQUIRE_FETCH_RANGE, "SQLite row ID cannot be 0"),
@@ -151,7 +166,7 @@ where
 {
     type Value = Borrowed<'r, str>;
 
-    fn from_column_value(value: Self::Value) -> Result<Self> {
+    fn from_value(value: Self::Value) -> Result<Self> {
         // SAFETY: We have 'r: 'a, so shortening the lifetime from 'r to 'a is sound.
         // The caller ensures 'r outlives 'a, so the reference remains valid.
         unsafe { Ok(core::mem::transmute::<&'r str, &'a str>(value.into_inner())) }
@@ -164,7 +179,7 @@ where
 {
     type Value = Borrowed<'r, [u8]>;
 
-    fn from_column_value(value: Self::Value) -> Result<Self> {
+    fn from_value(value: Self::Value) -> Result<Self> {
         // SAFETY: We have 'r: 'a, so shortening the lifetime from 'r to 'a is sound.
         // The caller ensures 'r outlives 'a, so the reference remains valid.
         unsafe {
@@ -178,7 +193,7 @@ where
 impl<'r> Fetch<'r> for String {
     type Value = Borrowed<'r, str>;
 
-    fn from_column_value(value: Self::Value) -> Result<Self> {
+    fn from_value(value: Self::Value) -> Result<Self> {
         Ok(value.to_owned())
     }
 }
@@ -186,7 +201,7 @@ impl<'r> Fetch<'r> for String {
 impl<'r> Fetch<'r> for Vec<u8> {
     type Value = Borrowed<'r, [u8]>;
 
-    fn from_column_value(value: Self::Value) -> Result<Self> {
+    fn from_value(value: Self::Value) -> Result<Self> {
         Ok(value.to_owned())
     }
 }
@@ -197,9 +212,9 @@ where
 {
     type Value = Option<T::Value>;
 
-    fn from_column_value(value: Self::Value) -> Result<Self> {
+    fn from_value(value: Self::Value) -> Result<Self> {
         Ok(match value {
-            Some(value) => Some(T::from_column_value(value)?),
+            Some(value) => Some(T::from_value(value)?),
             None => None,
         })
     }

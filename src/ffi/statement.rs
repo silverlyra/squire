@@ -20,7 +20,7 @@ use super::{
     bind::Bind,
     call::call,
     connection::{Connected, Connection},
-    value::Fetch,
+    fetch::Fetch,
 };
 use crate::{
     error::{Error, ErrorCategory, Result},
@@ -151,7 +151,7 @@ impl<'c> Statement<'c> {
         B: Bind<'b>,
         'c: 'b,
     {
-        unsafe { value.bind(self, index) }
+        unsafe { value.bind_parameter(self, index) }
     }
 
     #[doc(alias = "sqlite3_clear_bindings")]
@@ -233,10 +233,10 @@ impl<'c> Statement<'c> {
     /// # Safety
     ///
     /// Callers are responsible for managing the `ffi::Statement` lifecycle, and
-    /// ensuring the [`ColumnIndex`] is in bounds. See [`fetch`](Fetch::fetch)
-    /// for details.
+    /// ensuring the [`ColumnIndex`] is in bounds.
+    /// See [`fetch_column`](Fetch::fetch_column) for details.
     pub unsafe fn fetch<'r, T: Fetch<'r>>(&'r self, column: ColumnIndex) -> T {
-        unsafe { T::fetch(self, column) }
+        unsafe { T::fetch_column(self, column) }
     }
 
     #[doc(alias = "sqlite3_data_count")]

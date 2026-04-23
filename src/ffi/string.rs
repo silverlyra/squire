@@ -9,6 +9,10 @@ use core::{
 
 #[cfg(target_pointer_width = "32")]
 use sqlite::sqlite3_bind_text;
+#[cfg(all(feature = "functions", target_pointer_width = "32"))]
+use sqlite::sqlite3_result_text;
+#[cfg(all(feature = "functions", target_pointer_width = "64"))]
+use sqlite::sqlite3_result_text64;
 #[cfg(target_pointer_width = "64")]
 use sqlite::{SQLITE_UTF8, sqlite3_bind_text64, sqlite3_uint64};
 use sqlite::{
@@ -17,6 +21,8 @@ use sqlite::{
     sqlite3_str_length, sqlite3_str_new,
 };
 
+#[cfg(feature = "functions")]
+use super::{bind::result, func::ContextRef};
 use super::{
     bind::{Bind, bind},
     connection::Connected,
@@ -196,7 +202,7 @@ const ENCODING_UTF8: core::ffi::c_uchar = SQLITE_UTF8 as core::ffi::c_uchar;
 /// The string's memory is transferred to SQLite, which will free it via
 /// [`sqlite3_free`] when the binding is no longer needed.
 impl<'b> Bind<'b> for String {
-    unsafe fn bind<'s>(self, statement: &Statement<'s>, index: BindIndex) -> Result<()>
+    unsafe fn bind_parameter<'s>(self, statement: &Statement<'s>, index: BindIndex) -> Result<()>
     where
         's: 'b,
     {
@@ -211,6 +217,22 @@ impl<'b> Bind<'b> for String {
         bind! { sqlite3_bind_text64(statement, index, ptr, len as sqlite3_uint64, destructor, ENCODING_UTF8) }?;
 
         Ok(())
+    }
+
+    #[cfg(feature = "functions")]
+    unsafe fn bind_return<'c>(self, context: &ContextRef<'c>)
+    where
+        'b: 'c,
+    {
+        let (ptr, len) = self.into_raw_parts();
+
+        let destructor = sqlite3_destructor_type::new(sqlite3_free);
+
+        #[cfg(target_pointer_width = "32")]
+        result! { sqlite3_result_text(context, ptr, len as c_int, destructor) }
+
+        #[cfg(target_pointer_width = "64")]
+        result! { sqlite3_result_text64(context, ptr, len as sqlite3_uint64, destructor, ENCODING_UTF8) }
     }
 }
 

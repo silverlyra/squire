@@ -1,10 +1,10 @@
 use crate::{
     column::{ColumnIndexes, Columns},
     error::{Error, ErrorCode, Result},
+    fetch::Fetch,
     iter,
     statement::{Binding, Execute, Execution, Statement},
     types::ColumnIndex,
-    value::Fetch,
 };
 
 /// Access the [`Columns`] of each row returned by a [query](Execution).
@@ -160,7 +160,7 @@ where
         'a: 'r,
     {
         let statement = self.execution.cursor();
-        T::fetch(statement, column)
+        T::fetch_column(statement, column)
     }
 
     /// Unpack a full set of [`Columns`] from this [`Row`].

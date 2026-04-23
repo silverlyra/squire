@@ -1,6 +1,6 @@
 use url::Url;
 
-use crate::{bind::Bind, error::Error, types::Borrowed, value::Fetch};
+use crate::{bind::Bind, error::Error, fetch::Fetch, types::Borrowed};
 
 #[cfg_attr(docsrs, doc(cfg(feature = "url")))]
 impl<'b> Bind<'b> for Url {
@@ -27,7 +27,7 @@ where
 impl<'b> Fetch<'b> for Url {
     type Value = Borrowed<'b, str>;
 
-    fn from_column_value(value: Self::Value) -> crate::Result<Self> {
+    fn from_value(value: Self::Value) -> crate::Result<Self> {
         value.parse().map_err(Error::from_fetch)
     }
 }

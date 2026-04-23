@@ -1,10 +1,17 @@
 use core::{ffi::CStr, fmt, ptr};
 
+#[cfg(feature = "functions")]
+use sqlite::sqlite3_create_function_v2;
 use sqlite::{SQLITE_OK, SQLITE_OPEN_EXRESCODE, sqlite3, sqlite3_close, sqlite3_open_v2};
 
 use super::call::call;
 #[cfg(feature = "mutex")]
 use super::mutex::MutexRef;
+#[cfg(feature = "functions")]
+use super::{
+    bind::destroy_box,
+    func::{Function, call},
+};
 use crate::error::{Error, Result};
 
 /// A thin wrapper around a [`sqlite3`] connection pointer.
@@ -58,6 +65,37 @@ impl Connection {
     pub fn close(mut self) -> Result<()> {
         // SAFETY: We own `self` here and will let it be dropped.
         unsafe { self.dispose() }
+    }
+
+    #[cfg(feature = "functions")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "functions")))]
+    pub fn define_scalar_function<F: Function>(
+        &self,
+        name: &CStr,
+        func: F,
+        arity: i32,
+        flags: i32,
+    ) -> Result<()> {
+        let func = Box::into_raw(Box::new(func));
+
+        let result = unsafe {
+            sqlite3_create_function_v2(
+                self.as_ptr(),
+                name.as_ptr(),
+                arity,
+                flags,
+                func.cast::<core::ffi::c_void>(),
+                Some(call::<F>),
+                None,
+                None,
+                Some(destroy_box::<F>),
+            )
+        };
+
+        match Error::from_connection(self, result) {
+            None => Ok(()),
+            Some(err) => Err(err),
+        }
     }
 
     #[inline]
@@ -115,6 +153,66 @@ mod test {
             None,
         )
         .expect("open SQLite connection");
+        connection.close().expect("close SQLite connection");
+    }
+
+    #[cfg(feature = "functions")]
+    #[test]
+    fn test_define_function() {
+        use sqlite::{SQLITE_DETERMINISTIC, SQLITE_INNOCUOUS, SQLITE_UTF8};
+
+        use crate::ffi::{ContextRef, Function, Statement, ValueRef};
+        use crate::types::ColumnIndex;
+
+        struct Maximum;
+
+        impl Function for Maximum {
+            fn call<'a>(&self, context: &'a mut ContextRef<'a>, arguments: &'a [ValueRef<'a>]) {
+                if arguments.is_empty() {
+                    return;
+                }
+
+                let value = arguments
+                    .iter()
+                    .map(|arg| unsafe { arg.fetch::<i64>() })
+                    .max();
+
+                match value {
+                    Some(value) => unsafe { context.set_result(value) },
+                    None => {
+                        context.set_error("no arguments to maximum()");
+                        context.set_error_code(sqlite::SQLITE_ERROR_UNABLE);
+                    }
+                }
+            }
+        }
+
+        let connection = Connection::open(
+            c":memory:",
+            SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE,
+            None,
+        )
+        .expect("open SQLite connection");
+
+        connection
+            .define_scalar_function(
+                c"maximum",
+                Maximum,
+                -1,
+                SQLITE_UTF8 | SQLITE_DETERMINISTIC | SQLITE_INNOCUOUS,
+            )
+            .expect("define function");
+
+        let (check, _) = Statement::prepare(&connection, "SELECT maximum(-1, 10, 510, 2)", 0)
+            .expect("prepare statement");
+
+        assert!(unsafe { check.row().expect("next row") });
+
+        let value: i64 = unsafe { check.fetch(ColumnIndex::INITIAL) };
+        assert_eq!(value, 510);
+
+        check.close().expect("finalize SQLite statement");
+
         connection.close().expect("close SQLite connection");
     }
 }

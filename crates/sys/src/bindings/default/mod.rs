@@ -1,5 +1,6 @@
 mod column;
 mod connection;
+mod function;
 mod memory;
 mod mutex;
 mod param;
@@ -12,6 +13,7 @@ mod version;
 
 pub use column::*;
 pub use connection::*;
+pub use function::*;
 pub use memory::*;
 pub use mutex::*;
 pub use param::*;
