@@ -23,7 +23,7 @@ impl BindIndex {
 
     pub const fn new(value: c_int) -> Option<Self> {
         match NonZero::new(value) {
-            Some(index) if value > 0 => Some(Self(index)),
+            Some(index) => Some(Self(index)),
             _ => None,
         }
     }

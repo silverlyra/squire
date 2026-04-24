@@ -131,6 +131,10 @@ pub(super) fn run_probe(build: Build) -> Library {
     // Link to SQLite
     cmd.arg(format!("-l{}", build.lib_name));
 
+    // Link libm on non-Windows (FTS5 uses log(), which is separate on Linux)
+    #[cfg(not(target_os = "windows"))]
+    cmd.arg("-lm");
+
     // Set output
     let probe_exe = out_dir.join("sqlite_probe");
     cmd.arg("-o").arg(&probe_exe);

@@ -11,14 +11,11 @@ fn main() -> Result {
     #[cfg(any(feature = "bindgen", feature = "bundled"))]
     let dest = out_path();
 
-    #[cfg(all(not(feature = "bindgen"), feature = "bundled"))]
-    build_bundled_sqlite(&dest)?;
+    #[cfg(feature = "bundled")]
+    let build = build_bundled_sqlite(&dest)?;
 
     #[cfg(all(feature = "bindgen", feature = "bundled"))]
-    let header_path = {
-        let build = build_bundled_sqlite(&dest)?;
-        build.header()
-    };
+    let header_path = build.header();
     #[cfg(all(feature = "bindgen", not(feature = "bundled")))]
     let header_path = PathBuf::from("wrapper.h");
 
@@ -35,41 +32,20 @@ fn main() -> Result {
 
     // Detect features and emit metadata
     #[cfg(feature = "bundled")]
-    let library = features::Library::new(
-        features::Version::new(3, 51, 0), // Update this when bundled version changes
-        threading_mode(),
-        bundled_features(),
+    let probe = features::build::Library::probe(
+        features::build::Build::default()
+            .include_path(build.header().parent().expect("INCLUDE"))
+            .link_path(&dest),
     );
     #[cfg(not(feature = "bundled"))]
-    let library = {
-        use features::build;
-        let probe = build::Library::probe(build::Build::default());
-        features::Library::probe(&probe)
-    };
+    let probe = features::build::Library::probe(features::build::Build::default());
+
+    let library = features::Library::probe(&probe);
 
     library.emit_cargo_metadata();
     library.emit_cfg();
 
     Ok(())
-}
-
-#[cfg(feature = "bundled")]
-fn threading_mode() -> features::Threading {
-    #[cfg(feature = "serialized")]
-    return features::Threading::Serialized;
-    #[cfg(all(feature = "multi-thread", not(feature = "serialized")))]
-    return features::Threading::MultiThread;
-    #[cfg(not(feature = "multi-thread"))]
-    return features::Threading::SingleThread;
-}
-
-#[cfg(feature = "bundled")]
-fn bundled_features() -> impl Iterator<Item = features::FeatureKey> {
-    use features::FeatureKey::*;
-
-    let all = [(Json, cfg!(feature = "json")), (PrepareQuiet, true)];
-    all.into_iter()
-        .filter_map(|(key, enabled)| if enabled { Some(key) } else { None })
 }
 
 #[cfg(any(feature = "bindgen", feature = "bundled"))]
@@ -292,13 +268,12 @@ fn generate_bindings(header: &Path, dest: &Path) -> Result {
                                 if let Some(param_name) = param_names.get(i) {
                                     let ident =
                                         syn::Ident::new(param_name, proc_macro2::Span::call_site());
-                                    pat_type.pat = Box::new(syn::parse_quote! { #ident });
+                                    *pat_type.pat = syn::parse_quote! { #ident };
                                 }
 
                                 // Replace the destructor parameter type
                                 if i == *param_index {
-                                    pat_type.ty =
-                                        Box::new(syn::parse_quote! { sqlite3_destructor_type });
+                                    *pat_type.ty = syn::parse_quote! { sqlite3_destructor_type };
                                 }
                             }
                         }

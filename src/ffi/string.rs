@@ -401,7 +401,7 @@ impl fmt::Write for StringBuilder {
     fn write_str(&mut self, s: &str) -> fmt::Result {
         // SAFETY: `sqlite3_str_append` is safe to call with any valid
         // `sqlite3_str` pointer. The length must be non-negative.
-        debug_assert!(s.len() <= c_int::MAX as usize);
+        debug_assert!(self.len() + s.len() <= c_int::MAX as usize);
         unsafe {
             sqlite3_str_append(self.as_ptr(), s.as_ptr() as *const c_char, s.len() as c_int);
         }

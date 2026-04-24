@@ -58,6 +58,7 @@ pub use version::Version;
 /// A fully-[feature probed](Probe) SQLite library.
 #[cfg(feature = "std")]
 #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
+#[derive(Clone, Debug)]
 pub struct Library {
     version: Version,
     threading: Threading,
@@ -125,13 +126,13 @@ impl Library {
         // Register all possible feature configs
         for key in FeatureKey::all() {
             let name = key.as_str();
-            println!("cargo:rustc-check-cfg=cfg(sqlite_has_{name})");
+            println!("cargo::rustc-check-cfg=cfg(sqlite_has_{name})");
         }
 
         // Enable configs for supported features
         for key in &self.features {
             let name = key.as_str();
-            println!("cargo:rustc-cfg=sqlite_has_{name}");
+            println!("cargo::rustc-cfg=sqlite_has_{name}");
         }
 
         // Include SQLite library version

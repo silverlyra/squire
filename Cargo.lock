@@ -643,9 +643,9 @@ dependencies = [
 
 [[package]]
 name = "squire-sqlite3-src"
-version = "3.51.0-alpha.2"
+version = "3.53.0-alpha.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "81494723359a518f52c0dfab12bab2e8af7d02875d9013b9448e97199a0db576"
+checksum = "ed006d7ee728570122c705908bfc735bdcd35bdddc16b2e036abc6a9f2db4d37"
 dependencies = [
  "cc",
  "strum",
