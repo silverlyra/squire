@@ -20,7 +20,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Build API documentation
         run: >-
-          cargo docs-rs
+          cargo docs-rs --target x86_64-unknown-linux-gnu
 
   format:
     name: Format
