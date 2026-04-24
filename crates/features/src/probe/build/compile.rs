@@ -103,6 +103,8 @@ impl Default for Build {
 /// This uses the `cc` crate to compile the probe program and link it against
 /// SQLite using the provided build configuration.
 pub(super) fn run_probe(build: Build) -> Library {
+    let host = env::var("HOST").expect("HOST not set");
+
     let out_dir = build
         .out_dir
         .unwrap_or_else(|| PathBuf::from(env::var("OUT_DIR").expect("OUT_DIR not set")));
@@ -112,7 +114,7 @@ pub(super) fn run_probe(build: Build) -> Library {
     std::fs::write(&probe_c_path, PROBE_C).expect("failed to write probe.c");
 
     // Get the compiler
-    let compiler = cc::Build::new().get_compiler();
+    let compiler = cc::Build::new().host(&host).target(&host).get_compiler();
 
     // Build the compile command
     let mut cmd = compiler.to_command();

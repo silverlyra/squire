@@ -8,19 +8,24 @@ on:
 jobs:
   docs:
     name: API documentation
-    runs-on: ubuntu-latest
+    runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Prepare cross-compile
+        run: >-
+          brew tap messense/macos-cross-toolchains
+          brew install aarch64-unknown-linux-gnu i686-unknown-linux-gnu x86_64-unknown-linux-gnu
       - uses: moonrepo/setup-rust@v1
         with:
           bins: cargo-docs-rs
           cache-base: main
           channel: nightly
+          targets: aarch64-apple-darwin,aarch64-unknown-linux-gnu,i686-unknown-linux-gnu,x86_64-unknown-linux-gnu
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Build API documentation
         run: >-
-          cargo docs-rs --target x86_64-unknown-linux-gnu
+          cargo docs-rs
 
   format:
     name: Format
