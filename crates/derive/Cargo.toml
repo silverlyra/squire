@@ -1,7 +1,7 @@
 [package]
 name = "squire-derive"
 description = "Procedural macros for Squire"
-version = "0.0.1-alpha.2"
+version = "0.0.1-alpha.3"
 edition = "2024"
 repository.workspace = true
 license.workspace = true
@@ -31,3 +31,13 @@ version = "^2.0.100"
 [dependencies.rustversion]
 workspace = true
 optional = true
+
+[package.metadata.docs.rs]
+rustdoc-args = ["--cfg", "docsrs"]
+
+targets = [
+    "aarch64-apple-darwin",
+    "aarch64-unknown-linux-gnu",
+    "i686-unknown-linux-gnu",
+    "x86_64-unknown-linux-gnu",
+]
