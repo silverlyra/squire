@@ -292,13 +292,12 @@ fn generate_bindings(header: &Path, dest: &Path) -> Result {
                                 if let Some(param_name) = param_names.get(i) {
                                     let ident =
                                         syn::Ident::new(param_name, proc_macro2::Span::call_site());
-                                    pat_type.pat = Box::new(syn::parse_quote! { #ident });
+                                    *pat_type.pat = syn::parse_quote! { #ident };
                                 }
 
                                 // Replace the destructor parameter type
                                 if i == *param_index {
-                                    pat_type.ty =
-                                        Box::new(syn::parse_quote! { sqlite3_destructor_type });
+                                    *pat_type.ty = syn::parse_quote! { sqlite3_destructor_type };
                                 }
                             }
                         }
