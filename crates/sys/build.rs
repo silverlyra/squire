@@ -32,18 +32,16 @@ fn main() -> Result {
 
     // Detect features and emit metadata
     #[cfg(feature = "bundled")]
-    let probe = features::build::Library::probe(
-        features::build::Build::default()
+    let metadata = features::Metadata::probe(
+        &features::Build::default()
             .include_path(build.header().parent().expect("INCLUDE"))
             .link_path(&dest),
-    );
+    )?;
     #[cfg(not(feature = "bundled"))]
-    let probe = features::build::Library::probe(features::build::Build::default());
+    let metadata = features::Metadata::probe(&features::Build::default())?;
 
-    let library = features::Library::probe(&probe);
-
-    library.emit_cargo_metadata();
-    library.emit_cfg();
+    metadata.emit_for_dependents();
+    metadata.emit_cfg();
 
     Ok(())
 }

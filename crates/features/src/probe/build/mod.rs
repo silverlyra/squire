@@ -8,114 +8,74 @@
 
 mod compile;
 
-use core::ffi::c_int;
-use std::{collections::HashSet, error::Error, fmt};
+use core::{error::Error, ffi::c_int};
+use std::{fmt, io, num::ParseIntError};
 
-use super::{Flag, Probe, Threading};
+use crate::directive::{DirectiveMap, ParseDirectiveError};
+use crate::info::Library;
+use crate::probe::Probe;
 use crate::version::Version;
 
 pub use compile::Build;
 
-/// A SQLite library probed at build time.
-///
-/// This struct represents the results of compiling and running a C program
-/// that queries SQLite's version, threading mode, and compile-time flags.
-#[derive(Debug, Clone)]
-pub struct Library {
-    version: c_int,
-    threading: c_int,
-    flags: HashSet<Flag>,
-}
+impl Probe for Build {
+    type Error = BuildProbeError;
 
-impl Library {
-    /// Probe a SQLite library by compiling and running a test program.
-    ///
-    /// This compiles the probe C program, links it against SQLite using
-    /// the provided build configuration, runs it, and parses the output.
-    ///
-    /// # Panics
-    ///
-    /// Panics if compilation, linking, or execution fails.
-    pub fn probe(build: Build) -> Self {
-        compile::run_probe(build)
-    }
+    fn probe(&self) -> Result<Library, Self::Error> {
+        let output = compile::run_probe(self)?;
+        let (version, directives) = output
+            .split_once('\n')
+            .ok_or(BuildProbeError::InvalidOutput)?;
 
-    fn from_text(text: &str) -> Result<Self, ParseProbeError> {
-        let mut lines = text.lines();
+        let version: c_int = version.parse()?;
+        let version = Version::from_number(version);
 
-        // Parse version
-        let version = lines
-            .next()
-            .ok_or(ParseProbeError::MissingVersion)?
-            .trim()
-            .parse()
-            .map_err(|_| ParseProbeError::InvalidVersion)?;
+        let directives: DirectiveMap = directives.parse()?;
 
-        // Parse threading
-        let threading = lines
-            .next()
-            .ok_or(ParseProbeError::MissingThreading)?
-            .trim()
-            .parse()
-            .map_err(|_| ParseProbeError::InvalidThreading)?;
-
-        // Skip blank line
-        lines.next();
-
-        // Parse flags - strip any `=value` suffix and parse into Flag enum
-        let flags: HashSet<Flag> = lines
-            .filter(|line| !line.trim().is_empty())
-            .filter_map(|line| {
-                let flag_name = line.trim().split('=').next()?;
-                Flag::of(flag_name)
-            })
-            .collect();
-
-        Ok(Self {
-            version,
-            threading,
-            flags,
-        })
-    }
-}
-
-impl Probe for Library {
-    fn version(&self) -> Version {
-        Version::from_number(self.version)
-    }
-
-    fn is_set(&self, flag: Flag) -> bool {
-        self.flags.contains(&flag)
-    }
-
-    fn threading(&self) -> Threading {
-        match self.threading {
-            0 => Threading::SingleThread,
-            1 => Threading::Serialized,
-            2 => Threading::MultiThread,
-            _ => Threading::SingleThread,
-        }
+        Ok(Library::new(version, directives))
     }
 }
 
 /// Error parsing probe output.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum ParseProbeError {
-    MissingVersion,
+#[derive(Debug)]
+pub enum BuildProbeError {
+    Directive(ParseDirectiveError),
+    Execute(io::Error),
+    Exit(std::process::ExitStatus),
+    InvalidOutput,
     InvalidVersion,
-    MissingThreading,
-    InvalidThreading,
+    NoOutDir,
 }
 
-impl Error for ParseProbeError {}
-
-impl fmt::Display for ParseProbeError {
+impl fmt::Display for BuildProbeError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> core::fmt::Result {
         match self {
-            Self::MissingVersion => write!(f, "missing version line"),
+            Self::Directive(err) => write!(f, "{err}"),
+            Self::Execute(err) => write!(f, "failed to execute probe.c: {err}"),
+            Self::Exit(status) => write!(f, "probe exited with status {status}"),
+            Self::InvalidOutput => write!(f, "invalid output from probe.c"),
             Self::InvalidVersion => write!(f, "invalid version number"),
-            Self::MissingThreading => write!(f, "missing threading line"),
-            Self::InvalidThreading => write!(f, "invalid threading mode"),
+            Self::NoOutDir => write!(f, "$OUT_DIR not set"),
         }
+    }
+}
+
+impl Error for BuildProbeError {}
+
+impl From<io::Error> for BuildProbeError {
+    fn from(value: io::Error) -> Self {
+        Self::Execute(value)
+    }
+}
+
+impl From<ParseDirectiveError> for BuildProbeError {
+    fn from(value: ParseDirectiveError) -> Self {
+        Self::Directive(value)
+    }
+}
+
+impl From<ParseIntError> for BuildProbeError {
+    fn from(_value: ParseIntError) -> Self {
+        Self::InvalidVersion
     }
 }

@@ -1,298 +1,160 @@
 #![allow(dead_code)]
 
-use core::{error::Error, fmt, str::FromStr};
+//! Detect SQLite [features](Feature), which either require a particular
+//! [version](Version) or [compile-time option](crate::Directive) to be present
+//! (or absent).
 
-use crate::probe::Probe;
+use core::{error::Error, fmt};
 
-pub mod api;
-pub mod blob;
-pub mod database;
-pub mod extension;
-pub mod fts;
-pub mod functions;
-pub mod hooks;
-pub mod json;
-pub mod metadata;
-pub mod sql;
-pub mod statistics;
-pub mod storage;
-pub mod text;
+use crate::directive::DirectiveKey;
+#[cfg(feature = "alloc")]
+use crate::directive::{Directive, DirectiveMap};
+use crate::info::Library;
+use crate::version::Version;
 
 /// A SQLite feature whose support can be [probed](Probe) based on the library
 /// version and/or compile-time [flags](crate::Flag).
 pub trait Feature {
-    /// Check if this [`Feature`] is supported by the [probed](Probe) library.
-    fn is_supported<P: Probe>(&self, probe: &P) -> bool;
+    /// Check if this [`Feature`] is available in the [`Library`].
+    fn is_available(&self, library: &Library) -> bool;
 
     /// The [key](FeatureKey) distinguishing this feature from others.
     fn key(&self) -> FeatureKey;
+
+    #[cfg(feature = "alloc")]
+    #[cfg_attr(docsrs, doc(cfg(any(feature = "std", feature = "alloc"))))]
+    fn apply(
+        &self,
+        enabled: bool,
+        directives: &mut DirectiveMap,
+        version: Version,
+        config: &Configuration,
+    );
 }
 
-/// Identifies each detectable SQLite [`Feature`].
-#[derive(PartialEq, Eq, PartialOrd, Ord, Hash, Copy, Clone, Debug)]
-pub enum FeatureKey {
-    AggregateFunctionSelfOrdered,
-    ApiArmor,
-    Attach,
-    AuthorizationCallback,
-    AutomaticInitialize,
-    AutomaticReset,
-    BlobIo,
-    BlobLike,
-    CaseSensitiveLike,
-    ColumnDeclaredType,
-    ColumnMetadata,
-    Complete,
-    Deprecated,
-    ErrorOffset,
-    Fts3,
-    Fts5,
-    FunctionDirectOnlyOption,
-    FunctionInnocuousOption,
-    FunctionStrictSubtypes,
-    FunctionSubtypeOption,
-    GetTable,
-    Json,
-    Jsonb,
-    LoadExtension,
-    MemoryDatabases,
-    MemoryManagement,
-    NormalizeSql,
-    PreUpdateHook,
-    PrepareQuiet,
-    ProgressCallback,
-    Serialize,
-    Session,
-    SharedCache,
-    Snapshot,
-    Soundex,
-    Stat4,
-    TclVariables,
-    TemporaryDatabase,
-    Trace,
-    Utf16,
+mod declare;
+use declare::features;
+
+mod config;
+pub use config::Configuration;
+
+features! {
+    AggregateFunctionSelfOrdered @(3, 47),
+    ApiArmor +EnableApiArmor,
+    Attach -OmitAttach,
+    AuthorizationCallback -OmitAuthorization,
+    AutomaticInitialize -OmitAutomaticInitialize,
+    AutomaticReset -OmitAutomaticReset,
+    AutomaticVacuum +DefaultAutomaticVacuum,
+    BlobIo -OmitBlobIo,
+    BlobLike -OmitBlobLike,
+    CaseSensitiveLike +LikeOperatorCaseSenstive,
+    ColumnDeclaredType -OmitColumnDeclaredType,
+    ColumnMetadata +EnableColumnMetadata,
+    Complete -OmitComplete,
+    DatabasePageVirtualTable +EnableDatabasePageVirtualTable,
+    DatabaseStatisticsVirtualTable +EnableDatabaseStatisticsVirtualTable,
+    Deprecated -OmitDeprecated,
+    ErrorOffset @(3, 38),
+    Fts3 +EnableFts3,
+    Fts5 +EnableFts5,
+    FunctionDirectOnlyOption @(3, 30),
+    FunctionInnocuousOption @(3, 31),
+    FunctionStrictSubtypes @(3, 45),
+    FunctionSubtypeOption @(3, 31),
+    Geopoly +EnableGeopoly,
+    GetTable -OmitGetTable,
+    Json ?is_enabled,
+    Jsonb @(3, 45) ^Json,
+    LoadExtension -OmitLoadExtension,
+    MemoryDatabase -OmitMemoryDatabases,
+    MemoryManagement +EnableMemoryManagement,
+    MemoryStatus ?is_enabled,
+    NormalizeSql +EnableNormalizeSql,
+    PreUpdateHook +EnablePreUpdateHook,
+    PrepareQuiet @(3, 48),
+    ProgressCallback -OmitProgressCallback,
+    RTree +EnableRTree,
+    Serialize -OmitSerialize,
+    Session +EnableSession,
+    SharedCache -OmitSharedCache,
+    Snapshot +EnableSnapshot,
+    Soundex +EnableSoundex,
+    Stat4 +EnableStat4,
+    TclVariables -OmitTclVariables,
+    TemporaryDatabase -OmitTemporaryDatabase,
+    Trace -OmitTrace,
+    Utf16 -OmitUtf16,
+    VirtualTable -OmitVirtualTable,
+    Wal -OmitWal,
 }
 
+#[cfg(feature = "metadata")]
 impl FeatureKey {
-    /// Returns an iterator over all [feature keys](FeatureKey).
-    pub fn all() -> impl Iterator<Item = Self> {
-        use FeatureKey::*;
-        [
-            AggregateFunctionSelfOrdered,
-            ApiArmor,
-            Attach,
-            AuthorizationCallback,
-            AutomaticInitialize,
-            AutomaticReset,
-            BlobIo,
-            BlobLike,
-            CaseSensitiveLike,
-            ColumnDeclaredType,
-            ColumnMetadata,
-            Complete,
-            Deprecated,
-            ErrorOffset,
-            Fts3,
-            Fts5,
-            FunctionDirectOnlyOption,
-            FunctionInnocuousOption,
-            FunctionStrictSubtypes,
-            FunctionSubtypeOption,
-            GetTable,
-            Json,
-            Jsonb,
-            LoadExtension,
-            MemoryDatabases,
-            MemoryManagement,
-            NormalizeSql,
-            PreUpdateHook,
-            PrepareQuiet,
-            ProgressCallback,
-            Serialize,
-            Session,
-            SharedCache,
-            Snapshot,
-            Soundex,
-            Stat4,
-            TclVariables,
-            TemporaryDatabase,
-            Trace,
-            Utf16,
-        ]
-        .into_iter()
+    pub(crate) fn cfg_name(&self) -> String {
+        let name = self.name();
+        let bytes = name.as_bytes();
+        let mut out = String::with_capacity(name.len() + 8);
+        for (i, &b) in bytes.iter().enumerate() {
+            if b.is_ascii_uppercase() && i > 0 {
+                let prev = bytes[i - 1];
+                let next = bytes.get(i + 1).copied();
+                if prev.is_ascii_lowercase()
+                    || prev.is_ascii_digit()
+                    || (prev.is_ascii_uppercase() && next.is_some_and(|n| n.is_ascii_lowercase()))
+                {
+                    out.push('_');
+                }
+            }
+            out.push(b.to_ascii_lowercase() as char);
+        }
+        out
     }
+}
 
-    /// [Probe] for supported [feature keys](FeatureKey).
-    pub fn supported<P: Probe>(probe: &P) -> impl Iterator<Item = Self> {
-        Self::all().filter(|key| key.is_supported(probe))
-    }
+impl Json {
+    /// The SQLite version where JSON support became opt-out.
+    pub const ENABLED_BY_DEFAULT: Version = Version::release(3, 38);
 
-    /// [Probe] if this [`FeatureKey`] is supported.
-    pub fn is_supported<P: Probe>(&self, probe: &P) -> bool {
-        match *self {
-            FeatureKey::AggregateFunctionSelfOrdered => {
-                functions::AggregateFunctionSelfOrdered.is_supported(probe)
-            }
-            FeatureKey::ApiArmor => api::ApiArmor.is_supported(probe),
-            FeatureKey::Attach => database::Attach.is_supported(probe),
-            FeatureKey::AuthorizationCallback => hooks::AuthorizationCallback.is_supported(probe),
-            FeatureKey::AutomaticInitialize => api::AutomaticInitialize.is_supported(probe),
-            FeatureKey::AutomaticReset => api::AutomaticReset.is_supported(probe),
-            FeatureKey::BlobIo => blob::BlobIo.is_supported(probe),
-            FeatureKey::BlobLike => blob::BlobLike.is_supported(probe),
-            FeatureKey::CaseSensitiveLike => text::CaseSensitiveLike.is_supported(probe),
-            FeatureKey::ColumnDeclaredType => metadata::ColumnDeclaredType.is_supported(probe),
-            FeatureKey::ColumnMetadata => metadata::ColumnMetadata.is_supported(probe),
-            FeatureKey::Complete => api::Complete.is_supported(probe),
-            FeatureKey::Deprecated => api::Deprecated.is_supported(probe),
-            FeatureKey::ErrorOffset => api::ErrorOffset.is_supported(probe),
-            FeatureKey::Fts3 => fts::Fts3.is_supported(probe),
-            FeatureKey::Fts5 => fts::Fts5.is_supported(probe),
-            FeatureKey::FunctionDirectOnlyOption => {
-                functions::FunctionDirectOnlyOption.is_supported(probe)
-            }
-            FeatureKey::FunctionInnocuousOption => {
-                functions::FunctionInnocuousOption.is_supported(probe)
-            }
-            FeatureKey::FunctionStrictSubtypes => {
-                functions::FunctionStrictSubtypes.is_supported(probe)
-            }
-            FeatureKey::FunctionSubtypeOption => {
-                functions::FunctionSubtypeOption.is_supported(probe)
-            }
-            FeatureKey::GetTable => api::GetTable.is_supported(probe),
-            FeatureKey::Json => json::Json.is_supported(probe),
-            FeatureKey::Jsonb => json::Jsonb.is_supported(probe),
-            FeatureKey::LoadExtension => extension::LoadExtension.is_supported(probe),
-            FeatureKey::MemoryDatabases => storage::MemoryDatabases.is_supported(probe),
-            FeatureKey::MemoryManagement => api::MemoryManagement.is_supported(probe),
-            FeatureKey::NormalizeSql => sql::NormalizeSql.is_supported(probe),
-            FeatureKey::PreUpdateHook => hooks::PreUpdateHook.is_supported(probe),
-            FeatureKey::PrepareQuiet => sql::PrepareQuiet.is_supported(probe),
-            FeatureKey::ProgressCallback => hooks::ProgressCallback.is_supported(probe),
-            FeatureKey::Serialize => storage::Serialize.is_supported(probe),
-            FeatureKey::Session => extension::Session.is_supported(probe),
-            FeatureKey::SharedCache => database::SharedCache.is_supported(probe),
-            FeatureKey::Snapshot => storage::Snapshot.is_supported(probe),
-            FeatureKey::Soundex => text::Soundex.is_supported(probe),
-            FeatureKey::Stat4 => statistics::Stat4.is_supported(probe),
-            FeatureKey::TclVariables => sql::TclVariables.is_supported(probe),
-            FeatureKey::TemporaryDatabase => database::TemporaryDatabase.is_supported(probe),
-            FeatureKey::Trace => api::Trace.is_supported(probe),
-            FeatureKey::Utf16 => text::Utf16.is_supported(probe),
+    fn is_enabled(&self, library: &Library) -> bool {
+        if library.version() < Self::ENABLED_BY_DEFAULT {
+            library.has_directive(DirectiveKey::EnableJson1)
+        } else {
+            !library.has_directive(DirectiveKey::OmitJson)
         }
     }
 
-    /// Returns a `snake_case` representation of this feature key.
-    ///
-    /// ```rust
-    /// # use squire_sqlite3_features::FeatureKey;
-    /// assert_eq!(FeatureKey::LoadExtension.as_str(), "load_extension");
-    /// ```
-    pub const fn as_str(&self) -> &'static str {
-        match *self {
-            FeatureKey::AggregateFunctionSelfOrdered => "aggregate_self_ordered",
-            FeatureKey::ApiArmor => "api_armor",
-            FeatureKey::Attach => "attach",
-            FeatureKey::AuthorizationCallback => "authorization_callback",
-            FeatureKey::AutomaticInitialize => "automatic_initialize",
-            FeatureKey::AutomaticReset => "automatic_reset",
-            FeatureKey::BlobIo => "blob_io",
-            FeatureKey::BlobLike => "blob_like",
-            FeatureKey::CaseSensitiveLike => "case_sensitive_like",
-            FeatureKey::ColumnDeclaredType => "column_declared_type",
-            FeatureKey::ColumnMetadata => "column_metadata",
-            FeatureKey::Complete => "complete",
-            FeatureKey::Deprecated => "deprecated",
-            FeatureKey::ErrorOffset => "error_offset",
-            FeatureKey::Fts3 => "fts3",
-            FeatureKey::Fts5 => "fts5",
-            FeatureKey::FunctionDirectOnlyOption => "direct_only_function_option",
-            FeatureKey::FunctionInnocuousOption => "innocuous_function_option",
-            FeatureKey::FunctionStrictSubtypes => "strict_subtypes",
-            FeatureKey::FunctionSubtypeOption => "subtype_function_option",
-            FeatureKey::GetTable => "get_table",
-            FeatureKey::Json => "json",
-            FeatureKey::Jsonb => "jsonb",
-            FeatureKey::LoadExtension => "load_extension",
-            FeatureKey::MemoryDatabases => "memory_databases",
-            FeatureKey::MemoryManagement => "memory_management",
-            FeatureKey::NormalizeSql => "normalize_sql",
-            FeatureKey::PreUpdateHook => "pre_update_hook",
-            FeatureKey::PrepareQuiet => "prepare_quiet",
-            FeatureKey::ProgressCallback => "progress_callback",
-            FeatureKey::Serialize => "serialize",
-            FeatureKey::Session => "session",
-            FeatureKey::SharedCache => "shared_cache",
-            FeatureKey::Snapshot => "snapshot",
-            FeatureKey::Soundex => "soundex",
-            FeatureKey::Stat4 => "stat4",
-            FeatureKey::TclVariables => "tcl_variables",
-            FeatureKey::TemporaryDatabase => "temporary_database",
-            FeatureKey::Trace => "trace",
-            FeatureKey::Utf16 => "utf16",
+    #[cfg(feature = "alloc")]
+    fn apply(&self, enabled: bool, directives: &mut DirectiveMap, version: Version) {
+        if version < Self::ENABLED_BY_DEFAULT && enabled {
+            directives.insert(Directive::EnableJson1);
+        } else if version >= Self::ENABLED_BY_DEFAULT && !enabled {
+            directives.insert(Directive::OmitJson);
         }
     }
 }
 
-impl FromStr for FeatureKey {
-    type Err = UnknownFeature;
+impl MemoryStatus {
+    fn is_enabled(&self, library: &Library) -> bool {
+        matches!(
+            library.directive(DirectiveKey::DefaultMemoryStatus),
+            Some(Directive::DefaultMemoryStatus(true))
+        )
+    }
 
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s {
-            "aggregate_self_ordered" => Ok(FeatureKey::AggregateFunctionSelfOrdered),
-            "api_armor" => Ok(FeatureKey::ApiArmor),
-            "attach" => Ok(FeatureKey::Attach),
-            "authorization_callback" => Ok(FeatureKey::AuthorizationCallback),
-            "automatic_initialize" => Ok(FeatureKey::AutomaticInitialize),
-            "automatic_reset" => Ok(FeatureKey::AutomaticReset),
-            "blob_io" => Ok(FeatureKey::BlobIo),
-            "blob_like" => Ok(FeatureKey::BlobLike),
-            "case_sensitive_like" => Ok(FeatureKey::CaseSensitiveLike),
-            "column_declared_type" => Ok(FeatureKey::ColumnDeclaredType),
-            "column_metadata" => Ok(FeatureKey::ColumnMetadata),
-            "complete" => Ok(FeatureKey::Complete),
-            "deprecated" => Ok(FeatureKey::Deprecated),
-            "error_offset" => Ok(FeatureKey::ErrorOffset),
-            "fts3" => Ok(FeatureKey::Fts3),
-            "fts5" => Ok(FeatureKey::Fts5),
-            "get_table" => Ok(FeatureKey::GetTable),
-            "direct_only_function_option" => Ok(FeatureKey::FunctionDirectOnlyOption),
-            "innocuous_function_option" => Ok(FeatureKey::FunctionInnocuousOption),
-            "subtype_function_option" => Ok(FeatureKey::FunctionSubtypeOption),
-            "json" => Ok(FeatureKey::Json),
-            "jsonb" => Ok(FeatureKey::Jsonb),
-            "load_extension" => Ok(FeatureKey::LoadExtension),
-            "memory_databases" => Ok(FeatureKey::MemoryDatabases),
-            "memory_management" => Ok(FeatureKey::MemoryManagement),
-            "normalize_sql" => Ok(FeatureKey::NormalizeSql),
-            "pre_update_hook" => Ok(FeatureKey::PreUpdateHook),
-            "prepare_quiet" => Ok(FeatureKey::PrepareQuiet),
-            "progress_callback" => Ok(FeatureKey::ProgressCallback),
-            "serialize" => Ok(FeatureKey::Serialize),
-            "session" => Ok(FeatureKey::Session),
-            "shared_cache" => Ok(FeatureKey::SharedCache),
-            "snapshot" => Ok(FeatureKey::Snapshot),
-            "soundex" => Ok(FeatureKey::Soundex),
-            "stat4" => Ok(FeatureKey::Stat4),
-            "strict_subtypes" => Ok(FeatureKey::FunctionStrictSubtypes),
-            "tcl_variables" => Ok(FeatureKey::TclVariables),
-            "temporary_database" => Ok(FeatureKey::TemporaryDatabase),
-            "trace" => Ok(FeatureKey::Trace),
-            "utf16" => Ok(FeatureKey::Utf16),
-            _ => Err(UnknownFeature),
-        }
+    #[cfg(feature = "alloc")]
+    fn apply(&self, enabled: bool, directives: &mut DirectiveMap, _version: Version) {
+        directives.insert(Directive::DefaultMemoryStatus(enabled));
     }
 }
 
-/// Error returned when parsing an unknown feature key.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct UnknownFeature;
+#[derive(PartialEq, Eq, Clone, Debug)]
+pub struct UnknownFeatureError(alloc::string::String);
 
-impl fmt::Display for UnknownFeature {
+impl fmt::Display for UnknownFeatureError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "unknown feature key")
+        write!(f, "unknown SQLite feature {:?}", &self.0)
     }
 }
 
-impl Error for UnknownFeature {}
+impl Error for UnknownFeatureError {}

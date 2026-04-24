@@ -121,8 +121,8 @@ optional = true
 [build-dependencies.features]
 package = "squire-sqlite3-features"
 path = "../features"
-version = "0.0.1-alpha.3"
-features = ["inherent", "metadata", "build"]
+version = "0.1.0-alpha.1"
+features = ["metadata", "build"]
 
 [package.metadata.docs.rs]
 features = ["bundled", "full", "serialized"]
