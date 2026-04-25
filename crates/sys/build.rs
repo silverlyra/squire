@@ -1,4 +1,3 @@
-#[cfg(any(feature = "bindgen", feature = "bundled"))]
 use std::env;
 #[cfg(feature = "bundled")]
 use std::path::Path;
@@ -8,11 +7,13 @@ use std::path::PathBuf;
 type Result<T = ()> = std::result::Result<T, Box<dyn std::error::Error>>;
 
 fn main() -> Result {
+    let docs_rs = env::var_os("DOCS_RS").is_some();
+
     #[cfg(any(feature = "bindgen", feature = "bundled"))]
     let dest = out_path();
 
     #[cfg(feature = "bundled")]
-    let build = build_bundled_sqlite(&dest)?;
+    let build = build_bundled_sqlite(&dest, docs_rs)?;
 
     #[cfg(all(feature = "bindgen", feature = "bundled"))]
     let header_path = build.header();
@@ -22,7 +23,7 @@ fn main() -> Result {
     #[cfg(feature = "bindgen")]
     generate_bindings(&header_path, &dest.join("bindings.rs"))?;
 
-    {
+    if !docs_rs {
         #[cfg(feature = "static")]
         let linkage = "static";
         #[cfg(not(feature = "static"))]
@@ -50,7 +51,7 @@ fn out_path() -> PathBuf {
 }
 
 #[cfg(feature = "bundled")]
-fn build_bundled_sqlite(dest: &Path) -> Result<sqlite::Build> {
+fn build_bundled_sqlite(dest: &Path, mock: bool) -> Result<sqlite::Build> {
     let location = sqlite::Location::new(dest);
 
     for source in location.sources() {
@@ -83,7 +84,7 @@ fn build_bundled_sqlite(dest: &Path) -> Result<sqlite::Build> {
     set!(NormalizeSql, cfg!(feature = "normalize-sql"));
     set!(PreUpdateHook, cfg!(feature = "preupdate-hook"));
     set!(ProgressCallback, cfg!(feature = "progress-callback"));
-    set!(RTree, cfg!(feature = "rtree"));
+    set!(Rtree, cfg!(feature = "rtree"));
     set!(Serialize, cfg!(feature = "serialize"));
     set!(Session, cfg!(feature = "session"));
     set!(SharedCache, cfg!(feature = "shared-cache"));
@@ -103,7 +104,11 @@ fn build_bundled_sqlite(dest: &Path) -> Result<sqlite::Build> {
     let threading = features::directive::Threading::SingleThread;
     directives.insert(features::Directive::Threading(threading));
 
-    let build = sqlite::build(location, &directives);
+    let build = if !mock {
+        sqlite::build(location, directives)
+    } else {
+        sqlite::Build::new(location, directives)
+    };
 
     Ok(build)
 }

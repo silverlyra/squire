@@ -74,7 +74,7 @@ features! {
     PreUpdateHook +EnablePreUpdateHook,
     PrepareQuiet @(3, 48),
     ProgressCallback -OmitProgressCallback,
-    RTree +EnableRTree,
+    Rtree +EnableRtree,
     Serialize -OmitSerialize,
     Session +EnableSession,
     SharedCache -OmitSharedCache,

@@ -32,11 +32,11 @@ pub const fn version() -> Version {
 
 /// Build the bundled SQLite sources, using the given
 /// [compile-time options](DirectiveMap).
-pub fn build(location: Location, directives: &DirectiveMap) -> Build {
+pub fn build(location: Location, directives: DirectiveMap) -> Build {
     let mut compiler = cc::Build::new();
     compiler.file(location.input());
 
-    apply(directives, &mut compiler);
+    apply(&directives, &mut compiler);
     compiler.warnings(false);
 
     compiler.out_dir(&location.dest);
@@ -107,10 +107,10 @@ pub struct Build {
 }
 
 impl Build {
-    fn new(location: Location, directives: &DirectiveMap) -> Build {
+    pub const fn new(location: Location, directives: DirectiveMap) -> Build {
         Self {
             location,
-            library: Library::new(version(), directives.to_owned()),
+            library: Library::new(version(), directives),
         }
     }
 
