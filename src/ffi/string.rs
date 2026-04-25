@@ -50,7 +50,7 @@ impl String {
     pub fn display<D: fmt::Display + ?Sized>(value: &D) -> Result<Self> {
         use fmt::Write as _;
 
-        let mut builder = StringBuilder::detached();
+        let mut builder = StringBuilder::new();
         match write!(&mut builder, "{value}") {
             Ok(_) => builder.finish(),
             Err(_) => Err(ErrorReason::Parameter(ParameterError::Bind).into()),
@@ -245,7 +245,7 @@ impl<'b> Bind<'b> for String {
 /// # use std::fmt::Write;
 /// # use squire::ffi::StringBuilder;
 /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
-/// let mut builder = StringBuilder::detached();
+/// let mut builder = StringBuilder::new();
 /// write!(builder, "Hello, {}!", "world")?;
 /// assert_eq!("Hello, world!", builder.finish()?.as_str());
 /// # Ok(())
@@ -259,7 +259,21 @@ pub struct StringBuilder {
     ptr: ptr::NonNull<sqlite3_str>,
 }
 
+#[allow(clippy::new_without_default)]
 impl StringBuilder {
+    /// [Create][] a [`StringBuilder`].
+    ///
+    /// [create]: https://sqlite.org/c3ref/str_new.html
+    #[doc(alias = "sqlite3_str_new")]
+    pub fn new() -> Self {
+        // SAFETY: `sqlite3_str_new(NULL)` is explicitly supported.
+        let ptr = unsafe { sqlite3_str_new(ptr::null_mut()) };
+
+        Self {
+            ptr: unsafe { ptr::NonNull::new_unchecked(ptr) },
+        }
+    }
+
     /// [Create][] a [`StringBuilder`].
     ///
     /// Strings built by this `StringBuilder` will have a maximum length of the
@@ -267,25 +281,11 @@ impl StringBuilder {
     ///
     /// [create]: https://sqlite.org/c3ref/str_new.html
     /// [`SQLITE_LIMIT_LENGTH`]: https://sqlite.org/c3ref/c_limit_attached.html#sqlitelimitlength
-    #[doc(alias = "sqlite3_str_new")]
-    pub fn new(conn: impl Connected) -> Self {
+    pub fn with_limit(conn: impl Connected) -> Self {
         // SAFETY: `sqlite3_str_new` always returns a valid pointer, even on OOM
         // (in which case it returns a special singleton that silently rejects
         // appends and returns NULL from `sqlite3_str_finish`).
         let ptr = unsafe { sqlite3_str_new(conn.as_connection_ptr()) };
-        Self {
-            ptr: unsafe { ptr::NonNull::new_unchecked(ptr) },
-        }
-    }
-
-    /// [Create][] a new [`StringBuilder`] whose limits aren't defined
-    /// by a [`Connection`](super::Connection).
-    ///
-    /// [create]: https://sqlite.org/c3ref/str_new.html
-    pub fn detached() -> Self {
-        // SAFETY: `sqlite3_str_new(NULL)` is explicitly supported.
-        let ptr = unsafe { sqlite3_str_new(ptr::null_mut()) };
-
         Self {
             ptr: unsafe { ptr::NonNull::new_unchecked(ptr) },
         }
@@ -430,7 +430,7 @@ mod tests {
 
     #[test]
     fn test_detached_builder() {
-        let mut builder = StringBuilder::detached();
+        let mut builder = StringBuilder::new();
         write!(builder, "hello").unwrap();
         write!(builder, ", world!").unwrap();
 
@@ -449,7 +449,7 @@ mod tests {
         .expect("open");
 
         {
-            let mut builder = StringBuilder::new(&conn);
+            let mut builder = StringBuilder::with_limit(&conn);
             write!(builder, "test string").unwrap();
 
             let string = builder.finish().expect("finish");
@@ -474,7 +474,7 @@ mod tests {
 
     #[test]
     fn test_display_formatting() {
-        let mut builder = StringBuilder::detached();
+        let mut builder = StringBuilder::new();
         let value = 42u32;
         write!(builder, "value = {}", value).unwrap();
 
@@ -485,7 +485,7 @@ mod tests {
 
     #[test]
     fn test_empty_string() {
-        let builder = StringBuilder::detached();
+        let builder = StringBuilder::new();
         let string = builder.finish().expect("finish");
         assert!(string.is_empty());
         assert_eq!(string.as_str(), "");
@@ -506,7 +506,7 @@ mod tests {
         let (stmt, _) = Statement::prepare(&conn, "SELECT ?", 0).expect("prepare");
 
         {
-            let mut builder = StringBuilder::new(&conn);
+            let mut builder = StringBuilder::with_limit(&conn);
             write!(builder, "hello from sqlite3_str").unwrap();
             let string = builder.finish().expect("finish");
 
