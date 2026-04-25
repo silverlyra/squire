@@ -1,9 +1,4 @@
-use core::{
-    error::Error,
-    ffi::c_int,
-    fmt,
-    str::{FromStr, Split},
-};
+use core::{error::Error, ffi::c_int, fmt, str::FromStr};
 
 /// A version of the SQLite library.
 ///
@@ -60,6 +55,71 @@ impl Version {
         (self.major * Self::MAJOR_MAGNITUDE + self.minor * Self::MINOR_MAGNITUDE + self.patch)
             as c_int
     }
+
+    /// Parse a version string (`major.minor[.patch]`) as a constant expression.
+    ///
+    /// Patch defaults to `0` when omitted.
+    pub const fn parse(s: &str) -> Result<Self, ParseVersionError> {
+        let b = s.as_bytes();
+
+        let dot1 = match find_dot(b, 0) {
+            Some(i) => i,
+            None => return Err(ParseVersionError),
+        };
+        let major = match parse_uint(b, 0, dot1) {
+            Ok(n) => n,
+            Err(e) => return Err(e),
+        };
+
+        match find_dot(b, dot1 + 1) {
+            Some(dot2) => {
+                let minor = match parse_uint(b, dot1 + 1, dot2) {
+                    Ok(n) => n,
+                    Err(e) => return Err(e),
+                };
+                let patch = match parse_uint(b, dot2 + 1, b.len()) {
+                    Ok(n) => n,
+                    Err(e) => return Err(e),
+                };
+                Ok(Self::new(major, minor, patch))
+            }
+            None => {
+                let minor = match parse_uint(b, dot1 + 1, b.len()) {
+                    Ok(n) => n,
+                    Err(e) => return Err(e),
+                };
+                Ok(Self::new(major, minor, 0))
+            }
+        }
+    }
+}
+
+const fn find_dot(bytes: &[u8], start: usize) -> Option<usize> {
+    let mut i = start;
+    while i < bytes.len() {
+        if bytes[i] == b'.' {
+            return Some(i);
+        }
+        i += 1;
+    }
+    None
+}
+
+const fn parse_uint(bytes: &[u8], start: usize, end: usize) -> Result<usize, ParseVersionError> {
+    if start >= end {
+        return Err(ParseVersionError);
+    }
+    let mut result: usize = 0;
+    let mut i = start;
+    while i < end {
+        let b = bytes[i];
+        if b < b'0' || b > b'9' {
+            return Err(ParseVersionError);
+        }
+        result = result * 10 + (b - b'0') as usize;
+        i += 1;
+    }
+    Ok(result)
 }
 
 macro_rules! from {
@@ -104,7 +164,7 @@ impl fmt::Display for Version {
 }
 
 /// The `Err` returned when a [`Version`] cannot be [parsed](FromStr).
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct ParseVersionError;
 
 impl Error for ParseVersionError {}
@@ -119,27 +179,7 @@ impl FromStr for Version {
     type Err = ParseVersionError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        #[inline]
-        fn parse_part(parts: &mut Split<'_, char>) -> Result<usize, ParseVersionError> {
-            parts
-                .next()
-                .ok_or(ParseVersionError)?
-                .parse()
-                .map_err(|_| ParseVersionError)
-        }
-
-        let mut parts = s.split('.');
-
-        let major = parse_part(&mut parts)?;
-        let minor = parse_part(&mut parts)?;
-        let patch = parse_part(&mut parts)?;
-
-        // Ensure there are no extra parts
-        if parts.next().is_some() {
-            return Err(ParseVersionError);
-        }
-
-        Ok(Self::new(major, minor, patch))
+        Self::parse(s)
     }
 }
 
@@ -188,17 +228,34 @@ mod tests {
         assert_eq!("3.50.4".parse::<Version>().unwrap(), Version::new(3, 50, 4));
         assert_eq!("3.46.0".parse::<Version>().unwrap(), Version::new(3, 46, 0));
         assert_eq!("0.0.1".parse::<Version>().unwrap(), Version::new(0, 0, 1));
+        // patch is optional; omitted patch defaults to 0
+        assert_eq!("3.50".parse::<Version>().unwrap(), Version::new(3, 50, 0));
+        assert_eq!("3.46".parse::<Version>().unwrap(), Version::new(3, 46, 0));
     }
 
     #[test]
     fn test_from_str_errors() {
-        assert!("3.50".parse::<Version>().is_err());
         assert!("3.50.4.1".parse::<Version>().is_err());
         assert!("3".parse::<Version>().is_err());
         assert!("".parse::<Version>().is_err());
         assert!("a.b.c".parse::<Version>().is_err());
         assert!("3.50.".parse::<Version>().is_err());
         assert!(".3.50.4".parse::<Version>().is_err());
+    }
+
+    #[test]
+    fn test_parse_const() {
+        const V: Version = match Version::parse("3.50.4") {
+            Ok(v) => v,
+            Err(_) => panic!("parse failed"),
+        };
+        assert_eq!(V, Version::new(3, 50, 4));
+
+        const V2: Version = match Version::parse("3.50") {
+            Ok(v) => v,
+            Err(_) => panic!("parse failed"),
+        };
+        assert_eq!(V2, Version::new(3, 50, 0));
     }
 
     #[cfg(feature = "alloc")]
