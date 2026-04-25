@@ -28,7 +28,6 @@ serialized = ["multi-thread"]
 core = [
     "json",
     "vtab",
-    "wal"
 ]
 common = [
     "core",
@@ -85,12 +84,11 @@ stat4 = []
 trace = []
 utf-16 = []
 vtab = []
-wal = []
 
 [build-dependencies.sqlite]
 package = "squire-sqlite3-src"
-# path = "../../../ext/squire-src"
-version = "3.53.0-alpha.1"
+path = "../../../ext/squire-src"
+version = "3.53.0-alpha.2"
 optional = true
 
 [build-dependencies.bindgen]

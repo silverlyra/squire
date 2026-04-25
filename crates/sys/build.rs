@@ -32,11 +32,7 @@ fn main() -> Result {
 
     // Detect features and emit metadata
     #[cfg(feature = "bundled")]
-    let metadata = features::Metadata::probe(
-        &features::Build::default()
-            .include_path(build.header().parent().expect("INCLUDE"))
-            .link_path(&dest),
-    )?;
+    let metadata = features::Metadata::detect(build.library());
     #[cfg(not(feature = "bundled"))]
     let metadata = features::Metadata::probe(&features::Build::default())?;
 
@@ -62,74 +58,52 @@ fn build_bundled_sqlite(dest: &Path) -> Result<sqlite::Build> {
     }
     println!("cargo:rustc-link-search={}", location.dest().display());
 
-    let mut config = sqlite::Config::default();
+    let mut configuration = features::Configuration::empty();
+
+    macro_rules! set {
+        ($key:ident, $enabled:expr) => {
+            configuration.set_enabled(features::FeatureKey::$key, $enabled);
+        };
+    }
+
+    set!(ApiArmor, cfg!(feature = "armor"));
+    set!(AuthorizationCallback, cfg!(feature = "authorization"));
+    set!(AutomaticVacuum, cfg!(feature = "auto-vacuum"));
+    set!(BlobIo, cfg!(feature = "blob-io"));
+    set!(ColumnDeclaredType, cfg!(feature = "decltype"));
+    set!(ColumnMetadata, cfg!(feature = "column-metadata"));
+    set!(DatabasePageVirtualTable, cfg!(feature = "page-vtab"));
+    set!(DatabaseStatisticsVirtualTable, cfg!(feature = "stat-vtab"));
+    set!(Fts3, cfg!(feature = "fts3"));
+    set!(Fts5, cfg!(feature = "fts5"));
+    set!(Geopoly, cfg!(feature = "geopoly"));
+    set!(Json, cfg!(feature = "json"));
+    set!(LoadExtension, cfg!(feature = "extensions"));
+    set!(MemoryStatus, cfg!(feature = "memory-status"));
+    set!(NormalizeSql, cfg!(feature = "normalize-sql"));
+    set!(PreUpdateHook, cfg!(feature = "preupdate-hook"));
+    set!(ProgressCallback, cfg!(feature = "progress-callback"));
+    set!(RTree, cfg!(feature = "rtree"));
+    set!(Serialize, cfg!(feature = "serialize"));
+    set!(Session, cfg!(feature = "session"));
+    set!(SharedCache, cfg!(feature = "shared-cache"));
+    set!(Snapshot, cfg!(feature = "snapshot"));
+    set!(Soundex, cfg!(feature = "soundex"));
+    set!(Stat4, cfg!(feature = "stat4"));
+    set!(Trace, cfg!(feature = "trace"));
+    set!(VirtualTable, cfg!(feature = "vtab"));
+
+    let mut directives = sqlite::config(Some(&configuration));
 
     #[cfg(feature = "serialized")]
-    config.set(sqlite::Setting::Threading(sqlite::Threading::Serialized));
+    let threading = features::directive::Threading::Serialized;
     #[cfg(all(feature = "multi-thread", not(feature = "serialized")))]
-    config.set(sqlite::Setting::Threading(sqlite::Threading::MultiThread));
+    let threading = features::directive::Threading::MultiThread;
     #[cfg(not(feature = "multi-thread"))]
-    config.set(sqlite::Setting::Threading(sqlite::Threading::SingleThread));
+    let threading = features::directive::Threading::SingleThread;
+    directives.insert(features::Directive::Threading(threading));
 
-    #[cfg(feature = "armor")]
-    config.set(sqlite::Setting::EnableApiArmor(true));
-    #[cfg(feature = "authorization")]
-    config.set(sqlite::Setting::EnableAuthorization(true));
-    #[cfg(feature = "auto-vacuum")]
-    config.set(sqlite::Setting::DefaultAutomaticVacuum(true));
-    #[cfg(feature = "blob-io")]
-    config.set(sqlite::Setting::EnableBlobIo(true));
-    #[cfg(feature = "column-metadata")]
-    config.set(sqlite::Setting::EnableColumnMetadata(true));
-    #[cfg(feature = "decltype")]
-    config.set(sqlite::Setting::EnableColumnDeclaredType(true));
-    #[cfg(feature = "extensions")]
-    config.set(sqlite::Setting::EnableLoadExtension(true));
-    #[cfg(feature = "fts3")]
-    config.set(sqlite::Setting::EnableFts3(true));
-    #[cfg(feature = "fts5")]
-    config.set(sqlite::Setting::EnableFts5(true));
-    #[cfg(feature = "geopoly")]
-    config.set(sqlite::Setting::EnableGeopoly(true));
-    #[cfg(feature = "json")]
-    config.set(sqlite::Setting::EnableJson(true));
-    #[cfg(feature = "memory-status")]
-    config.set(sqlite::Setting::DefaultMemoryStatus(true));
-    #[cfg(feature = "normalize-sql")]
-    config.set(sqlite::Setting::EnableNormalizeSql(true));
-    #[cfg(feature = "page-vtab")]
-    config.set(sqlite::Setting::EnableDatabasePagesVirtualTable(true));
-    #[cfg(feature = "preupdate-hook")]
-    config.set(sqlite::Setting::EnablePreUpdateHook(true));
-    #[cfg(feature = "progress-callback")]
-    config.set(sqlite::Setting::EnableProgressCallback(true));
-    #[cfg(feature = "rtree")]
-    config.set(sqlite::Setting::EnableRtree(true));
-    #[cfg(feature = "serialize")]
-    config.set(sqlite::Setting::EnableSerialize(true));
-    #[cfg(feature = "session")]
-    config.set(sqlite::Setting::EnableSession(true));
-    #[cfg(feature = "shared-cache")]
-    config.set(sqlite::Setting::EnableSharedCache(true));
-    #[cfg(feature = "snapshot")]
-    config.set(sqlite::Setting::EnableSnapshot(true));
-    #[cfg(feature = "soundex")]
-    config.set(sqlite::Setting::EnableSoundex(true));
-    #[cfg(feature = "stat-vtab")]
-    config.set(sqlite::Setting::EnableDatabaseStatisticsVirtualTable(true));
-    #[cfg(feature = "stat4")]
-    config.set(sqlite::Setting::EnableStat4(true));
-    #[cfg(feature = "trace")]
-    config.set(sqlite::Setting::EnableTrace(true));
-    #[cfg(feature = "vtab")]
-    config.set(sqlite::Setting::EnableVirtualTables(true));
-    #[cfg(feature = "wal")]
-    config.set(sqlite::Setting::EnableWriteAheadLog(true));
-
-    #[cfg(not(feature = "json"))]
-    config.set(sqlite::Setting::EnableJson(false));
-
-    let build = sqlite::build(location, config);
+    let build = sqlite::build(location, &directives);
 
     Ok(build)
 }
