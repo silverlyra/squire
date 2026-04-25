@@ -17,9 +17,17 @@ use std::{env, iter, ops::Deref, path::PathBuf};
 
 use features::{Configuration, DirectiveMap, Library, Version};
 
+const VERSION: Version = {
+    let version = include_str!("../sqlite/VERSION").trim_ascii_end();
+    match Version::parse(version) {
+        Ok(version) => version,
+        Err(_) => panic!("invalid SQLite version"),
+    }
+};
+
 /// The [version](Version) of the bundled SQLite library.
 pub const fn version() -> Version {
-    Version::release(3, 53) // TODO
+    VERSION
 }
 
 /// Build the bundled SQLite sources, using the given
