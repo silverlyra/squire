@@ -11,28 +11,33 @@ env:
 jobs:
   docs:
     name: API documentation
-    runs-on: ubuntu-latest
+    runs-on: macos-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: moonrepo/setup-rust@v1
         with:
           bins: cargo-docs-rs
           cache-base: main
           channel: nightly
+          targets: aarch64-apple-darwin,aarch64-unknown-linux-gnu,i686-unknown-linux-gnu,x86_64-unknown-linux-gnu
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Download SQLite
         run: >-
           cargo run -p squire-sqlite3-src-fetch "$SQLITE_RELEASE"
+      - name: Install cross-compilers
+        run: >-
+          brew tap messense/macos-cross-toolchains &&
+          brew install aarch64-unknown-linux-gnu i686-unknown-linux-gnu x86_64-unknown-linux-gnu
       - name: Build API documentation
         run: >-
-          cargo docs-rs --target x86_64-unknown-linux-gnu
+          cargo docs-rs
 
   format:
     name: Format
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: moonrepo/setup-rust@v1
         with:
           components: rustfmt
@@ -47,7 +52,7 @@ jobs:
     name: Lint
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: moonrepo/setup-rust@v1
         with:
           components: clippy
@@ -83,7 +88,7 @@ jobs:
             host: ubuntu-24.04-arm
             sqlite: linked
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: moonrepo/setup-rust@v1
         with:
           cache-base: main
@@ -109,7 +114,7 @@ jobs:
       - name: Run tests (all features)
         run: >-
           cargo test --all-features
-        if: matrix.channel != 'linked'
+        if: matrix.sqlite != 'linked'
       - name: Run tests (minimal features)
         run: >-
           cargo test --no-default-features --features '${{ matrix.sqlite != 'linked' && matrix.sqlite || '' }}' -- --test-threads=1
