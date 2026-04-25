@@ -1,6 +1,60 @@
-use jiff::{SignedDuration, Span, Timestamp, Zoned};
+use jiff::{SignedDuration, Span, Timestamp, Zoned, civil};
 
 use crate::{bind::Bind, error::Error, fetch::Fetch, ffi, types::Borrowed};
+
+#[cfg_attr(docsrs, doc(cfg(feature = "jiff")))]
+impl Bind<'_> for civil::Date {
+    type Value = ffi::String;
+
+    fn into_bind_value(self) -> crate::Result<Self::Value> {
+        ffi::String::display(&self)
+    }
+}
+
+#[cfg_attr(docsrs, doc(cfg(feature = "jiff")))]
+impl<'b> Fetch<'b> for civil::Date {
+    type Value = Borrowed<'b, str>;
+
+    fn from_value(value: Self::Value) -> crate::Result<Self> {
+        value.parse().map_err(Error::from_fetch)
+    }
+}
+
+#[cfg_attr(docsrs, doc(cfg(feature = "jiff")))]
+impl Bind<'_> for civil::DateTime {
+    type Value = ffi::String;
+
+    fn into_bind_value(self) -> crate::Result<Self::Value> {
+        ffi::String::display(&self)
+    }
+}
+
+#[cfg_attr(docsrs, doc(cfg(feature = "jiff")))]
+impl<'b> Fetch<'b> for civil::DateTime {
+    type Value = Borrowed<'b, str>;
+
+    fn from_value(value: Self::Value) -> crate::Result<Self> {
+        value.parse().map_err(Error::from_fetch)
+    }
+}
+
+#[cfg_attr(docsrs, doc(cfg(feature = "jiff")))]
+impl Bind<'_> for civil::Time {
+    type Value = ffi::String;
+
+    fn into_bind_value(self) -> crate::Result<Self::Value> {
+        ffi::String::display(&self)
+    }
+}
+
+#[cfg_attr(docsrs, doc(cfg(feature = "jiff")))]
+impl<'b> Fetch<'b> for civil::Time {
+    type Value = Borrowed<'b, str>;
+
+    fn from_value(value: Self::Value) -> crate::Result<Self> {
+        value.parse().map_err(Error::from_fetch)
+    }
+}
 
 #[cfg_attr(docsrs, doc(cfg(feature = "jiff")))]
 impl Bind<'_> for SignedDuration {
