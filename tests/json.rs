@@ -10,17 +10,17 @@ use squire::{Columns, Connection, Database, Parameters};
 
 type Result<T = ()> = std::result::Result<T, Box<dyn Error>>;
 
-fn setup() -> Result<Connection> {
+fn setup(column_type: &str) -> Result<Connection> {
     let connection = Connection::open(Database::memory())?;
 
-    connection.execute(
+    let sql = format!(
         "CREATE TABLE records (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            metadata BLOB NOT NULL,
-            settings BLOB NOT NULL
+            metadata {column_type} NOT NULL,
+            settings {column_type} NOT NULL
         ) STRICT;",
-        (),
-    )?;
+    );
+    connection.execute(sql, ())?;
 
     Ok(connection)
 }
@@ -50,7 +50,7 @@ struct Record {
 
 #[test]
 fn json_round_trip() -> Result {
-    let connection = setup()?;
+    let connection = setup("TEXT")?;
 
     let mut metadata = HashMap::new();
     metadata.insert("author".to_string(), "Alice".to_string());
@@ -102,7 +102,7 @@ mod jsonb_tests {
 
     #[test]
     fn jsonb_round_trip() -> Result {
-        let connection = setup()?;
+        let connection = setup("BLOB")?;
 
         let mut metadata = HashMap::new();
         metadata.insert("author".to_string(), "Bob".to_string());
@@ -136,7 +136,7 @@ mod jsonb_tests {
 
 #[test]
 fn json_nested_structure() -> Result {
-    let connection = setup()?;
+    let connection = setup("TEXT")?;
 
     #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
     struct NestedData {

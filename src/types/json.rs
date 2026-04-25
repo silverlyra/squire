@@ -8,6 +8,7 @@ use crate::{
     bind::Bind,
     error::{Error, Result},
     fetch::Fetch,
+    ffi,
     types::Borrowed,
 };
 
@@ -22,10 +23,13 @@ impl<'b, T> Bind<'b> for Json<T>
 where
     T: Serialize,
 {
-    type Value = Vec<u8>;
+    type Value = ffi::String;
 
     fn into_bind_value(self) -> Result<Self::Value> {
-        json::to_vec(&self.0).map_err(Error::from_bind)
+        let mut builder = ffi::StringBuilder::new();
+        json::to_writer(&mut builder, &self.0).map_err(Error::from_bind)?;
+
+        builder.finish()
     }
 }
 
@@ -35,10 +39,10 @@ impl<'r, T> Fetch<'r> for Json<T>
 where
     T: Deserialize<'r>,
 {
-    type Value = Borrowed<'r, [u8]>;
+    type Value = Borrowed<'r, str>;
 
     fn from_value(value: Self::Value) -> Result<Self> {
-        match json::from_slice(value.into_inner()) {
+        match json::from_str(value.into_inner()) {
             Ok(value) => Ok(Self(value)),
             Err(err) => Err(Error::from_fetch(err)),
         }
