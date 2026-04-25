@@ -31,7 +31,7 @@ directives! {
     ENABLE_MEMORY_MANAGEMENT => EnableMemoryManagement,
     ENABLE_NORMALIZE => EnableNormalizeSql,
     ENABLE_PREUPDATE_HOOK => EnablePreUpdateHook,
-    ENABLE_RTREE => EnableRTree,
+    ENABLE_RTREE => EnableRtree,
     ENABLE_SESSION => EnableSession,
     ENABLE_SNAPSHOT => EnableSnapshot,
     ENABLE_STAT4 => EnableStat4,

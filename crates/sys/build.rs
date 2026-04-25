@@ -84,7 +84,7 @@ fn build_bundled_sqlite(dest: &Path, mock: bool) -> Result<sqlite::Build> {
     set!(NormalizeSql, cfg!(feature = "normalize-sql"));
     set!(PreUpdateHook, cfg!(feature = "preupdate-hook"));
     set!(ProgressCallback, cfg!(feature = "progress-callback"));
-    set!(RTree, cfg!(feature = "rtree"));
+    set!(Rtree, cfg!(feature = "rtree"));
     set!(Serialize, cfg!(feature = "serialize"));
     set!(Session, cfg!(feature = "session"));
     set!(SharedCache, cfg!(feature = "shared-cache"));
