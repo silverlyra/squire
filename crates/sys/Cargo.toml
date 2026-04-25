@@ -1,7 +1,7 @@
 [package]
 name = "squire-sqlite3-sys"
 description = "External FFI bindings for the SQLite C API"
-version = "0.0.1-alpha.6"
+version = "0.0.1-alpha.7"
 edition = "2024"
 links = "sqlite3"
 readme = "Readme.md"

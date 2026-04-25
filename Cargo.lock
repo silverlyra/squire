@@ -1137,7 +1137,7 @@ dependencies = [
 
 [[package]]
 name = "squire-sqlite3-sys"
-version = "0.0.1-alpha.6"
+version = "0.0.1-alpha.7"
 dependencies = [
  "bindgen",
  "pkg-config",
