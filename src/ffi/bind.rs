@@ -32,6 +32,7 @@ use sqlite::{
     sqlite3_result_pointer,
 };
 
+#[cfg(target_pointer_width = "64")]
 const ENCODING_UTF8: c_uchar = SQLITE_UTF8 as c_uchar;
 
 /// A type that can be [bound][bind] as a SQLite [prepared statement](Statement)

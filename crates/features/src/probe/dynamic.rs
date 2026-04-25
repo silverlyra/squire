@@ -1,6 +1,10 @@
-use core::ffi::{c_char, c_int};
+use core::ffi::{CStr, c_char, c_int};
 
-use super::{Flag, Probe, Threading};
+#[cfg(feature = "alloc")]
+use crate::directive::DirectiveMap;
+use crate::directive::ParseDirectiveError;
+#[cfg(feature = "alloc")]
+use crate::probe::Probe;
 use crate::version::Version;
 
 use libloading::AsFilename;
@@ -10,18 +14,15 @@ use libloading::library_filename;
 #[cfg(feature = "std")]
 use std::ffi::OsStr;
 
-type Sqlite3CompileOptionUsed = unsafe extern "C" fn(*const c_char) -> c_int;
+type Sqlite3CompileOptionGet = unsafe extern "C" fn(c_int) -> *const c_char;
 type Sqlite3VersionNumber = unsafe extern "C" fn() -> c_int;
 type Sqlite3ThreadSafe = unsafe extern "C" fn() -> c_int;
 
-/// A dynamically loaded SQLite library.
-///
-/// This struct uses `libloading` to load a SQLite shared library at runtime
-/// and probe its version, compile-time options, and threading mode.
+/// A dynamically-linkable SQLite library.
+#[allow(dead_code)]
 pub struct Library {
-    #[allow(dead_code)]
     lib: libloading::Library,
-    option_used: Sqlite3CompileOptionUsed,
+    option_get: Sqlite3CompileOptionGet,
     version_number: Sqlite3VersionNumber,
     thread_safe: Sqlite3ThreadSafe,
 }
@@ -37,19 +38,19 @@ impl Library {
     pub fn open<P: AsFilename>(path: P) -> Result<Self, Error> {
         let lib = unsafe { libloading::Library::new(path)? };
 
-        let compileoption_used =
-            unsafe { *lib.get::<Sqlite3CompileOptionUsed>(b"sqlite3_compileoption_used\0")? };
+        let option_get =
+            unsafe { *lib.get::<Sqlite3CompileOptionGet>(b"sqlite3_compileoption_get\0")? };
 
-        let libversion_number =
+        let version_number =
             unsafe { *lib.get::<Sqlite3VersionNumber>(b"sqlite3_libversion_number\0")? };
 
-        let threadsafe = unsafe { *lib.get::<Sqlite3ThreadSafe>(b"sqlite3_threadsafe\0")? };
+        let thread_safe = unsafe { *lib.get::<Sqlite3ThreadSafe>(b"sqlite3_threadsafe\0")? };
 
         Ok(Self {
             lib,
-            option_used: compileoption_used,
-            version_number: libversion_number,
-            thread_safe: threadsafe,
+            option_get,
+            version_number,
+            thread_safe,
         })
     }
 
@@ -75,36 +76,48 @@ impl Library {
     pub fn default() -> Result<Self, Error> {
         Self::resolve("sqlite3")
     }
-}
 
-impl Probe for Library {
-    fn version(&self) -> Version {
+    pub fn version(&self) -> Version {
         let num = unsafe { (self.version_number)() };
         Version::from_number(num)
     }
 
-    fn is_set(&self, flag: Flag) -> bool {
-        // Convert the flag name to a C string
-        let name = flag.name();
-        let c_name = name.as_bytes();
+    #[cfg(feature = "alloc")]
+    #[cfg_attr(docsrs, doc(cfg(any(feature = "std", feature = "alloc"))))]
+    fn directives(&self) -> Result<DirectiveMap, ParseDirectiveError> {
+        let mut directives = DirectiveMap::new();
 
-        // We need to create a null-terminated string
-        let mut buf = [0u8; 64];
-        let len = c_name.len().min(buf.len() - 1);
-        buf[..len].copy_from_slice(&c_name[..len]);
-        buf[len] = 0;
+        let mut i: c_int = 0;
+        loop {
+            let directive = unsafe { (self.option_get)(i) };
+            if directive.is_null() {
+                break;
+            }
 
-        let result = unsafe { (self.option_used)(buf.as_ptr() as *const c_char) };
-        result != 0
-    }
+            let directive = unsafe { CStr::from_ptr(directive) };
+            let directive = unsafe { core::str::from_utf8_unchecked(directive.to_bytes()) };
 
-    fn threading(&self) -> Threading {
-        let result = unsafe { (self.thread_safe)() };
-        match result {
-            0 => Threading::SingleThread,
-            1 => Threading::Serialized,
-            2 => Threading::MultiThread,
-            _ => Threading::SingleThread, // Default to most conservative
+            i += 1;
+
+            match directive.parse() {
+                Ok(directive) => directives.insert(directive),
+                Err(ParseDirectiveError::UnknownKey) => continue,
+                Err(err) => return Err(err),
+            };
         }
+
+        Ok(directives)
+    }
+}
+
+#[cfg(feature = "alloc")]
+impl Probe for Library {
+    type Error = ParseDirectiveError;
+
+    fn probe(&self) -> Result<crate::info::Library, Self::Error> {
+        let version = self.version();
+        let directives = self.directives()?;
+
+        Ok(crate::info::Library::new(version, directives))
     }
 }

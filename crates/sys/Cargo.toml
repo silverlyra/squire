@@ -28,7 +28,6 @@ serialized = ["multi-thread"]
 core = [
     "json",
     "vtab",
-    "wal"
 ]
 common = [
     "core",
@@ -85,13 +84,18 @@ stat4 = []
 trace = []
 utf-16 = []
 vtab = []
-wal = []
 
 [build-dependencies.sqlite]
 package = "squire-sqlite3-src"
-# path = "../../../ext/squire-src"
-version = "3.53.0-alpha.1"
+path = "../src"
+version = "3.53.0-alpha.3"
 optional = true
+
+[build-dependencies.features]
+package = "squire-sqlite3-features"
+path = "../features"
+version = "0.1.0-alpha.1"
+features = ["metadata", "build"]
 
 [build-dependencies.bindgen]
 version = "^0.72"
@@ -117,12 +121,6 @@ optional = true
 [build-dependencies.pkg-config]
 version = "^0.3.32"
 optional = true
-
-[build-dependencies.features]
-package = "squire-sqlite3-features"
-path = "../features"
-version = "0.0.1-alpha.3"
-features = ["inherent", "metadata", "build"]
 
 [package.metadata.docs.rs]
 features = ["bundled", "full", "serialized"]

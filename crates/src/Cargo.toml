@@ -1,0 +1,31 @@
+[package]
+name = "squire-sqlite3-src"
+description = "Bundled SQLite sources for Squire"
+version = "3.53.0-alpha.3"
+edition = "2024"
+readme = "Readme.md"
+repository.workspace = true
+license.workspace = true
+keywords = ["sqlite"]
+
+include = [
+    "/sqlite/README.md",
+    "/sqlite/VERSION",
+    "/sqlite/sqlite3.c",
+    "/sqlite/sqlite3.h",
+    "/src",
+    "/LICENSE.md",
+    "/README.md",
+]
+
+[features]
+default = []
+parallel = ["cc/parallel"]
+
+[dependencies.features]
+package = "squire-sqlite3-features"
+path = "../features"
+version = "0.1.0-alpha.1"
+
+[dependencies.cc]
+version = "^1.2.34"

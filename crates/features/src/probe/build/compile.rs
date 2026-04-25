@@ -1,8 +1,8 @@
 //! Internal implementation for compiling and running the SQLite probe program.
 
-use std::{env, path::PathBuf, process::Command};
+use std::{env, fs, path::PathBuf, process::Command};
 
-use super::Library;
+use super::BuildProbeError;
 
 /// The probe C source code, embedded in the binary.
 const PROBE_C: &str = include_str!("probe.c");
@@ -102,14 +102,16 @@ impl Default for Build {
 ///
 /// This uses the `cc` crate to compile the probe program and link it against
 /// SQLite using the provided build configuration.
-pub(super) fn run_probe(build: Build) -> Library {
+pub(super) fn run_probe(build: &Build) -> Result<String, BuildProbeError> {
     let out_dir = build
         .out_dir
-        .unwrap_or_else(|| PathBuf::from(env::var("OUT_DIR").expect("OUT_DIR not set")));
+        .clone()
+        .or_else(|| env::var("OUT_DIR").ok().map(PathBuf::from))
+        .ok_or(BuildProbeError::NoOutDir)?;
 
     // Write probe.c to a temporary file in OUT_DIR
     let probe_c_path = out_dir.join("probe.c");
-    std::fs::write(&probe_c_path, PROBE_C).expect("failed to write probe.c");
+    fs::write(&probe_c_path, PROBE_C)?;
 
     // Get the compiler
     let compiler = cc::Build::new().get_compiler();
@@ -140,27 +142,18 @@ pub(super) fn run_probe(build: Build) -> Library {
     cmd.arg("-o").arg(&probe_exe);
 
     // Compile and link
-    let status = cmd
-        .status()
-        .expect("failed to compile and link probe program");
+    let status = cmd.status()?;
 
     if !status.success() {
-        panic!("failed to compile and link probe program");
+        return Err(BuildProbeError::Exit(status));
     }
 
     // Run the probe program and capture output
-    let output = Command::new(&probe_exe)
-        .output()
-        .expect("failed to run probe executable");
+    let output = Command::new(&probe_exe).output()?;
 
     if !output.status.success() {
-        panic!(
-            "probe executable failed: {}",
-            String::from_utf8_lossy(&output.stderr)
-        );
+        return Err(BuildProbeError::Exit(status));
     }
 
-    // Parse the output
-    let text = String::from_utf8(output.stdout).expect("probe output is not valid UTF-8");
-    Library::from_text(&text).expect("failed to parse probe output")
+    String::from_utf8(output.stdout).map_err(|_| BuildProbeError::InvalidOutput)
 }

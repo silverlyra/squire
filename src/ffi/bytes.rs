@@ -6,7 +6,7 @@ use core::{
 };
 
 #[cfg(target_pointer_width = "32")]
-use sqlite::sqlite3_result_blob;
+use sqlite::sqlite3_bind_blob;
 #[cfg(all(feature = "functions", target_pointer_width = "32"))]
 use sqlite::sqlite3_result_blob;
 #[cfg(all(feature = "functions", target_pointer_width = "64"))]

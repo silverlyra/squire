@@ -2,7 +2,7 @@ type Result<T = ()> = std::result::Result<T, Box<dyn std::error::Error>>;
 
 fn main() -> Result {
     // Read feature detection from the sys crate's build script
-    let library = features::Library::from_cargo_metadata()?;
+    let library = features::Metadata::from_dependency()?;
 
     // Verify threading mode compatibility
     #[cfg(feature = "multi-thread")]
@@ -29,8 +29,8 @@ fn emit_nightly_cfg() {
 }
 
 #[cfg(feature = "multi-thread")]
-fn check_threading_mode(library: &features::Library) {
-    if library.threading().is_single_threaded() {
+fn check_threading_mode(metadata: &features::Metadata) {
+    if metadata.threading().is_single_threaded() {
         panic!(
             "multi-thread feature enabled, but SQLite was built with \
                 SQLITE_THREADSAFE=0, and can only be used single-threaded"
