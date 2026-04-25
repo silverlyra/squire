@@ -228,6 +228,8 @@ impl core::error::Error for Error {
     fn source(&self) -> Option<&(dyn core::error::Error + 'static)> {
         if let Some(integration) = self.as_integration() {
             match *integration {
+                #[cfg(feature = "chrono")]
+                IntegrationError::Chrono(ref error) => Some(error),
                 #[cfg(feature = "jiff")]
                 IntegrationError::Jiff(ref error) => Some(error),
                 #[cfg(all(feature = "serde", feature = "json"))]

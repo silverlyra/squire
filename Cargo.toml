@@ -67,7 +67,8 @@ trace = ["sqlite/trace"]
 utf-16 = ["sqlite/utf-16"]
 value = []
 
-integrations = ["jiff", "jsonb", "serde", "url", "uuid", "widestring"]
+integrations = ["chrono", "jiff", "jsonb", "serde", "url", "uuid", "widestring"]
+chrono = ["dep:chrono"]
 jiff = ["dep:jiff"]
 jsonb = ["json", "squire-serde?/jsonb"]
 serde = ["dep:squire-serde"]
@@ -97,6 +98,10 @@ package = "squire-sqlite3-sys"
 path = "crates/sys"
 version = "0.0.1-alpha.8"
 default-features = false
+
+[dependencies.chrono]
+version = "0.4"
+optional = true
 
 [dependencies.jiff]
 version = "0.2"

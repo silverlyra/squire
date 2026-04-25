@@ -8,6 +8,13 @@ use std::sync::Arc;
 /// An [error](core::error::Error) from a crate that Squire integrates with.
 #[derive(Clone, Debug)]
 pub enum IntegrationError {
+    /// An error from the [`chrono`][] crate.
+    ///
+    /// [`chrono`]: https://lib.rs/chrono
+    #[cfg(feature = "chrono")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "chrono")))]
+    Chrono(chrono::ParseError),
+
     /// An error from the [`jiff`][] crate.
     ///
     /// [`jiff`]: https://crates.io/crates/jiff
@@ -42,6 +49,33 @@ pub enum IntegrationError {
     #[cfg(feature = "uuid")]
     #[cfg_attr(docsrs, doc(cfg(feature = "uuid")))]
     Uuid(Box<uuid::Error>),
+}
+
+#[cfg(feature = "chrono")]
+#[cfg_attr(docsrs, doc(cfg(feature = "chrono")))]
+impl IntegrationError {
+    /// `true` if this is a [`chrono::ParseError`]; `false` if otherwise.
+    pub fn is_chrono(&self) -> bool {
+        matches!(self, Self::Chrono(_))
+    }
+
+    /// Access the [`chrono::ParseError`] contained in this [`IntegrationError`].
+    ///
+    /// Returns `None` if this is not a `Chrono` error.
+    pub fn as_chrono(&self) -> Option<&chrono::ParseError> {
+        match self {
+            Self::Chrono(error) => Some(error),
+            _ => None,
+        }
+    }
+}
+
+#[cfg(feature = "chrono")]
+#[cfg_attr(docsrs, doc(cfg(feature = "chrono")))]
+impl From<chrono::ParseError> for IntegrationError {
+    fn from(error: chrono::ParseError) -> Self {
+        Self::Chrono(error)
+    }
 }
 
 #[cfg(feature = "jiff")]
@@ -182,6 +216,8 @@ impl From<uuid::Error> for IntegrationError {
 impl fmt::Display for IntegrationError {
     fn fmt(&self, #[allow(unused_variables)] f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match *self {
+            #[cfg(feature = "chrono")]
+            IntegrationError::Chrono(ref error) => error.fmt(f),
             #[cfg(feature = "jiff")]
             IntegrationError::Jiff(ref error) => error.fmt(f),
             #[cfg(all(feature = "serde", feature = "json"))]
