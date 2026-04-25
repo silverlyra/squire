@@ -15,6 +15,7 @@ pub struct ErrorLocation(i32);
 
 impl ErrorLocation {
     #[cfg(sqlite_has_error_offset)]
+    #[allow(clippy::unnecessary_cast)]
     const fn new(location: c_int) -> Option<Self> {
         if location >= 0 {
             #[cfg(all(nightly, feature = "lang-rustc-scalar-valid-range"))]
