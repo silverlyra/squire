@@ -86,7 +86,7 @@ pub use database::{Database, IntoLocation};
 pub use error::{
     AbortError, AuthorizationError, BusyError, CantOpenError, ConstraintError, CorruptError, Error,
     ErrorCategory, ErrorCode, ErrorContainer, ErrorLocation, ErrorReason, FetchError, GeneralError,
-    IntegrationError, IoError, LockedError, ParameterError, ReadOnlyError, Result,
+    IntegrationError, IoError, LockedError, ParameterError, ReadOnlyError, Result, RowError,
 };
 pub use fetch::Fetch;
 pub use param::Parameters;

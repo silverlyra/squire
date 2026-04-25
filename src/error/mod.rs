@@ -17,6 +17,7 @@ pub use location::ErrorLocation;
 pub use reason::{
     AbortError, AuthorizationError, BusyError, CantOpenError, ConstraintError, CorruptError,
     ErrorReason, FetchError, GeneralError, IoError, LockedError, ParameterError, ReadOnlyError,
+    RowError,
 };
 
 /// A [`Result`](core::result::Result) returned by Squire.
@@ -287,11 +288,13 @@ struct ErrorInner {
 }
 
 impl ErrorInner {
-    fn new(code: ErrorCode) -> Self {
+    #[inline]
+    const fn new(code: ErrorCode) -> Self {
         Self { code, detail: None }
     }
 
-    fn with_detail(code: ErrorCode, detail: ErrorDetail) -> Self {
+    #[inline]
+    const fn with_detail(code: ErrorCode, detail: ErrorDetail) -> Self {
         Self {
             code,
             detail: Some(detail),
