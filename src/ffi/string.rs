@@ -6,6 +6,7 @@ use core::{
     ops::Deref,
     ptr, slice,
 };
+use std::io;
 
 #[cfg(target_pointer_width = "32")]
 use sqlite::sqlite3_bind_text;
@@ -406,6 +407,27 @@ impl fmt::Write for StringBuilder {
             sqlite3_str_append(self.as_ptr(), s.as_ptr() as *const c_char, s.len() as c_int);
         }
         // Errors are deferred to finish(); fmt::Write::write_str succeeds
+        Ok(())
+    }
+}
+
+impl io::Write for StringBuilder {
+    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+        // SAFETY: `sqlite3_str_append` is safe to call with any valid
+        // `sqlite3_str` pointer. The length must be non-negative.
+        debug_assert!(self.len() + buf.len() <= c_int::MAX as usize);
+        unsafe {
+            sqlite3_str_append(
+                self.as_ptr(),
+                buf.as_ptr() as *const c_char,
+                buf.len() as c_int,
+            );
+        }
+        // Errors are deferred to finish(); io::Write::write succeeds
+        Ok(buf.len())
+    }
+
+    fn flush(&mut self) -> io::Result<()> {
         Ok(())
     }
 }
