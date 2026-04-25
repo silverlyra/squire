@@ -25,7 +25,7 @@ parallel = ["cc/parallel"]
 [dependencies.features]
 package = "squire-sqlite3-features"
 path = "../features"
-version = "0.1.0-alpha.1"
+version = "0.1.0-alpha.2"
 
 [dependencies.cc]
 version = "^1.2.34"

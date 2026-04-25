@@ -94,7 +94,7 @@ optional = true
 [build-dependencies.features]
 package = "squire-sqlite3-features"
 path = "../features"
-version = "0.1.0-alpha.1"
+version = "0.1.0-alpha.2"
 features = ["metadata", "build"]
 
 [build-dependencies.bindgen]
