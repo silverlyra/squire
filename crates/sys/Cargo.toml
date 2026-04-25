@@ -87,9 +87,15 @@ vtab = []
 
 [build-dependencies.sqlite]
 package = "squire-sqlite3-src"
-path = "../../../ext/squire-src"
-version = "3.53.0-alpha.2"
+path = "../src"
+version = "3.53.0-alpha.3"
 optional = true
+
+[build-dependencies.features]
+package = "squire-sqlite3-features"
+path = "../features"
+version = "0.1.0-alpha.1"
+features = ["metadata", "build"]
 
 [build-dependencies.bindgen]
 version = "^0.72"
@@ -115,12 +121,6 @@ optional = true
 [build-dependencies.pkg-config]
 version = "^0.3.32"
 optional = true
-
-[build-dependencies.features]
-package = "squire-sqlite3-features"
-path = "../features"
-version = "0.1.0-alpha.1"
-features = ["metadata", "build"]
 
 [package.metadata.docs.rs]
 features = ["bundled", "full", "serialized"]

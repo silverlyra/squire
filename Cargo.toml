@@ -11,7 +11,7 @@ keywords = ["sqlite", "database", "api", "bindings", "sql"]
 
 [workspace]
 resolver = "3"
-members = ["crates/derive", "crates/features", "crates/serde", "crates/sys"]
+members = ["crates/derive", "crates/features", "crates/serde", "crates/src", "crates/src/fetch", "crates/sys"]
 
 [workspace.package]
 repository = "https://github.com/silverlyra/squire"
