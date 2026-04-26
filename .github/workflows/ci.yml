@@ -75,6 +75,12 @@ jobs:
         sqlite: [bundled]
         include:
           - channel: stable
+            host: macos-latest
+            sqlite: bundled
+          - channel: stable
+            host: macos-latest
+            sqlite: linked
+          - channel: stable
             host: ubuntu-22.04
             sqlite: linked
           - channel: stable
@@ -98,6 +104,10 @@ jobs:
       - name: Run tests (default features)
         run: >-
           cargo test --no-default-features --features '${{ matrix.sqlite != 'linked' && matrix.sqlite || '' }} common derive multi-thread'
+      - name: Run tests (serialized threading)
+        if: matrix.sqlite != 'linked'
+        run: >-
+          cargo test --no-default-features --features '${{ matrix.sqlite != 'linked' && matrix.sqlite || '' }} common derive multi-thread'
       - name: Run tests (full features)
         run: >-
           cargo test --no-default-features --features '${{ matrix.sqlite != 'linked' && matrix.sqlite || '' }} full derive multi-thread'
@@ -108,9 +118,9 @@ jobs:
         run: >-
           cargo test --no-default-features --features '${{ matrix.sqlite != 'linked' && matrix.sqlite || '' }} full derive multi-thread nightly'
       - name: Run tests (all features)
+        if: matrix.sqlite != 'linked'
         run: >-
           cargo test --all-features
-        if: matrix.sqlite != 'linked'
       - name: Run tests (minimal features)
         run: >-
           cargo test --no-default-features --features '${{ matrix.sqlite != 'linked' && matrix.sqlite || '' }}' -- --test-threads=1
