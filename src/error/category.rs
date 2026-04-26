@@ -149,7 +149,7 @@ pub enum ErrorCategory {
     /// [result codes]: https://sqlite.org/rescode.html
     Parameter = super::code::SQUIRE_ERROR_PARAMETER,
 
-    /// A column value stored in SQLite could not be read into a Rust type.
+    /// A row could not be read from SQLite (see [`NotReturned`](crate::RowError)).
     ///
     /// (This [error category](ErrorCategory) is defined by Squire; not SQLite.
     /// No SQLite [result codes][] correspond to `ErrorCategory::Row`.)
