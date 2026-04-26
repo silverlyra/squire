@@ -6,12 +6,12 @@
 
 use std::error::Error;
 
-use squire::{Columns, Connection, Database};
+use squire::{Columns, Connection, Memory};
 
 type Result<T = ()> = std::result::Result<T, Box<dyn Error>>;
 
 fn setup() -> Result<Connection> {
-    let connection = Connection::open(Database::memory())?;
+    let connection = Connection::open(Memory)?;
 
     connection.execute(
         "CREATE TABLE example (id INTEGER PRIMARY KEY AUTOINCREMENT, a TEXT NOT NULL, b INTEGER, c REAL) STRICT;",

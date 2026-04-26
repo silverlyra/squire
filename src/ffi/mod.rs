@@ -16,6 +16,7 @@ mod connection;
 mod fetch;
 #[cfg(feature = "functions")]
 mod func;
+mod location;
 #[cfg(feature = "mutex")]
 mod mutex;
 mod pointer;
@@ -32,6 +33,7 @@ pub use fetch::Fetch;
 #[cfg(feature = "functions")]
 #[cfg_attr(docsrs, doc(cfg(feature = "functions")))]
 pub use func::{ContextRef, Function};
+pub use location::{IntoLocation, Location};
 #[cfg(feature = "mutex")]
 #[cfg_attr(docsrs, doc(cfg(any(feature = "mutex", feature = "serialized"))))]
 pub use mutex::{Mutex, MutexGuard, MutexRef, StaticMutex};

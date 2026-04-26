@@ -6,12 +6,12 @@
 use std::{collections::HashMap, error::Error};
 
 use serde::{Deserialize, Serialize};
-use squire::{Columns, Connection, Database, Parameters};
+use squire::{Columns, Connection, Memory, Parameters};
 
 type Result<T = ()> = std::result::Result<T, Box<dyn Error>>;
 
 fn setup(column_type: &str) -> Result<Connection> {
-    let connection = Connection::open(Database::memory())?;
+    let connection = Connection::open(Memory)?;
 
     let sql = format!(
         "CREATE TABLE records (

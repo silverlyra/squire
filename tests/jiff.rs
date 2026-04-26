@@ -3,12 +3,12 @@
 use std::error::Error;
 
 use jiff::{SignedDuration, Span, SpanFieldwise, Timestamp, Zoned};
-use squire::{Connection, Database};
+use squire::{Connection, Memory};
 
 type Result<T = ()> = std::result::Result<T, Box<dyn Error>>;
 
 fn connection() -> Result<Connection> {
-    Ok(Connection::open(Database::memory())?)
+    Ok(Connection::open(Memory)?)
 }
 
 // SignedDuration tests

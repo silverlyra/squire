@@ -6,7 +6,7 @@
 //! #     all(nightly, feature = "lang-array-assume-init"),
 //! #     feature(maybe_uninit_array_assume_init)
 //! # )]
-//! use squire::{Columns, Connection, Database};
+//! use squire::{Columns, Connection, Memory};
 //!
 //! #[derive(Columns, PartialEq, Eq, Clone, Debug)]
 //! struct User {
@@ -16,7 +16,7 @@
 //! }
 //!
 //! # fn main() -> Result<(), Box<dyn std::error::Error>> {
-//! let connection = Connection::open(Database::memory())?;
+//! let connection = Connection::open(Memory)?;
 //!
 //! connection.execute(
 //!     "CREATE TABLE users (
@@ -67,7 +67,7 @@ mod bind;
 mod blob;
 mod column;
 mod connection;
-mod database;
+mod endpoint;
 mod error;
 mod fetch;
 pub mod ffi;
@@ -82,7 +82,7 @@ pub use bind::Bind;
 pub use blob::Reservation;
 pub use column::{ColumnIndexes, Columns};
 pub use connection::{Connection, ConnectionBuilder};
-pub use database::{Database, IntoLocation};
+pub use endpoint::{Endpoint, IntoEndpoint, Local, Memory, Uri};
 pub use error::{
     AbortError, AuthorizationError, BusyError, CantOpenError, ConstraintError, CorruptError, Error,
     ErrorCategory, ErrorCode, ErrorContainer, ErrorLocation, ErrorReason, FetchError, GeneralError,

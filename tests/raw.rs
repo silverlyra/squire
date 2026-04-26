@@ -2,12 +2,12 @@
 
 use std::error::Error;
 
-use squire::{BindIndex, Borrowed, Connection, Database, RowId, ffi};
+use squire::{BindIndex, Borrowed, Connection, Memory, RowId, ffi};
 
 type Result<T = ()> = std::result::Result<T, Box<dyn Error>>;
 
 fn setup() -> Result<Connection> {
-    let connection = Connection::open(Database::memory())?;
+    let connection = Connection::open(Memory)?;
 
     {
         let (create, _) = ffi::Statement::prepare(
