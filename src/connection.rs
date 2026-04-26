@@ -1,5 +1,4 @@
-use core::{ffi::CStr, fmt, mem};
-use std::ffi::CString;
+use core::{fmt, mem};
 
 use sqlite::{
     SQLITE_OPEN_CREATE, SQLITE_OPEN_FULLMUTEX, SQLITE_OPEN_NOFOLLOW, SQLITE_OPEN_NOMUTEX,
@@ -7,7 +6,7 @@ use sqlite::{
 };
 
 use crate::{
-    database::{Database, Endpoint, IntoLocation},
+    endpoint::{Endpoint, IntoEndpoint, Local, Vfs},
     error::Result,
     ffi,
     param::Parameters,
@@ -26,10 +25,10 @@ use crate::{
 /// # Examples
 ///
 /// ```rust
-/// use squire::{Connection, Database};
+/// use squire::{Connection, Memory};
 ///
 /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
-/// let connection = Connection::open(Database::memory())?;
+/// let connection = Connection::open(Memory)?;
 ///
 /// let mut statement = connection.prepare("SELECT sqlite_version();")?;
 /// let version: String = statement.query(())?.one()?;
@@ -48,15 +47,14 @@ impl Connection {
         Self { inner }
     }
 
-    /// Open a read/write [`Connection`] to a [`Database`].
+    /// Open a read/write [`Connection`] to a [database](Endpoint).
     #[must_use = "a Connection will be closed if dropped"]
-    pub fn open<L>(database: impl AsRef<Database<L>>) -> Result<Self>
-    where
-        L: AsRef<CStr> + Clone + fmt::Debug,
-    {
+    pub fn open<E: IntoEndpoint>(endpoint: E) -> Result<Self> {
+        let endpoint = endpoint.into_endpoint();
+
         let connection = ffi::Connection::open(
-            database.as_ref().endpoint().location(),
-            DEFAULT_OPEN_MODE,
+            endpoint.location(),
+            DEFAULT_OPEN_MODE | endpoint.flags(),
             None,
         )?;
 
@@ -65,11 +63,8 @@ impl Connection {
 
     /// Customize a [`Connection`] by configuring a [`ConnectionBuilder`].
     #[must_use]
-    pub fn builder<L>(database: impl ToOwned<Owned = Database<L>>) -> ConnectionBuilder<L>
-    where
-        L: AsRef<CStr> + Clone + fmt::Debug,
-    {
-        ConnectionBuilder::new(database.to_owned().into_endpoint())
+    pub fn builder<E: IntoEndpoint>(endpoint: E) -> ConnectionBuilder<E::Endpoint> {
+        ConnectionBuilder::new(endpoint.into_endpoint())
     }
 
     /// Prepare a SQL [`Statement`] to be executed as a query.
@@ -134,9 +129,9 @@ impl Drop for Connection {
 ///
 /// ```no_run
 /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
-/// use squire::{Connection, Database};
+/// use squire::Connection;
 ///
-/// let connection = Connection::builder(Database::path("./data.sqlite3"))
+/// let connection = Connection::builder("./data.sqlite3")
 ///     .read_only()
 ///     .follow_symbolic_links(false)
 ///     .open()?;
@@ -145,13 +140,9 @@ impl Drop for Connection {
 /// # }
 /// ```
 #[derive(PartialEq, Eq, Copy, Clone, Debug)]
-pub struct ConnectionBuilder<L = CString>
-where
-    L: AsRef<CStr> + Clone + fmt::Debug,
-{
-    endpoint: Endpoint<L>,
+pub struct ConnectionBuilder<E: Endpoint = Local> {
+    endpoint: E,
     flags: i32,
-    vfs: Option<L>,
 }
 
 /// Default open mode flags for new connections.
@@ -180,27 +171,21 @@ const DEFAULT_OPEN_MODE: i32 = SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE;
 const FILE_OPEN_MODES: i32 = SQLITE_OPEN_READONLY | SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE;
 const CONCURRENCY_MODES: i32 = SQLITE_OPEN_FULLMUTEX | SQLITE_OPEN_NOMUTEX;
 
-impl<L> ConnectionBuilder<L>
-where
-    L: AsRef<CStr> + Clone + fmt::Debug,
-{
-    const fn new(endpoint: Endpoint<L>) -> Self {
+impl<E: Endpoint> ConnectionBuilder<E> {
+    const fn new(endpoint: E) -> Self {
         Self {
             endpoint,
             flags: DEFAULT_OPEN_MODE,
-            vfs: None,
         }
     }
 
     /// Open a [`Connection`] using the configuration set on this
     /// [builder](Self).
     pub fn open(&self) -> Result<Connection> {
-        let vfs = self.vfs.as_ref().map(|vfs| vfs.as_ref());
-
         let connection = ffi::Connection::open(
             self.endpoint.location(),
             self.flags | self.endpoint.flags(),
-            vfs,
+            self.endpoint.vfs(),
         )?;
 
         Ok(Connection::new(connection))
@@ -273,11 +258,13 @@ where
     /// Select which [virtual filesystem][vfs] to use for the connection.
     ///
     /// [vfs]: https://sqlite.org/vfs.html
-    pub fn vfs(self, vfs: impl IntoLocation<Location = L>) -> Self {
-        Self {
-            endpoint: self.endpoint,
+    pub fn vfs<L: ffi::Location>(
+        self,
+        vfs: impl ffi::IntoLocation<Location = L>,
+    ) -> ConnectionBuilder<Vfs<E, L>> {
+        ConnectionBuilder {
+            endpoint: Vfs::new(self.endpoint, vfs),
             flags: self.flags,
-            vfs: Some(vfs.into_location()),
         }
     }
 
@@ -298,7 +285,6 @@ where
         Self {
             endpoint: self.endpoint,
             flags,
-            vfs: self.vfs,
         }
     }
 }

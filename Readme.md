@@ -10,26 +10,28 @@ Squire is a [crate][] for embedding [SQLite][] in Rust. It provides a safe, idio
 
 [crate]: https://lib.rs/squire "squire on lib.rs"
 [docs]: https://docs.rs/squire "squire on docs.rs"
-[SQLite]: https://sqlite.org/
-[C API]: https://sqlite.org/cintro.html
+[SQLite]: https://sqlite.org/ "SQLite home page"
+[C API]: https://sqlite.org/cintro.html "introduction to the SQLite C API"
 [build]: https://github.com/silverlyra/squire/actions/workflows/ci.yml?query=branch%3Amain "main branch continuous integration (CI) status"
-[license]: ./LICENSE
+[license]: ./LICENSE "Apache 2.0 license"
 
-> ⚠️ Squire is under active development, without even a `0.0.1` release yet. Not all features described below exist.
+> ⚠️ Squire is under active development, without even a `0.0.1` release yet.
 
 ```rust
-use squire::{Connection, Database};
+use squire::{Bind, Columns, Connection, Memory};
 
-let db = Database::memory();
-let connection = Connection::open(db)?;
+let connection = Connection::open(Memory)?;
 
-let connection = Connection::builder(Database::memory()).open()?;
+let connection = Connection::builder("./data.sqlite3")
+    .read_only()
+    .follow_symbolic_links(false)
+    .open()?;
 
 let statement = connection.prepare("SELECT id, username, score FROM users WHERE id = ?")?;
 
 let id: squire::RowId = connection.execute("INSERT INTO users VALUES (DEFAULT, ?, ?);", ("boo", 0.69))?;
 
-let user: (i32, String, f64) = statement.bind(101)?.fetch()?;
+let user: (i32, String, f64) = statement.bind(id)?.fetch()?;
 
 #[derive(squire::Query)]
 #[query = "SELECT * FROM users WHERE id = ?"]
@@ -40,15 +42,14 @@ fn get_user(id: i64) -> Result<User> {
     "SELECT * FROM users WHERE id = :id"
 }
 
-#[derive(squire::Table)]
-#[squire(table = users)]
+#[derive(Columns)]
 pub struct User {
     pub id: squire::RowId,
     pub username: String,
     pub score: f64,
 }
 
-#[derive(squire::Bind)]
+#[derive(Bind)]
 #[bind(sequential)]
 pub struct InsertUser<'a> {
     pub username: &'a str,
