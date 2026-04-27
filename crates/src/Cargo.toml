@@ -14,6 +14,7 @@ include = [
     "/sqlite/sqlite3.c",
     "/sqlite/sqlite3.h",
     "/src",
+    "/build.rs",
     "/LICENSE.md",
     "/README.md",
 ]
