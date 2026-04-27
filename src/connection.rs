@@ -55,13 +55,14 @@ impl Connection {
         let connection = ffi::Connection::open(
             endpoint.location(),
             DEFAULT_OPEN_MODE | endpoint.flags(),
-            None,
+            endpoint.vfs(),
         )?;
 
         Ok(Connection::new(connection))
     }
 
-    /// Customize a [`Connection`] by configuring a [`ConnectionBuilder`].
+    /// [Open](ConnectionBuilder::open()) a [`Connection`] configured with
+    /// non-default options.
     #[must_use]
     pub fn builder<E: IntoEndpoint>(endpoint: E) -> ConnectionBuilder<E::Endpoint> {
         ConnectionBuilder::new(endpoint.into_endpoint())

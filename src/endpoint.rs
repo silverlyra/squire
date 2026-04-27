@@ -213,6 +213,10 @@ impl<E: Endpoint, L: ffi::Location> Endpoint for Vfs<E, L> {
         self.endpoint.location()
     }
 
+    fn flags(&self) -> i32 {
+        self.endpoint.flags()
+    }
+
     fn vfs(&self) -> Option<&CStr> {
         Some(self.vfs.as_ref())
     }
