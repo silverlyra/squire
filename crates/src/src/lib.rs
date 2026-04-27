@@ -124,8 +124,8 @@ impl Build {
         &self.location
     }
 
-    // The SQLite [version](features::Version) and
-    // [compile-time options](features::Directive).
+    /// The SQLite [version](features::Version) and
+    /// [compile-time options](features::Directive).
     pub const fn library(&self) -> &features::Library {
         &self.library
     }
