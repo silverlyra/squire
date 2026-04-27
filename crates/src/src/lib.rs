@@ -15,7 +15,7 @@
 
 use std::{env, iter, ops::Deref, path::PathBuf};
 
-use features::{Configuration, DirectiveMap, Library, Version};
+use features::{DirectiveMap, Library, Version};
 
 const VERSION: Version = match Version::parse(env!("SQUIRE_SQLITE_VERSION")) {
     Ok(version) => version,
@@ -40,49 +40,6 @@ pub fn build(location: Location, directives: DirectiveMap) -> Build {
     compiler.compile("sqlite3");
 
     Build::new(location, directives)
-}
-
-/// Set [compile-time options](DirectiveMap) for a SQLite [build][].
-pub fn config(configuration: Option<&Configuration>) -> DirectiveMap {
-    use features::directive::*;
-
-    let mut directives = [
-        Directive::DefaultSynchronous(Synchronous::Full),
-        Directive::DefaultWalSynchronous(Synchronous::Normal),
-        Directive::Threading(Threading::MultiThread),
-        Directive::DefaultAutomaticIndex,
-        Directive::DefaultForeignKeys,
-        Directive::DefaultMemoryStatus(false),
-        Directive::DoubleQuotedStrings(DoubleQuotedStrings::default()),
-        Directive::EnableMemoryManagement,
-        Directive::LikeOperatorDoesntMatchBlob,
-        Directive::MaxExpressionDepth(0),
-        Directive::MaxMmapSize(0),
-        Directive::OmitAuthorization,
-        Directive::OmitAutomaticReset,
-        Directive::OmitBlobIo,
-        Directive::OmitColumnDeclaredType,
-        Directive::OmitDeprecated,
-        Directive::OmitGetTable,
-        Directive::OmitProgressCallback,
-        Directive::OmitSharedCache,
-        Directive::OmitTrace,
-        Directive::OmitUtf16,
-        Directive::UseAlloca,
-        Directive::UseDatabaseUri,
-        #[cfg(debug_assertions)]
-        Directive::Debug,
-        #[cfg(debug_assertions)]
-        Directive::EnableApiArmor,
-    ]
-    .into_iter()
-    .collect();
-
-    if let Some(configuration) = configuration {
-        configuration.apply(version(), &mut directives);
-    }
-
-    directives
 }
 
 fn apply(directives: &DirectiveMap, compiler: &mut cc::Build) {
