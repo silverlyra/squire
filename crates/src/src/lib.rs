@@ -17,12 +17,9 @@ use std::{env, iter, ops::Deref, path::PathBuf};
 
 use features::{Configuration, DirectiveMap, Library, Version};
 
-const VERSION: Version = {
-    let version = include_str!("../sqlite/VERSION").trim_ascii_end();
-    match Version::parse(version) {
-        Ok(version) => version,
-        Err(_) => panic!("invalid SQLite version"),
-    }
+const VERSION: Version = match Version::parse(env!("SQUIRE_SQLITE_VERSION")) {
+    Ok(version) => version,
+    Err(_) => panic!("invalid SQLite version"),
 };
 
 /// The [version](Version) of the bundled SQLite library.

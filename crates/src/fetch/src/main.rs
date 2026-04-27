@@ -1,6 +1,7 @@
 use std::{
     env, fs,
     path::{Path, PathBuf},
+    time::SystemTime,
 };
 
 use flate2::read::GzDecoder;
@@ -90,6 +91,11 @@ fn download(release: &Release, dest: &Path) -> Result {
 
         entry.unpack(dest.join(relative_path))?;
     }
+
+    fs::File::options()
+        .write(true)
+        .open(dest.join("VERSION"))?
+        .set_modified(SystemTime::now())?;
 
     Ok(())
 }
