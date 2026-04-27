@@ -1,7 +1,7 @@
 [package]
 name = "squire-sqlite3-src"
 description = "Bundled SQLite sources for Squire"
-version = "3.53.0-alpha.3"
+version = "3.53.0-alpha.4"
 edition = "2024"
 readme = "Readme.md"
 repository.workspace = true
@@ -14,6 +14,7 @@ include = [
     "/sqlite/sqlite3.c",
     "/sqlite/sqlite3.h",
     "/src",
+    "/build.rs",
     "/LICENSE.md",
     "/README.md",
 ]
