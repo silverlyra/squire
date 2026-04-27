@@ -5,15 +5,15 @@ use core::{
     ptr, slice,
 };
 
-#[cfg(target_pointer_width = "32")]
-use sqlite::sqlite3_bind_blob;
 #[cfg(all(feature = "functions", target_pointer_width = "32"))]
 use sqlite::sqlite3_result_blob;
 #[cfg(all(feature = "functions", target_pointer_width = "64"))]
 use sqlite::sqlite3_result_blob64;
+#[cfg(target_pointer_width = "32")]
+use sqlite::{sqlite3_bind_blob, sqlite3_malloc};
 #[cfg(target_pointer_width = "64")]
-use sqlite::{sqlite3_bind_blob64, sqlite3_uint64};
-use sqlite::{sqlite3_destructor_type, sqlite3_free, sqlite3_malloc64};
+use sqlite::{sqlite3_bind_blob64, sqlite3_malloc64, sqlite3_uint64};
+use sqlite::{sqlite3_destructor_type, sqlite3_free};
 
 #[cfg(feature = "functions")]
 use super::{bind::result, func::ContextRef};
@@ -68,7 +68,7 @@ impl Bytes {
     /// If `len` is zero, returns an empty [`Bytes`] without calling `populate`.
     ///
     /// Note that the provided slice may contain arbitrary bytes; they will not
-    /// be zeroed before being passed to `populate`.
+    /// be [zeroed](Self::zeroed) before being passed to `populate`.
     ///
     /// [free]: https://sqlite.org/c3ref/free.html
     pub fn allocate<F: FnOnce(&mut [u8]) -> Result<()>>(len: usize, populate: F) -> Result<Self> {
@@ -76,6 +76,9 @@ impl Bytes {
             return Ok(Self::empty());
         }
 
+        #[cfg(target_pointer_width = "32")]
+        let ptr = unsafe { sqlite3_malloc(len) as *mut c_uchar };
+        #[cfg(target_pointer_width = "64")]
         let ptr = unsafe { sqlite3_malloc64(len as u64) as *mut c_uchar };
 
         if ptr.is_null() {
@@ -86,6 +89,16 @@ impl Bytes {
         populate(data)?;
 
         Ok(unsafe { Self::from_raw_parts(ptr, len) })
+    }
+
+    /// Allocate `len` `'\0'` bytes on the [SQLite heap][free].
+    ///
+    /// [free]: https://sqlite.org/c3ref/free.html
+    pub fn zeroed(len: usize) -> Result<Self> {
+        Self::allocate(len, |data| {
+            data.fill(0);
+            Ok(())
+        })
     }
 
     /// Create [`Bytes`] from a raw pointer and length.
@@ -125,6 +138,16 @@ impl Bytes {
         (ptr, len)
     }
 
+    /// The [`Bytes`] data, as a [`u8`] [slice](primitive@slice).
+    #[inline]
+    pub const fn data(&self) -> &[u8] {
+        if self.is_empty() {
+            EMPTY
+        } else {
+            unsafe { slice::from_raw_parts(self.data, self.len) }
+        }
+    }
+
     /// Returns a pointer to the [`Bytes`]’ data.
     #[inline]
     pub const fn as_ptr(&self) -> *const c_uchar {
@@ -141,15 +164,6 @@ impl Bytes {
     #[inline]
     pub const fn is_empty(&self) -> bool {
         self.len == 0
-    }
-
-    #[inline]
-    const fn data(&self) -> &[u8] {
-        if self.is_empty() {
-            EMPTY
-        } else {
-            unsafe { slice::from_raw_parts(self.data, self.len) }
-        }
     }
 }
 

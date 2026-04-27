@@ -87,7 +87,9 @@ features! {
     TclVariables -OmitTclVariables,
     TemporaryDatabase -OmitTemporaryDatabase,
     Trace -OmitTrace,
+    TruncateString @"3.53",
     Utf16 -OmitUtf16,
+    Utf8Zt @"3.53",
     VirtualTable -OmitVirtualTable,
     Wal -OmitWal,
 }

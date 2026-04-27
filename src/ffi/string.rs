@@ -17,20 +17,21 @@ use sqlite::sqlite3_result_text64;
 #[cfg(target_pointer_width = "64")]
 use sqlite::{SQLITE_UTF8, sqlite3_bind_text64, sqlite3_uint64};
 use sqlite::{
-    sqlite3_destructor_type, sqlite3_free, sqlite3_malloc, sqlite3_str, sqlite3_str_append,
-    sqlite3_str_appendall, sqlite3_str_appendchar, sqlite3_str_errcode, sqlite3_str_finish,
-    sqlite3_str_length, sqlite3_str_new,
+    sqlite3_destructor_type, sqlite3_free, sqlite3_str, sqlite3_str_append, sqlite3_str_appendall,
+    sqlite3_str_appendchar, sqlite3_str_errcode, sqlite3_str_finish, sqlite3_str_length,
+    sqlite3_str_new,
 };
 
 #[cfg(feature = "functions")]
 use super::{bind::result, func::ContextRef};
 use super::{
     bind::{Bind, bind},
+    bytes::Bytes,
     connection::Connected,
     statement::Statement,
 };
 use crate::{
-    error::{Error, ErrorCategory, ErrorReason, ParameterError, Result},
+    error::{Error, ParameterError, Result},
     types::BindIndex,
 };
 
@@ -47,15 +48,36 @@ pub struct String {
 }
 
 impl String {
-    /// Build a [`String`] from the [`Display`](fmt::Display) of a value.
+    /// Allocate a null-terminated string on the [SQLite heap][free],
+    /// and copy `value` into it.
+    ///
+    /// Returns an `Err` if `value` contains any `'\0'` bytes.
+    ///
+    /// [free]: https://sqlite.org/c3ref/free.html
+    pub fn new(value: impl AsRef<str>) -> Result<Self> {
+        let value = value.as_ref();
+        debug_assert!(value.len() <= c_int::MAX as usize);
+
+        let bytes = Bytes::allocate(value.len() + 1, |buf| {
+            buf.copy_from_slice(value.as_bytes());
+            buf[value.len() - 1] = 0;
+
+            let _ = CStr::from_bytes_with_nul(buf)?;
+            Ok(())
+        })?;
+
+        // SAFETY: `value` was a `&str` already.
+        Ok(unsafe { Self::from_bytes_unchecked(bytes) })
+    }
+
+    /// [Build](StringBuilder) a [`String`] from the [`Display`](fmt::Display)
+    /// of a value.
     pub fn display<D: fmt::Display + ?Sized>(value: &D) -> Result<Self> {
         use fmt::Write as _;
 
         let mut builder = StringBuilder::new();
-        match write!(&mut builder, "{value}") {
-            Ok(_) => builder.finish(),
-            Err(_) => Err(ErrorReason::Parameter(ParameterError::Bind).into()),
-        }
+        write!(&mut builder, "{value}").map_err(|_| ParameterError::Bind)?;
+        builder.finish()
     }
 
     /// Create a [`String`] from a raw pointer and length.
@@ -83,19 +105,32 @@ impl String {
         }
     }
 
+    /// Interpret [`Bytes`] as a [`String`] containing valid UTF-8.
+    pub fn from_bytes(bytes: Bytes) -> Result<Self> {
+        let s = CStr::from_bytes_with_nul(bytes.data())?;
+        let s = s.to_str()?;
+
+        Ok(unsafe { Self::from_raw_parts(s.as_ptr() as *const c_char, s.len()) })
+    }
+
+    /// Interpret [`Bytes`] as a [`String`].
+    ///
+    /// # Safety
+    ///
+    /// `bytes` must not be empty, and its last byte must be `'\0'`.
+    pub const unsafe fn from_bytes_unchecked(bytes: Bytes) -> Self {
+        let (ptr, len) = bytes.into_raw_parts();
+        unsafe { Self::from_raw_parts(ptr as *const c_char, len.unchecked_sub(1)) }
+    }
+
     /// Return an empty [`String`], consisting of just the null terminator.
     ///
     /// Returns an error if [`sqlite3_malloc64`] cannot allocate a single byte.
     ///
     /// [`sqlite3_malloc64`]: https://sqlite.org/c3ref/free.html
     pub fn empty() -> Result<Self> {
-        let ptr = unsafe { sqlite3_malloc(1) } as *mut c_char;
-
-        if ptr.is_null() {
-            return Err(ErrorCategory::OutOfMemory.into());
-        }
-
-        Ok(unsafe { Self::from_raw_parts(ptr, 0) })
+        let bytes = Bytes::zeroed(1)?;
+        Ok(unsafe { Self::from_bytes_unchecked(bytes) })
     }
 
     /// Consume the [`String`], returning the raw pointer and length.
@@ -323,6 +358,14 @@ impl StringBuilder {
         self.ptr.as_ptr()
     }
 
+    /// Discards content in the [`StringBuilder`] beyond first `n` bytes.
+    #[doc(alias = "sqlite3_str_truncate")]
+    #[cfg(sqlite_has_truncate_string)]
+    pub fn truncate(&mut self, n: usize) {
+        debug_assert!(n <= c_int::MAX as usize);
+        unsafe { sqlite::sqlite3_str_truncate(self.as_ptr(), n as c_int) }
+    }
+
     /// Consume the builder and return the [finished][] string.
     ///
     /// Returns an error if an allocation error occurred during building.
@@ -439,6 +482,25 @@ impl Drop for StringBuilder {
         let ptr = unsafe { sqlite3_str_finish(self.as_ptr()) };
         unsafe { sqlite3_free(ptr as *mut c_void) };
     }
+}
+
+/// A style of in-memory representation for text that SQLite recognizes, and in
+/// some cases can [optimize].
+///
+/// [optimize]: https://sqlite.org/c3ref/c_any.html#sqliteutf8zt
+#[derive(PartialEq, Eq, Clone, Copy, Debug)]
+pub enum StringRepresentation {
+    /// A C-style string, where the content is followed by a `'\0'` byte.
+    ///
+    /// > The [`SQLITE_UTF8_ZT`][] encoding means that the input string (call it `z`)
+    /// > is UTF-8 encoded and that it is zero-terminated. If the length parameter
+    /// > (call it `n`) is non-negative, this encoding option means that the
+    /// > caller guarantees that z array contains at least `n + 1` bytes and that
+    /// > the `z[n]` byte has a value of zero.
+    ///
+    /// [`SQLITE_UTF8_ZT`]: https://sqlite.org/c3ref/c_any.html#sqliteutf8zt
+    #[cfg(sqlite_has_utf8_zt)]
+    NullTerminated = 0x43,
 }
 
 #[cfg(test)]

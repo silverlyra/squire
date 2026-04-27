@@ -18,7 +18,7 @@ pub use location::ErrorLocation;
 pub use reason::{
     AbortError, AuthorizationError, BusyError, CantOpenError, ConstraintError, CorruptError,
     ErrorReason, FetchError, GeneralError, IoError, LockedError, ParameterError, ReadOnlyError,
-    RowError,
+    RowError, TextEncodingError,
 };
 
 /// A [`Result`](core::result::Result) returned by Squire.
@@ -234,6 +234,18 @@ impl core::error::Error for Error {
         } else {
             None
         }
+    }
+}
+
+impl From<core::str::Utf8Error> for Error {
+    fn from(_: core::str::Utf8Error) -> Self {
+        Self::from(reason::TextEncodingError::InvalidUtf8)
+    }
+}
+
+impl From<core::ffi::FromBytesWithNulError> for Error {
+    fn from(_: core::ffi::FromBytesWithNulError) -> Self {
+        Self::from(ErrorCategory::TextEncoding)
     }
 }
 

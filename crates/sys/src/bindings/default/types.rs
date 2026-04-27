@@ -12,7 +12,10 @@ pub const SQLITE_BLOB: i32 = 4;
 pub const SQLITE_NULL: i32 = 5;
 
 pub const SQLITE_UTF8: i32 = 1;
+pub const SQLITE_UTF8_ZT: i32 = 16;
+pub const SQLITE_UTF16: i32 = 4;
+pub const SQLITE_UTF16_ALIGNED: i32 = 8;
 pub const SQLITE_UTF16LE: i32 = 2;
 pub const SQLITE_UTF16BE: i32 = 3;
-pub const SQLITE_UTF16: i32 = 4;
+#[deprecated]
 pub const SQLITE_ANY: i32 = 5;
