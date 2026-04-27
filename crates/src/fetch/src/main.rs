@@ -18,9 +18,10 @@ type Result<T = ()> = std::result::Result<T, Box<dyn std::error::Error>>;
 
 fn main() -> Result {
     let mut args = env::args().skip(1);
-    let version = args
-        .next()
-        .ok_or("usage: squire-sqlite3-src-fetch <version> (e.g. 3.53.0)")?;
+    let version = match args.next() {
+        Some(v) => v,
+        None => default_version()?,
+    };
 
     let releases = index()?;
     let release = releases
@@ -37,6 +38,24 @@ fn main() -> Result {
 
     eprintln!("extracted {} to {}", release.version, dest.display());
     Ok(())
+}
+
+/// The major.minor.patch version of the parent `squire-sqlite3-src` crate,
+/// stripped of any pre-release or build suffix.
+fn default_version() -> Result<String> {
+    const PARENT_CARGO_TOML: &str = include_str!("../../Cargo.toml");
+
+    let manifest: toml::Value = toml::from_str(PARENT_CARGO_TOML)?;
+    let version = manifest
+        .get("package")
+        .and_then(|p| p.get("version"))
+        .and_then(|v| v.as_str())
+        .ok_or("no package.version in parent Cargo.toml")?;
+
+    let mmp = version.split(['-', '+']).next().unwrap_or(version);
+    eprintln!("fetching SQLite {mmp}");
+
+    Ok(mmp.to_owned())
 }
 
 fn index() -> Result<Vec<Release>> {
