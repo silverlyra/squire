@@ -67,7 +67,11 @@ impl Connection {
         ConnectionBuilder::new(endpoint.into_endpoint())
     }
 
-    /// Prepare a SQL [`Statement`] to be executed as a query.
+    /// Prepare a [transient](PrepareOptions::transient()) SQL [`Statement`]
+    /// to be executed as a query.
+    ///
+    /// Use [`Statement::prepare()`] to set [options](PrepareOptions) on the
+    /// prepared statement.
     #[must_use = "a Statement will be finalized if dropped"]
     pub fn prepare(&self, query: impl AsRef<str>) -> Result<Statement<'_>> {
         Statement::prepare(self, query, PrepareOptions::transient())

@@ -73,6 +73,7 @@ features! {
     NormalizeSql +EnableNormalizeSql,
     Percentile @"3.51" +EnablePercentile,
     PreUpdateHook +EnablePreUpdateHook,
+    PrepareFromDdl @"3.53",
     PrepareQuiet @"3.48",
     ProgressCallback -OmitProgressCallback,
     Rtree +EnableRtree,
