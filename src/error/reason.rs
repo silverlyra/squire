@@ -1,7 +1,9 @@
+use derive_more::{From, IsVariant};
+
 use super::{ErrorCategory, ErrorCode};
 
 /// Extended SQLite result codes that provide more specific information about errors.
-#[derive(PartialEq, Eq, Copy, Clone, Debug)]
+#[derive(From, IsVariant, PartialEq, Eq, Copy, Clone, Debug)]
 #[non_exhaustive]
 pub enum ErrorReason {
     /// Specific reasons for an [`ErrorCategory::Aborted`].
@@ -34,6 +36,14 @@ pub enum ErrorReason {
     /// Specific reason for an [`ErrorCategory::ReadOnly`].
     ReadOnly(ReadOnlyError),
 
+    /// Specific reason for an [`ErrorCategory::Row`].
+    ///
+    /// (This [error code](ErrorReason) is defined by Squire; not SQLite.
+    /// No SQLite [result codes][] correspond to `ErrorReason::Row`.)
+    ///
+    /// [result codes]: https://sqlite.org/rescode.html
+    Row(RowError),
+
     /// Specific reason for an [`ErrorCategory::Fetch`].
     ///
     /// (This [error code](ErrorReason) is defined by Squire; not SQLite.
@@ -50,13 +60,13 @@ pub enum ErrorReason {
     /// [result codes]: https://sqlite.org/rescode.html
     Parameter(ParameterError),
 
-    /// Specific reason for an [`ErrorCategory::Row`].
+    /// Specific reason for an [`ErrorCategory::TextEncoding`].
     ///
     /// (This [error code](ErrorReason) is defined by Squire; not SQLite.
-    /// No SQLite [result codes][] correspond to `ErrorReason::Row`.)
+    /// No SQLite [result codes][] correspond to `ErrorReason::Parameter`.)
     ///
     /// [result codes]: https://sqlite.org/rescode.html
-    Row(RowError),
+    TextEncoding(TextEncodingError),
 }
 
 impl ErrorReason {
@@ -77,6 +87,7 @@ impl ErrorReason {
             ErrorReason::Fetch(_) => ErrorCategory::Fetch,
             ErrorReason::Parameter(_) => ErrorCategory::Parameter,
             ErrorReason::Row(_) => ErrorCategory::Parameter,
+            ErrorReason::TextEncoding(_) => ErrorCategory::TextEncoding,
         }
     }
 
@@ -97,6 +108,7 @@ impl ErrorReason {
             Self::Fetch(err) => err as i32,
             Self::Parameter(err) => err as i32,
             Self::Row(err) => err as i32,
+            Self::TextEncoding(err) => err as i32,
         };
 
         unsafe { ErrorCode::new_unchecked(code) }
@@ -210,6 +222,7 @@ impl ErrorReason {
             sqlite::SQLITE_READONLY_DIRECTORY => Some(Self::ReadOnly(ReadOnlyError::Directory)),
 
             // Squire errors
+            super::code::SQUIRE_ERROR_ROW_NOT_RETURNED => Some(Self::Row(RowError::NotReturned)),
             super::code::SQUIRE_ERROR_FETCH_PARSE => Some(Self::Fetch(FetchError::Parse)),
             super::code::SQUIRE_ERROR_FETCH_RANGE => Some(Self::Fetch(FetchError::Range)),
             super::code::SQUIRE_ERROR_PARAMETER_BIND => Some(Self::Parameter(ParameterError::Bind)),
@@ -222,7 +235,9 @@ impl ErrorReason {
             super::code::SQUIRE_ERROR_PARAMETER_INVALID_INDEX => {
                 Some(Self::Parameter(ParameterError::InvalidIndex))
             }
-            super::code::SQUIRE_ERROR_ROW_NOT_RETURNED => Some(Self::Row(RowError::NotReturned)),
+            super::code::SQUIRE_ERROR_INVALID_UTF8 => {
+                Some(Self::TextEncoding(TextEncodingError::InvalidUtf8))
+            }
 
             _ => None,
         }
@@ -604,6 +619,19 @@ pub enum ReadOnlyError {
     Directory = sqlite::SQLITE_READONLY_DIRECTORY,
 }
 
+/// An error retrieving a row from SQLite.
+///
+/// (This [error category](ErrorCategory) is defined by Squire; not SQLite.
+/// No SQLite [result codes][] correspond to `RowError`.)
+///
+/// [result codes]: https://sqlite.org/rescode.html
+#[derive(PartialEq, Eq, Copy, Clone, Debug)]
+#[repr(i32)]
+pub enum RowError {
+    /// The query didn't return a row.
+    NotReturned = super::code::SQUIRE_ERROR_ROW_NOT_RETURNED,
+}
+
 /// An error reading a SQLite column value into its Rust type.
 ///
 /// (This [error category](ErrorCategory) is defined by Squire; not SQLite.
@@ -650,15 +678,11 @@ pub enum ParameterError {
     InvalidIndex = super::code::SQUIRE_ERROR_PARAMETER_INVALID_INDEX,
 }
 
-/// An error retrieving a row from SQLite.
-///
-/// (This [error category](ErrorCategory) is defined by Squire; not SQLite.
-/// No SQLite [result codes][] correspond to `RowError`.)
-///
-/// [result codes]: https://sqlite.org/rescode.html
+/// An error interpreting bytes through a text encoding
+/// (e.g., [UTF-8](Self::InvalidUtf8)).
 #[derive(PartialEq, Eq, Copy, Clone, Debug)]
 #[repr(i32)]
-pub enum RowError {
-    /// The query didn't return a row.
-    NotReturned = super::code::SQUIRE_ERROR_ROW_NOT_RETURNED,
+pub enum TextEncodingError {
+    /// An invalid byte was found while parsing UTF-8 text.
+    InvalidUtf8 = super::code::SQUIRE_ERROR_INVALID_UTF8,
 }

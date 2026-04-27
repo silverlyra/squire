@@ -39,7 +39,7 @@ pub use location::{IntoLocation, Location};
 pub use mutex::{Mutex, MutexGuard, MutexRef, StaticMutex};
 pub use pointer::{Pointee, Pointer, PointerMut};
 pub use statement::{Conclusion, Execute, Statement};
-pub use string::{Append, String, StringBuilder};
+pub use string::{Append, String, StringBuilder, StringRepresentation};
 #[cfg(feature = "value")]
 #[cfg_attr(docsrs, doc(cfg(any(feature = "functions", feature = "value"))))]
 pub use value::{OpaqueValueRef, Value, ValueRef};

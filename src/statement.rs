@@ -32,10 +32,12 @@ impl<'c> Statement<'c> {
     /// can execute.
     ///
     /// See [`PrepareOptions`] for the flags `prepare` understands. By default,
-    /// SQLite will prepare the statement _transiently_, using limited memory
+    /// SQLite will prepare the statement using [limited memory][lookaside]
     /// that SQLite uses for short-lived operations (“lookaside allocator”). Use
     /// [`PrepareOptions::persistent()`] if the statement will be executed again
     /// over the program run.
+    ///
+    /// [lookaside]: https://sqlite.org/malloc.html#lookaside
     #[must_use = "a Statement will be finalized if dropped"]
     pub fn prepare(
         connection: &'c Connection,
@@ -225,17 +227,33 @@ pub struct PrepareOptions(u32);
 impl PrepareOptions {
     #[cfg(sqlite_has_prepare_quiet)]
     const DONT_LOG: u32 = sqlite::SQLITE_PREPARE_DONT_LOG as u32;
+    #[cfg(sqlite_has_prepare_from_ddl)]
+    const FROM_DDL: u32 = sqlite::SQLITE_PREPARE_FROM_DDL as u32;
     const NO_VTAB: u32 = SQLITE_PREPARE_NO_VTAB as u32;
     const PERSISTENT: u32 = SQLITE_PREPARE_PERSISTENT as u32;
 
+    /// Hint to the query planner that the [`Statement`] will be quickly
+    /// disposed of, and will not be retained.
     pub const fn transient() -> Self {
         Self(0)
     }
 
+    /// Hint to the query planner that the [`Statement`] will be retained.
+    ///
+    /// SQLite will avoid using [lookaside memory][] used for temporary
+    /// connection values when preparing the statement.
+    /// (see [`SQLITE_PERPARE_PERSISTENT`])
+    ///
+    /// [`SQLITE_PERPARE_PERSISTENT`]: https://sqlite.org/c3ref/c_prepare_dont_log.html#sqlitepreparepersistent
+    /// [lookaside memory]: https://sqlite.org/malloc.html#lookaside
+    #[doc(alias = "SQLITE_PREPARE_PERSISTENT")]
     pub const fn persistent() -> Self {
         Self(Self::PERSISTENT)
     }
 
+    /// Return an [error](crate::ErrorCategory::Unknown) if the statement uses
+    /// any virtual tables.
+    #[doc(alias = "SQLITE_PREPARE_NO_VTAB")]
     pub const fn allow_virtual_tables(&self, allowed: bool) -> Self {
         if allowed {
             Self(self.0 & !Self::NO_VTAB)
@@ -244,9 +262,26 @@ impl PrepareOptions {
         }
     }
 
+    /// Enforce security constraints that normally are only enforced when
+    /// parsing the database schema.
+    ///
+    /// (see [`SQLITE_PREPARE_FROM_DDL`])
+    ///
+    /// [`SQLITE_PREPARE_FROM_DDL`]: https://sqlite.org/c3ref/c_prepare_dont_log.html#sqlitepreparefromddl
+    #[doc(alias = "SQLITE_PREPARE_FROM_DDL")]
+    #[cfg(sqlite_has_prepare_from_ddl)]
+    pub const fn from_ddl(&self, strict: bool) -> Self {
+        if strict {
+            Self(self.0 | Self::FROM_DDL)
+        } else {
+            Self(self.0 & !Self::FROM_DDL)
+        }
+    }
+
+    #[doc(alias = "SQLITE_PREPARE_DONT_LOG")]
     #[cfg(sqlite_has_prepare_quiet)]
-    pub const fn log(&self, allowed: bool) -> Self {
-        if allowed {
+    pub const fn log(&self, enabled: bool) -> Self {
+        if enabled {
             Self(self.0 & !Self::DONT_LOG)
         } else {
             Self(self.0 | Self::DONT_LOG)

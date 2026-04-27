@@ -30,6 +30,7 @@ directives! {
     ENABLE_JSON1 => EnableJson1,
     ENABLE_MEMORY_MANAGEMENT => EnableMemoryManagement,
     ENABLE_NORMALIZE => EnableNormalizeSql,
+    ENABLE_PERCENTILE => EnablePercentile,
     ENABLE_PREUPDATE_HOOK => EnablePreUpdateHook,
     ENABLE_RTREE => EnableRtree,
     ENABLE_SESSION => EnableSession,

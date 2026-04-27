@@ -38,7 +38,7 @@ pub enum ErrorCategory {
 
     /// A write operation could not continue because of a conflict within the
     /// same database connection or a conflict with a different database
-    /// connection that uses a shared cache.
+    /// connection that uses a [shared cache](https://sqlite.org/sharedcache.html).
     #[doc(alias = "SQLITE_LOCKED")]
     Locked = sqlite::SQLITE_LOCKED,
 
@@ -52,7 +52,7 @@ pub enum ErrorCategory {
     #[doc(alias = "SQLITE_READONLY")]
     ReadOnly = sqlite::SQLITE_READONLY,
 
-    /// An operation was interrupted by the sqlite3_interrupt() interface.
+    /// An operation was [interrupted](https://sqlite.org/c3ref/interrupt.html).
     #[doc(alias = "SQLITE_INTERRUPT")]
     Interrupt = sqlite::SQLITE_INTERRUPT,
 
@@ -102,7 +102,7 @@ pub enum ErrorCategory {
     #[doc(alias = "SQLITE_MISMATCH")]
     Mismatch = sqlite::SQLITE_MISMATCH,
 
-    /// The application uses any SQLite interface in a way that is undefined
+    /// The application used any SQLite interface in a way that is undefined
     /// or unsupported.
     #[doc(alias = "SQLITE_MISUSE")]
     Misuse = sqlite::SQLITE_MISUSE,
@@ -132,6 +132,14 @@ pub enum ErrorCategory {
     #[doc(alias = "SQLITE_NOTADB")]
     InvalidDatabase = sqlite::SQLITE_NOTADB,
 
+    /// A row could not be read from SQLite (see [`NotReturned`](crate::RowError)).
+    ///
+    /// (This [error category](ErrorCategory) is defined by Squire; not SQLite.
+    /// No SQLite [result codes][] correspond to `ErrorCategory::Row`.)
+    ///
+    /// [result codes]: https://sqlite.org/rescode.html
+    Row = super::code::SQUIRE_ERROR_ROW,
+
     /// A column value stored in SQLite could not be read into a Rust type.
     ///
     /// (This [error category](ErrorCategory) is defined by Squire; not SQLite.
@@ -149,13 +157,13 @@ pub enum ErrorCategory {
     /// [result codes]: https://sqlite.org/rescode.html
     Parameter = super::code::SQUIRE_ERROR_PARAMETER,
 
-    /// A row could not be read from SQLite (see [`NotReturned`](crate::RowError)).
+    /// Data was invalid for its text encoding (see [`InvalidUtf8`](crate::TextEncodingError)).
     ///
     /// (This [error category](ErrorCategory) is defined by Squire; not SQLite.
-    /// No SQLite [result codes][] correspond to `ErrorCategory::Row`.)
+    /// No SQLite [result codes][] correspond to `ErrorCategory::TextEncoding`.)
     ///
     /// [result codes]: https://sqlite.org/rescode.html
-    Row = super::code::SQUIRE_ERROR_ROW,
+    TextEncoding = super::code::SQUIRE_ERROR_TEXT_ENCODING,
 }
 
 impl ErrorCategory {
@@ -196,9 +204,10 @@ impl ErrorCategory {
             sqlite::SQLITE_FORMAT => Some(Self::Format),
             sqlite::SQLITE_RANGE => Some(Self::Range),
             sqlite::SQLITE_NOTADB => Some(Self::InvalidDatabase),
+            super::code::SQUIRE_ERROR_ROW => Some(Self::Row),
             super::code::SQUIRE_ERROR_FETCH => Some(Self::Fetch),
             super::code::SQUIRE_ERROR_PARAMETER => Some(Self::Parameter),
-            super::code::SQUIRE_ERROR_ROW => Some(Self::Row),
+            super::code::SQUIRE_ERROR_TEXT_ENCODING => Some(Self::TextEncoding),
             _ => None,
         }
     }

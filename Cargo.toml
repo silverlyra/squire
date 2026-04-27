@@ -17,6 +17,13 @@ members = ["crates/derive", "crates/features", "crates/serde", "crates/src", "cr
 repository = "https://github.com/silverlyra/squire"
 license = "Apache-2.0"
 
+[workspace.dependencies.const_format]
+version = "0.2.36"
+features = ["rust_1_83"]
+
+[workspace.dependencies.derive_more]
+version = "2"
+
 [workspace.dependencies.rustversion]
 version = "1.0"
 
@@ -53,6 +60,7 @@ memory-status = ["sqlite/memory-status"]
 mutex = []
 normalize-sql = ["sqlite/normalize-sql"]
 page-vtab = ["sqlite/page-vtab"]
+percentile = ["sqlite/percentile"]
 preupdate-hook = ["sqlite/preupdate-hook"]
 progress-callback = ["sqlite/progress-callback"]
 rtree = ["sqlite/rtree"]
@@ -98,6 +106,10 @@ package = "squire-sqlite3-sys"
 path = "crates/sys"
 version = "0.0.1-alpha.8"
 default-features = false
+
+[dependencies.derive_more]
+workspace = true
+features = ["from", "is_variant"]
 
 [dependencies.chrono]
 version = "0.4"

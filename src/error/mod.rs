@@ -1,14 +1,15 @@
-use core::{ffi::CStr, fmt};
-
-use sqlite::{sqlite3, sqlite3_errmsg, sqlite3_errstr};
+use core::fmt;
 
 use crate::ffi;
 
 mod category;
 mod code;
+mod detail;
 mod integration;
 mod location;
 mod reason;
+
+use detail::{ErrorDetail, ErrorInner};
 
 pub use category::ErrorCategory;
 pub use code::ErrorCode;
@@ -17,7 +18,7 @@ pub use location::ErrorLocation;
 pub use reason::{
     AbortError, AuthorizationError, BusyError, CantOpenError, ConstraintError, CorruptError,
     ErrorReason, FetchError, GeneralError, IoError, LockedError, ParameterError, ReadOnlyError,
-    RowError,
+    RowError, TextEncodingError,
 };
 
 /// A [`Result`](core::result::Result) returned by Squire.
@@ -64,33 +65,21 @@ impl Error {
     #[cold]
     #[inline(never)]
     pub(crate) fn from_connection(source: impl ffi::Connected, code: i32) -> Option<Self> {
-        ErrorCode::new(code).map(|code| {
-            let connection = source.as_connection_ptr();
-
-            match get_message(connection, code) {
-                Some(message) => Self::with_detail(code, message),
-                None => Self::new(code),
-            }
+        ErrorCode::new(code).map(|code| match ErrorDetail::extract(source, code) {
+            Some(detail) => Self::with_detail(code, detail),
+            None => Self::new(code),
         })
     }
 
     #[cold]
     #[inline(never)]
     pub(crate) fn from_prepare(source: impl ffi::Connected, code: i32) -> Option<Self> {
-        ErrorCode::new(code).map(|code| {
-            let connection = source.as_connection_ptr();
-
-            match get_message(connection, code) {
-                Some(message) => {
-                    let detail = match unsafe { ErrorLocation::capture(connection) } {
-                        Some(location) => ErrorDetail::SourceMessage(message, location),
-                        None => ErrorDetail::Message(message),
-                    };
-                    Self::with_detail(code, detail)
-                }
+        ErrorCode::new(code).map(
+            |code| match ErrorDetail::extract_with_location(source, code) {
+                Some(detail) => Self::with_detail(code, detail),
                 None => Self::new(code),
-            }
-        })
+            },
+        )
     }
 
     #[allow(dead_code, unreachable_code)]
@@ -248,6 +237,18 @@ impl core::error::Error for Error {
     }
 }
 
+impl From<core::str::Utf8Error> for Error {
+    fn from(_: core::str::Utf8Error) -> Self {
+        Self::from(reason::TextEncodingError::InvalidUtf8)
+    }
+}
+
+impl From<core::ffi::FromBytesWithNulError> for Error {
+    fn from(_: core::ffi::FromBytesWithNulError) -> Self {
+        Self::from(ErrorCategory::TextEncoding)
+    }
+}
+
 impl From<i32> for Error {
     #[cold]
     fn from(code: i32) -> Self {
@@ -262,71 +263,12 @@ impl From<ErrorCategory> for Error {
     }
 }
 
-impl From<ErrorReason> for Error {
-    #[cold]
-    fn from(reason: ErrorReason) -> Self {
-        Error::new(reason.code())
-    }
-}
-
-fn get_message(connection: *mut sqlite3, code: ErrorCode) -> Option<String> {
-    let ptr = unsafe { sqlite3_errmsg(connection) };
-    let static_ptr = unsafe { sqlite3_errstr(code.raw()) };
-
-    if !ptr.is_null() && ptr != static_ptr {
-        let message = unsafe { str::from_utf8_unchecked(CStr::from_ptr(ptr).to_bytes()) };
-        Some(message.to_owned())
-    } else {
-        None
-    }
-}
-
-#[derive(Clone, Debug)]
-struct ErrorInner {
-    code: ErrorCode,
-    detail: Option<ErrorDetail>,
-}
-
-impl ErrorInner {
-    #[inline]
-    const fn new(code: ErrorCode) -> Self {
-        Self { code, detail: None }
-    }
-
-    #[inline]
-    const fn with_detail(code: ErrorCode, detail: ErrorDetail) -> Self {
-        Self {
-            code,
-            detail: Some(detail),
-        }
-    }
-}
-
-#[derive(Clone, Debug)]
-pub(crate) enum ErrorDetail {
-    Message(String),
-    SourceMessage(String, ErrorLocation),
-    Integration(IntegrationError),
-}
-
-impl From<String> for ErrorDetail {
-    fn from(message: String) -> Self {
-        Self::Message(message)
-    }
-}
-
-impl From<&str> for ErrorDetail {
-    fn from(message: &str) -> Self {
-        Self::Message(message.into())
-    }
-}
-
-impl<E> From<E> for ErrorDetail
+impl<T> From<T> for Error
 where
-    IntegrationError: From<E>,
+    ErrorReason: From<T>,
 {
-    #[allow(unreachable_code)]
-    fn from(error: E) -> Self {
-        Self::Integration(error.into())
+    #[cold]
+    fn from(value: T) -> Self {
+        Error::new(ErrorReason::from(value).code())
     }
 }

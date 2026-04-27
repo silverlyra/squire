@@ -50,7 +50,9 @@ unsafe extern "C" {
     pub fn sqlite3_finalize(pStmt: *mut sqlite3_stmt) -> c_int;
 }
 
-pub const SQLITE_PREPARE_PERSISTENT: i32 = 1;
-pub const SQLITE_PREPARE_NORMALIZE: i32 = 2;
-pub const SQLITE_PREPARE_NO_VTAB: i32 = 4;
-pub const SQLITE_PREPARE_DONT_LOG: i32 = 16;
+pub const SQLITE_PREPARE_PERSISTENT: i32 = 0x01;
+#[deprecated]
+pub const SQLITE_PREPARE_NORMALIZE: i32 = 0x02;
+pub const SQLITE_PREPARE_NO_VTAB: i32 = 0x04;
+pub const SQLITE_PREPARE_DONT_LOG: i32 = 0x10;
+pub const SQLITE_PREPARE_FROM_DDL: i32 = 0x20;

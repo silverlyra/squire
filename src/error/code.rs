@@ -11,9 +11,14 @@ use sqlite::sqlite3_errstr;
 #[repr(transparent)]
 pub struct ErrorCode(NonZero<i32>);
 
+/// Define a `SQUIRE_ERROR` code.
 macro_rules! code {
+    () => {
+        0xc0
+    };
+
     ($category:literal) => {
-        $category | 0xc0
+        code!() | ($category + 7)
     };
 
     ($category:literal, $detail:literal) => {
@@ -21,17 +26,19 @@ macro_rules! code {
     };
 }
 
-pub(crate) const SQUIRE_ERROR: i32 = code!(0);
-pub(crate) const SQUIRE_ERROR_FETCH: i32 = code!(1);
-pub(crate) const SQUIRE_ERROR_FETCH_PARSE: i32 = code!(1, 1);
-pub(crate) const SQUIRE_ERROR_FETCH_RANGE: i32 = code!(1, 2);
-pub(crate) const SQUIRE_ERROR_PARAMETER: i32 = code!(2);
-pub(crate) const SQUIRE_ERROR_PARAMETER_BIND: i32 = code!(2, 1);
-pub(crate) const SQUIRE_ERROR_PARAMETER_RANGE: i32 = code!(2, 2);
-pub(crate) const SQUIRE_ERROR_PARAMETER_RESOLVE: i32 = code!(2, 3);
-pub(crate) const SQUIRE_ERROR_PARAMETER_INVALID_INDEX: i32 = code!(2, 4);
-pub(crate) const SQUIRE_ERROR_ROW: i32 = code!(3);
-pub(crate) const SQUIRE_ERROR_ROW_NOT_RETURNED: i32 = code!(3, 1);
+pub(crate) const SQUIRE_ERROR: i32 = code!();
+pub(crate) const SQUIRE_ERROR_ROW: i32 = code!(1);
+pub(crate) const SQUIRE_ERROR_ROW_NOT_RETURNED: i32 = code!(1, 1);
+pub(crate) const SQUIRE_ERROR_FETCH: i32 = code!(2);
+pub(crate) const SQUIRE_ERROR_FETCH_PARSE: i32 = code!(2, 1);
+pub(crate) const SQUIRE_ERROR_FETCH_RANGE: i32 = code!(2, 2);
+pub(crate) const SQUIRE_ERROR_PARAMETER: i32 = code!(3);
+pub(crate) const SQUIRE_ERROR_PARAMETER_BIND: i32 = code!(3, 1);
+pub(crate) const SQUIRE_ERROR_PARAMETER_RANGE: i32 = code!(3, 2);
+pub(crate) const SQUIRE_ERROR_PARAMETER_RESOLVE: i32 = code!(3, 3);
+pub(crate) const SQUIRE_ERROR_PARAMETER_INVALID_INDEX: i32 = code!(3, 4);
+pub(crate) const SQUIRE_ERROR_TEXT_ENCODING: i32 = code!(4);
+pub(crate) const SQUIRE_ERROR_INVALID_UTF8: i32 = code!(4, 1);
 
 impl ErrorCode {
     /// Wrap a return value from SQLite in an [`ErrorCode`].
@@ -201,6 +208,8 @@ impl ErrorCode {
 
             // Squire errors
             Self::SQUIRE => Some("SQUIRE_ERROR"),
+            Self::SQUIRE_ROW => Some("SQUIRE_ERROR_ROW"),
+            Self::SQUIRE_ROW_NOT_RETURNED => Some("SQUIRE_ERROR_ROW_NOT_RETURNED"),
             Self::SQUIRE_FETCH => Some("SQUIRE_ERROR_FETCH"),
             Self::SQUIRE_FETCH_PARSE => Some("SQUIRE_ERROR_FETCH_PARSE"),
             Self::SQUIRE_FETCH_RANGE => Some("SQUIRE_ERROR_FETCH_RANGE"),
@@ -208,8 +217,9 @@ impl ErrorCode {
             Self::SQUIRE_PARAMETER_BIND => Some("SQUIRE_ERROR_PARAMETER_BIND"),
             Self::SQUIRE_PARAMETER_RANGE => Some("SQUIRE_ERROR_PARAMETER_RANGE"),
             Self::SQUIRE_PARAMETER_RESOLVE => Some("SQUIRE_ERROR_PARAMETER_RESOLVE"),
-            Self::SQUIRE_ROW => Some("SQUIRE_ERROR_ROW"),
-            Self::SQUIRE_ROW_NOT_RETURNED => Some("SQUIRE_ERROR_ROW_NOT_RETURNED"),
+            Self::SQUIRE_PARAMETER_INVALID_INDEX => Some("SQUIRE_ERROR_PARAMETER_INVALID_INDEX"),
+            Self::SQUIRE_TEXT_ENCODING => Some("SQUIRE_ERROR_TEXT_ENCODING"),
+            Self::SQUIRE_INVALID_UTF8 => Some("SQUIRE_ERROR_INVALID_UTF8"),
 
             // Unrecognized code
             _ => None,
@@ -219,6 +229,8 @@ impl ErrorCode {
     /// A message describing this error.
     pub fn description(&self) -> &'static str {
         match *self {
+            Self::SQUIRE_ROW => "error retrieving selected row",
+            Self::SQUIRE_ROW_NOT_RETURNED => "query returned no rows",
             Self::SQUIRE_FETCH => "error fetching column value",
             Self::SQUIRE_FETCH_PARSE => "error parsing column value",
             Self::SQUIRE_FETCH_RANGE => "column value out of range",
@@ -227,8 +239,8 @@ impl ErrorCode {
             Self::SQUIRE_PARAMETER_RANGE => "parameter value out of range",
             Self::SQUIRE_PARAMETER_RESOLVE => "error resolving parameter index",
             Self::SQUIRE_PARAMETER_INVALID_INDEX => "parameter index must be > 0",
-            Self::SQUIRE_ROW => "error retrieving selected row",
-            Self::SQUIRE_ROW_NOT_RETURNED => "query returned no rows",
+            Self::SQUIRE_TEXT_ENCODING => "data invalid for text encoding",
+            Self::SQUIRE_INVALID_UTF8 => "invalid UTF-8 data",
 
             _ => {
                 let ptr = unsafe { sqlite3_errstr(self.raw()) };
@@ -346,6 +358,8 @@ impl ErrorCode {
     pub(crate) const TOOBIG: Self = Self::define(sqlite::SQLITE_TOOBIG);
 
     pub(crate) const SQUIRE: Self = Self::define(SQUIRE_ERROR);
+    pub(crate) const SQUIRE_ROW: Self = Self::define(SQUIRE_ERROR_ROW);
+    pub(crate) const SQUIRE_ROW_NOT_RETURNED: Self = Self::define(SQUIRE_ERROR_ROW_NOT_RETURNED);
     pub(crate) const SQUIRE_FETCH: Self = Self::define(SQUIRE_ERROR_FETCH);
     pub(crate) const SQUIRE_FETCH_PARSE: Self = Self::define(SQUIRE_ERROR_FETCH_PARSE);
     pub(crate) const SQUIRE_FETCH_RANGE: Self = Self::define(SQUIRE_ERROR_FETCH_RANGE);
@@ -355,8 +369,8 @@ impl ErrorCode {
     pub(crate) const SQUIRE_PARAMETER_RESOLVE: Self = Self::define(SQUIRE_ERROR_PARAMETER_RESOLVE);
     pub(crate) const SQUIRE_PARAMETER_INVALID_INDEX: Self =
         Self::define(SQUIRE_ERROR_PARAMETER_INVALID_INDEX);
-    pub(crate) const SQUIRE_ROW: Self = Self::define(SQUIRE_ERROR_ROW);
-    pub(crate) const SQUIRE_ROW_NOT_RETURNED: Self = Self::define(SQUIRE_ERROR_ROW_NOT_RETURNED);
+    pub(crate) const SQUIRE_TEXT_ENCODING: Self = Self::define(SQUIRE_ERROR_TEXT_ENCODING);
+    pub(crate) const SQUIRE_INVALID_UTF8: Self = Self::define(SQUIRE_ERROR_INVALID_UTF8);
 }
 
 impl Default for ErrorCode {

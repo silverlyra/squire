@@ -87,6 +87,7 @@ pub use error::{
     AbortError, AuthorizationError, BusyError, CantOpenError, ConstraintError, CorruptError, Error,
     ErrorCategory, ErrorCode, ErrorContainer, ErrorLocation, ErrorReason, FetchError, GeneralError,
     IntegrationError, IoError, LockedError, ParameterError, ReadOnlyError, Result, RowError,
+    TextEncodingError,
 };
 pub use fetch::Fetch;
 pub use param::Parameters;
