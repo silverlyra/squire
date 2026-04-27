@@ -71,6 +71,7 @@ features! {
     MemoryManagement +EnableMemoryManagement,
     MemoryStatus ?is_enabled,
     NormalizeSql +EnableNormalizeSql,
+    Percentile @"3.51" +EnablePercentile,
     PreUpdateHook +EnablePreUpdateHook,
     PrepareQuiet @"3.48",
     ProgressCallback -OmitProgressCallback,
