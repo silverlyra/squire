@@ -1151,7 +1151,7 @@ checksum = "67b1b7a3b5fe4f1376887184045fcf45c69e92af734b7aaddc05fb777b6fbd03"
 
 [[package]]
 name = "squire"
-version = "0.0.1-alpha.9"
+version = "0.0.1-alpha.10"
 dependencies = [
  "chrono",
  "derive_more",
@@ -1189,7 +1189,7 @@ dependencies = [
 
 [[package]]
 name = "squire-sqlite3-features"
-version = "0.1.0-alpha.3"
+version = "0.1.0-alpha.4"
 dependencies = [
  "cc",
  "libloading 0.9.0",
@@ -1198,7 +1198,7 @@ dependencies = [
 
 [[package]]
 name = "squire-sqlite3-src"
-version = "3.51.3-alpha.3"
+version = "3.51.3-alpha.4"
 dependencies = [
  "cc",
  "squire-sqlite3-features",
@@ -1216,7 +1216,7 @@ dependencies = [
 
 [[package]]
 name = "squire-sqlite3-sys"
-version = "0.0.1-alpha.8"
+version = "0.0.1-alpha.9"
 dependencies = [
  "bindgen",
  "pkg-config",
