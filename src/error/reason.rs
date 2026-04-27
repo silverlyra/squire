@@ -1,7 +1,9 @@
+use derive_more::{From, IsVariant};
+
 use super::{ErrorCategory, ErrorCode};
 
 /// Extended SQLite result codes that provide more specific information about errors.
-#[derive(PartialEq, Eq, Copy, Clone, Debug)]
+#[derive(From, IsVariant, PartialEq, Eq, Copy, Clone, Debug)]
 #[non_exhaustive]
 pub enum ErrorReason {
     /// Specific reasons for an [`ErrorCategory::Aborted`].

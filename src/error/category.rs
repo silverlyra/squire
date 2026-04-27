@@ -38,7 +38,7 @@ pub enum ErrorCategory {
 
     /// A write operation could not continue because of a conflict within the
     /// same database connection or a conflict with a different database
-    /// connection that uses a shared cache.
+    /// connection that uses a [shared cache](https://sqlite.org/sharedcache.html).
     #[doc(alias = "SQLITE_LOCKED")]
     Locked = sqlite::SQLITE_LOCKED,
 
@@ -52,7 +52,7 @@ pub enum ErrorCategory {
     #[doc(alias = "SQLITE_READONLY")]
     ReadOnly = sqlite::SQLITE_READONLY,
 
-    /// An operation was interrupted by the sqlite3_interrupt() interface.
+    /// An operation was [interrupted](https://sqlite.org/c3ref/interrupt.html).
     #[doc(alias = "SQLITE_INTERRUPT")]
     Interrupt = sqlite::SQLITE_INTERRUPT,
 
@@ -102,7 +102,7 @@ pub enum ErrorCategory {
     #[doc(alias = "SQLITE_MISMATCH")]
     Mismatch = sqlite::SQLITE_MISMATCH,
 
-    /// The application uses any SQLite interface in a way that is undefined
+    /// The application used any SQLite interface in a way that is undefined
     /// or unsupported.
     #[doc(alias = "SQLITE_MISUSE")]
     Misuse = sqlite::SQLITE_MISUSE,

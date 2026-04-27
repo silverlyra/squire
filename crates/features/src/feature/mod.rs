@@ -78,6 +78,7 @@ features! {
     Rtree +EnableRtree,
     Serialize -OmitSerialize,
     Session ^PreUpdateHook +EnableSession,
+    SetErrorMessage @"3.51",
     SharedCache -OmitSharedCache,
     Snapshot +EnableSnapshot,
     Soundex +EnableSoundex,
