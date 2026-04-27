@@ -4,6 +4,12 @@ use std::path::Path;
 #[cfg(any(feature = "bindgen", feature = "bundled"))]
 use std::path::PathBuf;
 
+#[cfg(feature = "bundled")]
+use features::{
+    Directive, DirectiveMap,
+    directive::{DoubleQuotedStrings, Synchronous, Threading},
+};
+
 type Result<T = ()> = std::result::Result<T, Box<dyn std::error::Error>>;
 
 fn main() -> Result {
@@ -55,9 +61,41 @@ fn build_bundled_sqlite(dest: &Path, mock: bool) -> Result<sqlite::Build> {
     let location = sqlite::Location::new(dest);
 
     for source in location.sources() {
-        println!("cargo:rerun-if-changed={}", source.display());
+        println!("cargo::rerun-if-changed={}", source.display());
     }
-    println!("cargo:rustc-link-search={}", location.dest().display());
+    println!("cargo::rustc-link-search={}", location.dest().display());
+
+    #[cfg(feature = "serialized")]
+    let threading = Threading::Serialized;
+    #[cfg(all(feature = "multi-thread", not(feature = "serialized")))]
+    let threading = Threading::MultiThread;
+    #[cfg(not(feature = "multi-thread"))]
+    let threading = Threading::SingleThread;
+
+    let mut directives: DirectiveMap = [
+        Directive::DefaultSynchronous(Synchronous::Full),
+        Directive::DefaultWalSynchronous(Synchronous::Normal),
+        Directive::Threading(threading),
+        Directive::DefaultAutomaticIndex,
+        Directive::DefaultForeignKeys,
+        Directive::DefaultMemoryStatus(false),
+        Directive::DoubleQuotedStrings(DoubleQuotedStrings::default()),
+        Directive::EnableMemoryManagement,
+        Directive::LikeOperatorDoesntMatchBlob,
+        Directive::MaxExpressionDepth(0),
+        Directive::MaxMmapSize(0),
+        Directive::OmitAutomaticReset,
+        Directive::OmitDeprecated,
+        Directive::OmitGetTable,
+        Directive::UseAlloca,
+        Directive::UseDatabaseUri,
+        #[cfg(debug_assertions)]
+        Directive::Debug,
+        #[cfg(debug_assertions)]
+        Directive::EnableApiArmor,
+    ]
+    .into_iter()
+    .collect();
 
     let mut configuration = features::Configuration::empty();
 
@@ -95,14 +133,8 @@ fn build_bundled_sqlite(dest: &Path, mock: bool) -> Result<sqlite::Build> {
     set!(Trace, cfg!(feature = "trace"));
     set!(VirtualTable, cfg!(feature = "vtab"));
 
-    let mut directives = sqlite::config(Some(&configuration));
+    configuration.apply(sqlite::version(), &mut directives);
 
-    #[cfg(feature = "serialized")]
-    let threading = features::directive::Threading::Serialized;
-    #[cfg(all(feature = "multi-thread", not(feature = "serialized")))]
-    let threading = features::directive::Threading::MultiThread;
-    #[cfg(not(feature = "multi-thread"))]
-    let threading = features::directive::Threading::SingleThread;
     directives.insert(features::Directive::Threading(threading));
 
     let build = if !mock {

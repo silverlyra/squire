@@ -1,0 +1,16 @@
+name: Fetch SQLite sources
+description: Restore (or download) the SQLite sources for the current squire-sqlite3-src version.
+
+runs:
+  using: composite
+  steps:
+    - name: Cache SQLite sources
+      id: cache
+      uses: actions/cache@v5
+      with:
+        path: crates/src/sqlite
+        key: sqlite-src-${{ hashFiles('crates/src/Cargo.toml') }}
+    - name: Download SQLite
+      if: steps.cache.outputs.cache-hit != 'true'
+      shell: bash
+      run: cargo run -p squire-sqlite3-src-fetch
