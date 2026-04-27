@@ -39,7 +39,7 @@ mod config;
 pub use config::Configuration;
 
 features! {
-    AggregateFunctionSelfOrdered @(3, 47),
+    AggregateFunctionSelfOrdered @"3.47",
     ApiArmor +EnableApiArmor,
     Attach -OmitAttach,
     AuthorizationCallback -OmitAuthorization,
@@ -55,28 +55,28 @@ features! {
     DatabasePageVirtualTable +EnableDatabasePageVirtualTable,
     DatabaseStatisticsVirtualTable +EnableDatabaseStatisticsVirtualTable,
     Deprecated -OmitDeprecated,
-    ErrorOffset @(3, 38),
+    ErrorOffset @"3.38",
     Fts3 +EnableFts3,
     Fts5 +EnableFts5,
-    FunctionDirectOnlyOption @(3, 30),
-    FunctionInnocuousOption @(3, 31),
-    FunctionStrictSubtypes @(3, 45),
-    FunctionSubtypeOption @(3, 31),
+    FunctionDirectOnlyOption @"3.30",
+    FunctionInnocuousOption @"3.31",
+    FunctionStrictSubtypes @"3.45",
+    FunctionSubtypeOption @"3.31",
     Geopoly +EnableGeopoly,
     GetTable -OmitGetTable,
     Json ?is_enabled,
-    Jsonb @(3, 45) ^Json,
+    Jsonb @"3.45" ^Json,
     LoadExtension -OmitLoadExtension,
     MemoryDatabase -OmitMemoryDatabases,
     MemoryManagement +EnableMemoryManagement,
     MemoryStatus ?is_enabled,
     NormalizeSql +EnableNormalizeSql,
     PreUpdateHook +EnablePreUpdateHook,
-    PrepareQuiet @(3, 48),
+    PrepareQuiet @"3.48",
     ProgressCallback -OmitProgressCallback,
     Rtree +EnableRtree,
     Serialize -OmitSerialize,
-    Session +EnableSession,
+    Session ^PreUpdateHook +EnableSession,
     SharedCache -OmitSharedCache,
     Snapshot +EnableSnapshot,
     Soundex +EnableSoundex,
@@ -126,10 +126,16 @@ impl Json {
 
     #[cfg(feature = "alloc")]
     fn apply(&self, enabled: bool, directives: &mut DirectiveMap, version: Version) {
-        if version < Self::ENABLED_BY_DEFAULT && enabled {
-            directives.insert(Directive::EnableJson1);
-        } else if version >= Self::ENABLED_BY_DEFAULT && !enabled {
+        if version < Self::ENABLED_BY_DEFAULT {
+            if enabled {
+                directives.insert(Directive::EnableJson1);
+            } else {
+                directives.remove(DirectiveKey::EnableJson1);
+            }
+        } else if !enabled {
             directives.insert(Directive::OmitJson);
+        } else {
+            directives.remove(DirectiveKey::OmitJson);
         }
     }
 }

@@ -92,6 +92,13 @@ impl Version {
             }
         }
     }
+
+    pub(crate) const fn declare(s: &str) -> Self {
+        match Self::parse(s) {
+            Ok(s) => s,
+            Err(_) => panic!("invalid SQLite version"),
+        }
+    }
 }
 
 const fn find_dot(bytes: &[u8], start: usize) -> Option<usize> {

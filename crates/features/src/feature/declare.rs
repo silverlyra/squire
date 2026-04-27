@@ -1,13 +1,13 @@
 macro_rules! features {
-    { $($i:ident $(@ (3, $vi:literal))? $(^ $d:ident)* $(+ $e:ident)? $(- $o:ident)? $(? $m:ident)?),+ $(,)? } => {
+    { $($i:ident $(@ $v:literal)? $(^ $d:ident)* $(+ $e:ident)? $(- $o:ident)? $(? $m:ident)?),+ $(,)? } => {
         $(
             #[derive(Debug)]
             pub struct $i;
 
             $(
                 impl $i {
-                    /// The SQLite release where [`$i`] became available.
-                    pub const AVAILABLE: $crate::version::Version = $crate::version::Version::release(3, $vi);
+                    #[doc = concat!("The SQLite release where [`", stringify!($i), "`] became available (", $v, ").")]
+                    pub const AVAILABLE: $crate::version::Version = $crate::version::Version::declare($v);
                 }
             )?
         )+
@@ -16,7 +16,7 @@ macro_rules! features {
             impl $crate::feature::Feature for $i {
                 fn is_available(&self, library: &$crate::info::Library) -> bool {
                     $(
-                       if library.version() < features!(@version $vi) {
+                       if library.version() < features!(@version $v) {
                            return false;
                        }
                     )?
@@ -56,7 +56,7 @@ macro_rules! features {
                     config: &Configuration,
                 ) {
                     $(
-                        if version < features!(@version $vi) {
+                        if version < features!(@version $v) {
                            return;
                         }
                     )?
@@ -194,7 +194,7 @@ macro_rules! features {
 
     (@apply $s:ident, $e:ident, $d:ident, $v:ident, ) => {};
 
-    (@version $vi:literal) => {
+    (@version $v:literal) => {
         Self::AVAILABLE
     };
 
