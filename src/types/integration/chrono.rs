@@ -4,16 +4,15 @@ use crate::{
     bind::Bind,
     error::{Error, ErrorCode},
     fetch::Fetch,
-    ffi,
     types::Borrowed,
 };
 
 #[cfg_attr(docsrs, doc(cfg(feature = "chrono")))]
 impl Bind<'_> for NaiveDate {
-    type Value = ffi::String;
+    type Value = String;
 
     fn into_bind_value(self) -> crate::Result<Self::Value> {
-        ffi::String::display(&self)
+        Ok(self.to_string())
     }
 }
 
@@ -28,10 +27,10 @@ impl<'b> Fetch<'b> for NaiveDate {
 
 #[cfg_attr(docsrs, doc(cfg(feature = "chrono")))]
 impl Bind<'_> for NaiveTime {
-    type Value = ffi::String;
+    type Value = String;
 
     fn into_bind_value(self) -> crate::Result<Self::Value> {
-        ffi::String::display(&self)
+        Ok(self.to_string())
     }
 }
 
@@ -46,10 +45,10 @@ impl<'b> Fetch<'b> for NaiveTime {
 
 #[cfg_attr(docsrs, doc(cfg(feature = "chrono")))]
 impl Bind<'_> for NaiveDateTime {
-    type Value = ffi::String;
+    type Value = String;
 
     fn into_bind_value(self) -> crate::Result<Self::Value> {
-        ffi::String::display(&self)
+        Ok(self.to_string())
     }
 }
 
@@ -64,10 +63,10 @@ impl<'b> Fetch<'b> for NaiveDateTime {
 
 #[cfg_attr(docsrs, doc(cfg(feature = "chrono")))]
 impl Bind<'_> for DateTime<Utc> {
-    type Value = ffi::String;
+    type Value = String;
 
     fn into_bind_value(self) -> crate::Result<Self::Value> {
-        ffi::String::display(&self)
+        Ok(self.to_string())
     }
 }
 
@@ -82,10 +81,10 @@ impl<'b> Fetch<'b> for DateTime<Utc> {
 
 #[cfg_attr(docsrs, doc(cfg(feature = "chrono")))]
 impl Bind<'_> for DateTime<FixedOffset> {
-    type Value = ffi::String;
+    type Value = String;
 
     fn into_bind_value(self) -> crate::Result<Self::Value> {
-        ffi::String::display(&self)
+        Ok(self.to_string())
     }
 }
 

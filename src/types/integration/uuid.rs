@@ -1,13 +1,13 @@
 use uuid::Uuid;
 
-use crate::{bind::Bind, error::Error, fetch::Fetch, ffi, types::Borrowed};
+use crate::{bind::Bind, error::Error, fetch::Fetch, types::Borrowed};
 
 #[cfg_attr(docsrs, doc(cfg(feature = "uuid")))]
 impl Bind<'_> for Uuid {
-    type Value = ffi::Bytes;
+    type Value = [u8; 16];
 
     fn into_bind_value(self) -> crate::Result<Self::Value> {
-        Ok(ffi::Bytes::from(self.into_bytes()))
+        Ok(self.into_bytes())
     }
 }
 

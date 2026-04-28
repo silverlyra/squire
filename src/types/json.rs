@@ -8,7 +8,6 @@ use crate::{
     bind::Bind,
     error::{Error, Result},
     fetch::Fetch,
-    ffi,
     types::Borrowed,
 };
 
@@ -18,18 +17,15 @@ use crate::{
 pub struct Json<T>(pub T);
 
 #[cfg(feature = "json")]
-#[cfg_attr(docsrs, doc(cfg(all(feature = "jsonb", feature = "serde"))))]
+#[cfg_attr(docsrs, doc(cfg(all(feature = "json", feature = "serde"))))]
 impl<'b, T> Bind<'b> for Json<T>
 where
     T: Serialize,
 {
-    type Value = ffi::String;
+    type Value = String;
 
     fn into_bind_value(self) -> Result<Self::Value> {
-        let mut builder = ffi::StringBuilder::new();
-        json::to_writer(&mut builder, &self.0).map_err(Error::from_bind)?;
-
-        builder.finish()
+        json::to_string(&self.0).map_err(Error::from_bind)
     }
 }
 
