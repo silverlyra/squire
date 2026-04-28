@@ -126,6 +126,14 @@ impl<'b> Bind<'b> for bool {
 
 identity!(&str, String, &[u8], Vec<u8>, Reservation);
 
+impl<const N: usize> Bind<'_> for [u8; N] {
+    type Value = Self;
+
+    fn into_bind_value(self) -> Result<Self::Value> {
+        Ok(self)
+    }
+}
+
 impl<'b> Bind<'b> for RowId {
     type Value = i64;
 

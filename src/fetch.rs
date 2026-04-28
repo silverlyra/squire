@@ -206,6 +206,14 @@ impl<'r> Fetch<'r> for Vec<u8> {
     }
 }
 
+impl<'r, const N: usize> Fetch<'r> for [u8; N] {
+    type Value = Borrowed<'r, [u8]>;
+
+    fn from_value(value: Self::Value) -> Result<Self> {
+        Self::try_from(value.into_inner()).map_err(|_| Error::new(ErrorCode::SQUIRE_FETCH_RANGE))
+    }
+}
+
 impl<'r, T> Fetch<'r> for Option<T>
 where
     T: Fetch<'r>,
