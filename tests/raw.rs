@@ -2,12 +2,15 @@
 
 use std::error::Error;
 
-use squire::{BindIndex, Borrowed, Connection, Memory, RowId, ffi};
+use squire::{BindIndex, Borrowed, Connection, RowId, ffi};
 
 type Result<T = ()> = std::result::Result<T, Box<dyn Error>>;
 
 fn setup() -> Result<Connection> {
-    let connection = Connection::open(Memory)?;
+    #[cfg(sqlite_has_memory_database)]
+    let connection = Connection::open(squire::Memory)?;
+    #[cfg(not(sqlite_has_memory_database))]
+    let connection = Connection::open(c"")?;
 
     {
         let (create, _) = ffi::Statement::prepare(

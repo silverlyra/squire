@@ -25,10 +25,18 @@ use crate::{
 /// # Examples
 ///
 /// ```rust
-/// use squire::{Connection, Memory};
+#[cfg_attr(sqlite_has_memory_database, doc = "use squire::{Connection, Memory};")]
+#[cfg_attr(not(sqlite_has_memory_database), doc = "use squire::Connection;")]
 ///
 /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
-/// let connection = Connection::open(Memory)?;
+#[cfg_attr(
+    sqlite_has_memory_database,
+    doc = "let connection = Connection::open(Memory)?;"
+)]
+#[cfg_attr(
+    not(sqlite_has_memory_database),
+    doc = "let connection = Connection::open(\"\")?;"
+)]
 ///
 /// let mut statement = connection.prepare("SELECT sqlite_version();")?;
 /// let version: String = statement.query(())?.one()?;

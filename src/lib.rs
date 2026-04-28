@@ -1,7 +1,10 @@
 //! Squire provides an idiomatic and performant Rust interface for [SQLite][].
 //!
-#![cfg_attr(feature = "derive", doc = "```rust")]
-#![cfg_attr(not(feature = "derive"), doc = "```ignore")]
+#![cfg_attr(all(feature = "derive", sqlite_has_memory_database), doc = "```rust")]
+#![cfg_attr(
+    not(all(feature = "derive", sqlite_has_memory_database)),
+    doc = "```ignore"
+)]
 //! # #![cfg_attr(
 //! #     all(nightly, feature = "lang-array-assume-init"),
 //! #     feature(maybe_uninit_array_assume_init)
@@ -82,7 +85,7 @@ pub use bind::Bind;
 pub use blob::Reservation;
 pub use column::{ColumnIndexes, Columns};
 pub use connection::{Connection, ConnectionBuilder};
-pub use endpoint::{Endpoint, IntoEndpoint, Local, Memory, Uri};
+pub use endpoint::{Endpoint, IntoEndpoint, Local, Uri};
 pub use error::{
     AbortError, AuthorizationError, BusyError, CantOpenError, ConstraintError, CorruptError, Error,
     ErrorCategory, ErrorCode, ErrorContainer, ErrorLocation, ErrorReason, FetchError, GeneralError,
@@ -97,6 +100,9 @@ pub use statement::{
     Binding, Execution, PrepareOptions, Statement, StatementColumns, StatementParameters,
 };
 pub use types::{BindIndex, Borrowed, ColumnIndex, Encoding, RowId, Type};
+
+#[cfg(sqlite_has_memory_database)]
+pub use endpoint::Memory;
 
 #[cfg(feature = "utf-16")]
 pub use types::ByteOrder;
