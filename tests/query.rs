@@ -2,12 +2,15 @@
 
 use std::error::Error;
 
-use squire::{Connection, Memory};
+use squire::Connection;
 
 type Result<T = ()> = std::result::Result<T, Box<dyn Error>>;
 
 fn setup() -> Result<Connection> {
-    let connection = Connection::open(Memory)?;
+    #[cfg(sqlite_has_memory_database)]
+    let connection = Connection::open(squire::Memory)?;
+    #[cfg(not(sqlite_has_memory_database))]
+    let connection = Connection::open(c"")?;
 
     connection.execute(
         "CREATE TABLE example (id INTEGER PRIMARY KEY AUTOINCREMENT, a TEXT NOT NULL, b INTEGER, c REAL) STRICT;",

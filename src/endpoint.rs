@@ -1,7 +1,9 @@
 use core::{ffi::CStr, fmt, ops::Deref};
 use std::ffi::CString;
 
-use sqlite::{SQLITE_OPEN_MEMORY, SQLITE_OPEN_URI};
+#[cfg(sqlite_has_memory_database)]
+use sqlite::SQLITE_OPEN_MEMORY;
+use sqlite::SQLITE_OPEN_URI;
 
 use crate::ffi;
 
@@ -13,9 +15,19 @@ use crate::ffi;
 /// ```no_run
 /// # use std::path::PathBuf;
 /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
-/// use squire::{Connection, Memory, Local};
+#[cfg_attr(
+    sqlite_has_memory_database,
+    doc = "use squire::{Connection, Memory, Local};"
+)]
+#[cfg_attr(
+    not(sqlite_has_memory_database),
+    doc = "use squire::{Connection, Local};"
+)]
 ///
-/// let connection = Connection::open(Memory)?;
+#[cfg_attr(
+    sqlite_has_memory_database,
+    doc = "let connection = Connection::open(Memory)?;"
+)]
 /// let connection = Connection::open("./database.sqlite3")?;
 /// let connection = Connection::open(PathBuf::from("./database.sqlite3"))?;
 /// let connection = Connection::open(Local::new("./database.sqlite3"))?;

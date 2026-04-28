@@ -26,39 +26,45 @@ multi-thread = []
 serialized = ["multi-thread"]
 
 core = [
-    "json",
+    "auto-vacuum",
+    "memory-db",
+    "stat4",
+    "temp-db",
     "vtab",
 ]
 common = [
     "core",
     "blob-io",
     "fts",
-    "geo",
-    "serialize",
-    "snapshot",
-    "stat4",
+    "json",
     "stat-vtab",
 ]
 full = [
     "common",
     "authorization",
+    "blob-like",
     "extensions",
     "fts3",
+    "geo",
+    "memory-management",
     "memory-status",
     "metadata",
     "normalize-sql",
+    "percentile",
     "preupdate-hook",
     "progress-callback",
+    "serialize",
     "session",
+    "snapshot",
     "soundex",
     "trace",
 ]
 metadata = ["column-metadata", "decltype"]
 
-armor = []
 authorization = []
 auto-vacuum = []
 blob-io = []
+blob-like = []
 column-metadata = []
 decltype = []
 extensions = []
@@ -68,6 +74,8 @@ fts5 = ["blob-io"]
 geo = ["geopoly", "rtree"]
 geopoly = ["vtab"]
 json = []
+memory-db = []
+memory-management = []
 memory-status = []
 normalize-sql = []
 page-vtab = ["vtab"]
@@ -82,6 +90,8 @@ snapshot = []
 soundex = []
 stat-vtab = ["vtab"]
 stat4 = []
+tcl-vars = []
+temp-db = []
 trace = []
 utf-16 = []
 vtab = []

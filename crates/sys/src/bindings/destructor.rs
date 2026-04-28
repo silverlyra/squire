@@ -10,7 +10,7 @@
 #[derive(Copy, Clone)]
 #[repr(C)]
 pub union sqlite3_destructor_type {
-    pub func: unsafe extern "C" fn(context: *mut ::std::os::raw::c_void),
+    pub func: unsafe extern "C" fn(context: *mut ::core::ffi::c_void),
     pub sentinel: isize,
 }
 
@@ -19,7 +19,7 @@ unsafe impl Sync for sqlite3_destructor_type {}
 
 impl sqlite3_destructor_type {
     /// Provide a custom [destructor](sqlite3_destructor_type) to SQLite.
-    pub const fn new(func: unsafe extern "C" fn(*mut ::std::os::raw::c_void)) -> Self {
+    pub const fn new(func: unsafe extern "C" fn(*mut ::core::ffi::c_void)) -> Self {
         sqlite3_destructor_type { func }
     }
 

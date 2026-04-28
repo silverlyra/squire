@@ -164,6 +164,14 @@ macro_rules! from {
 
 from!(i8, u8, i16, u16, i32, u32, i64, u64, isize, usize);
 
+impl FromStr for Version {
+    type Err = ParseVersionError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Self::parse(s)
+    }
+}
+
 impl fmt::Display for Version {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}.{}.{}", self.major, self.minor, self.patch)
@@ -182,12 +190,55 @@ impl fmt::Display for ParseVersionError {
     }
 }
 
-impl FromStr for Version {
-    type Err = ParseVersionError;
+pub(crate) struct Override {
+    source_id: &'static str,
+    reported: Version,
+    actual: Version,
+}
 
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        Self::parse(s)
+impl Override {
+    const KNOWN: [Self; 1] = [Self::define(
+        "3.51.0",
+        "3.47.1",
+        "2025-06-12 13:14:41 f0ca7bba1c5e232e5d279fad6338121ab55af0c8c68c84cdfb18ba5114dcaapl",
+    )];
+
+    const fn define(reported: &'static str, actual: &'static str, source_id: &'static str) -> Self {
+        Self {
+            source_id,
+            reported: Version::declare(reported),
+            actual: Version::declare(actual),
+        }
     }
+
+    pub(crate) const fn check(reported: Version, source_id: &str) -> Version {
+        let mut i = 0;
+        while i < Self::KNOWN.len() {
+            let rule = &Self::KNOWN[i];
+            if rule.reported.to_number() == reported.to_number()
+                && bytes_eq(rule.source_id.as_bytes(), source_id.as_bytes())
+            {
+                return rule.actual;
+            }
+            i += 1;
+        }
+
+        reported
+    }
+}
+
+const fn bytes_eq(a: &[u8], b: &[u8]) -> bool {
+    if a.len() != b.len() {
+        return false;
+    }
+    let mut i = 0;
+    while i < a.len() {
+        if a[i] != b[i] {
+            return false;
+        }
+        i += 1;
+    }
+    true
 }
 
 #[cfg(test)]

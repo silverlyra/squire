@@ -62,11 +62,11 @@ const ENCODING_UTF8: c_uchar = SQLITE_UTF8 as c_uchar;
 )]
 #[cfg_attr(
     target_pointer_width = "32",
-    doc = " - [`&[u8]`](primitive@slice) (via [`sqlite3_bind_blob`])"
+    doc = " - [`&[u8]`](primitive@slice) and [`[u8; N]`](primitive@array) (via [`sqlite3_bind_blob`])"
 )]
 #[cfg_attr(
     target_pointer_width = "64",
-    doc = " - [`&[u8]`](primitive@slice) (via [`sqlite3_bind_blob64`])"
+    doc = " - [`&[u8]`](primitive@slice) and [`[u8; N]`](primitive@array) (via [`sqlite3_bind_blob64`])"
 )]
 #[cfg_attr(
     target_pointer_width = "32",
@@ -277,6 +277,44 @@ impl<'b> Bind<'b> for &[u8] {
 
         #[cfg(target_pointer_width = "64")]
         result! { sqlite3_result_blob64(context, self.as_ptr() as *const c_void, self.len() as sqlite3_uint64, SQLITE_TRANSIENT) }
+    }
+}
+
+#[cfg_attr(
+    target_pointer_width = "32",
+    doc = "[Binds](Bind) a [`[u8; N]`](primitive@array) via [`sqlite3_bind_blob`]."
+)]
+#[cfg_attr(
+    target_pointer_width = "64",
+    doc = "[Binds](Bind) a [`[u8; N]`](primitive@array) via [`sqlite3_bind_blob64`]."
+)]
+///
+/// The [`SQLITE_TRANSIENT`] flag is used; SQLite will [clone][] the bytes
+/// before `bind` returns.
+///
+/// [clone]: https://sqlite.org/c3ref/c_static.html
+impl<'b, const N: usize> Bind<'b> for [u8; N] {
+    unsafe fn bind_parameter<'c>(self, statement: &Statement<'c>, index: BindIndex) -> Result<()>
+    where
+        'c: 'b,
+    {
+        #[cfg(target_pointer_width = "32")]
+        bind! { sqlite3_bind_blob(statement, index, self.as_ptr() as *const c_void, N as c_int, SQLITE_TRANSIENT) }
+
+        #[cfg(target_pointer_width = "64")]
+        bind! { sqlite3_bind_blob64(statement, index, self.as_ptr() as *const c_void, N as sqlite3_uint64, SQLITE_TRANSIENT) }
+    }
+
+    #[cfg(feature = "functions")]
+    unsafe fn bind_return<'c>(self, context: &ContextRef<'c>)
+    where
+        'b: 'c,
+    {
+        #[cfg(target_pointer_width = "32")]
+        result! { sqlite3_result_blob(context, self.as_ptr() as *const c_void, N as c_int, SQLITE_TRANSIENT) }
+
+        #[cfg(target_pointer_width = "64")]
+        result! { sqlite3_result_blob64(context, self.as_ptr() as *const c_void, N as sqlite3_uint64, SQLITE_TRANSIENT) }
     }
 }
 

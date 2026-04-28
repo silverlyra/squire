@@ -1,13 +1,13 @@
 use jiff::{SignedDuration, Span, Timestamp, Zoned, civil};
 
-use crate::{bind::Bind, error::Error, fetch::Fetch, ffi, types::Borrowed};
+use crate::{bind::Bind, error::Error, fetch::Fetch, types::Borrowed};
 
 #[cfg_attr(docsrs, doc(cfg(feature = "jiff")))]
 impl Bind<'_> for civil::Date {
-    type Value = ffi::String;
+    type Value = String;
 
     fn into_bind_value(self) -> crate::Result<Self::Value> {
-        ffi::String::display(&self)
+        Ok(self.to_string())
     }
 }
 
@@ -22,10 +22,10 @@ impl<'b> Fetch<'b> for civil::Date {
 
 #[cfg_attr(docsrs, doc(cfg(feature = "jiff")))]
 impl Bind<'_> for civil::DateTime {
-    type Value = ffi::String;
+    type Value = String;
 
     fn into_bind_value(self) -> crate::Result<Self::Value> {
-        ffi::String::display(&self)
+        Ok(self.to_string())
     }
 }
 
@@ -40,10 +40,10 @@ impl<'b> Fetch<'b> for civil::DateTime {
 
 #[cfg_attr(docsrs, doc(cfg(feature = "jiff")))]
 impl Bind<'_> for civil::Time {
-    type Value = ffi::String;
+    type Value = String;
 
     fn into_bind_value(self) -> crate::Result<Self::Value> {
-        ffi::String::display(&self)
+        Ok(self.to_string())
     }
 }
 
@@ -76,10 +76,10 @@ impl Fetch<'_> for SignedDuration {
 
 #[cfg_attr(docsrs, doc(cfg(feature = "jiff")))]
 impl Bind<'_> for Span {
-    type Value = ffi::String;
+    type Value = String;
 
     fn into_bind_value(self) -> crate::Result<Self::Value> {
-        ffi::String::display(&self)
+        Ok(self.to_string())
     }
 }
 
@@ -112,10 +112,22 @@ impl Fetch<'_> for Timestamp {
 
 #[cfg_attr(docsrs, doc(cfg(feature = "jiff")))]
 impl Bind<'_> for Zoned {
-    type Value = ffi::String;
+    type Value = String;
 
     fn into_bind_value(self) -> crate::Result<Self::Value> {
-        ffi::String::display(&self)
+        Ok(self.to_string())
+    }
+}
+
+#[cfg_attr(docsrs, doc(cfg(feature = "jiff")))]
+impl<'a, 'b> Bind<'b> for &'a Zoned
+where
+    'a: 'b,
+{
+    type Value = String;
+
+    fn into_bind_value(self) -> crate::Result<Self::Value> {
+        Ok(self.to_string())
     }
 }
 

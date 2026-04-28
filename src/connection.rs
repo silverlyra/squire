@@ -25,10 +25,18 @@ use crate::{
 /// # Examples
 ///
 /// ```rust
-/// use squire::{Connection, Memory};
+#[cfg_attr(sqlite_has_memory_database, doc = "use squire::{Connection, Memory};")]
+#[cfg_attr(not(sqlite_has_memory_database), doc = "use squire::Connection;")]
 ///
 /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
-/// let connection = Connection::open(Memory)?;
+#[cfg_attr(
+    sqlite_has_memory_database,
+    doc = "let connection = Connection::open(Memory)?;"
+)]
+#[cfg_attr(
+    not(sqlite_has_memory_database),
+    doc = "let connection = Connection::open(\"\")?;"
+)]
 ///
 /// let mut statement = connection.prepare("SELECT sqlite_version();")?;
 /// let version: String = statement.query(())?.one()?;
@@ -63,6 +71,21 @@ impl Connection {
 
     /// [Open](ConnectionBuilder::open()) a [`Connection`] configured with
     /// non-default options.
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+    /// use squire::Connection;
+    ///
+    /// let connection = Connection::builder("./data.sqlite3")
+    ///     .read_only()
+    ///     .follow_symbolic_links(false)
+    ///     .open()?;
+    /// # let _ = connection;
+    /// # Ok(())
+    /// # }
+    /// ```
     #[must_use]
     pub fn builder<E: IntoEndpoint>(endpoint: E) -> ConnectionBuilder<E::Endpoint> {
         ConnectionBuilder::new(endpoint.into_endpoint())

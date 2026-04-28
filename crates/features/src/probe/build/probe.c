@@ -11,6 +11,7 @@ int main(void) {
     const char *opt;
 
     printf("%d\n", sqlite3_libversion_number());
+    printf("%s\n", sqlite3_sourceid());
     printf("\n");
 
     /* Compile options, one per line */
