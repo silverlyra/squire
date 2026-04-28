@@ -59,8 +59,8 @@ impl String {
         debug_assert!(value.len() <= c_int::MAX as usize);
 
         let bytes = Bytes::allocate(value.len() + 1, |buf| {
-            buf.copy_from_slice(value.as_bytes());
-            buf[value.len() - 1] = 0;
+            buf[..value.len()].copy_from_slice(value.as_bytes());
+            buf[value.len()] = 0;
 
             let _ = CStr::from_bytes_with_nul(buf)?;
             Ok(())
@@ -495,8 +495,8 @@ pub enum StringRepresentation {
     /// > The [`SQLITE_UTF8_ZT`][] encoding means that the input string (call it `z`)
     /// > is UTF-8 encoded and that it is zero-terminated. If the length parameter
     /// > (call it `n`) is non-negative, this encoding option means that the
-    /// > caller guarantees that z array contains at least `n + 1` bytes and that
-    /// > the `z[n]` byte has a value of zero.
+    /// > caller guarantees that `z` array contains at least `n + 1` bytes and
+    /// > that the `z[n]` byte has a value of zero.
     ///
     /// [`SQLITE_UTF8_ZT`]: https://sqlite.org/c3ref/c_any.html#sqliteutf8zt
     #[cfg(sqlite_has_utf8_zt)]
