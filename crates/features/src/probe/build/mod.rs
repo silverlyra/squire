@@ -14,7 +14,7 @@ use std::{fmt, io, num::ParseIntError};
 use crate::directive::{DirectiveMap, ParseDirectiveError};
 use crate::info::Library;
 use crate::probe::Probe;
-use crate::version::Version;
+use crate::version::{Override, Version};
 
 pub use compile::Build;
 
@@ -23,12 +23,17 @@ impl Probe for Build {
 
     fn probe(&self) -> Result<Library, Self::Error> {
         let output = compile::run_probe(self)?;
-        let (version, directives) = output
+        let (version, output) = output
+            .split_once('\n')
+            .ok_or(BuildProbeError::InvalidOutput)?;
+        let (source_id, directives) = output
             .split_once('\n')
             .ok_or(BuildProbeError::InvalidOutput)?;
 
         let version: c_int = version.parse()?;
         let version = Version::from_number(version);
+
+        let version = Override::check(version, source_id);
 
         let directives: DirectiveMap = directives.parse()?;
 
