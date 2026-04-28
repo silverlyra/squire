@@ -63,6 +63,21 @@ impl Connection {
 
     /// [Open](ConnectionBuilder::open()) a [`Connection`] configured with
     /// non-default options.
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+    /// use squire::Connection;
+    ///
+    /// let connection = Connection::builder("./data.sqlite3")
+    ///     .read_only()
+    ///     .follow_symbolic_links(false)
+    ///     .open()?;
+    /// # let _ = connection;
+    /// # Ok(())
+    /// # }
+    /// ```
     #[must_use]
     pub fn builder<E: IntoEndpoint>(endpoint: E) -> ConnectionBuilder<E::Endpoint> {
         ConnectionBuilder::new(endpoint.into_endpoint())
