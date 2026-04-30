@@ -1,7 +1,7 @@
 [package]
-name = "squire-serde"
-description = "Serde integration for Squire"
-version = "0.0.1-alpha.2"
+name = "squire-sqlite3-version"
+description = "Parse and compare SQLite library versions"
+version = "0.1.0-alpha.1"
 edition = "2024"
 readme = "Readme.md"
 repository.workspace = true
@@ -10,22 +10,10 @@ license.workspace = true
 [features]
 default = ["std"]
 
-alloc = ["serde/alloc", "serde_json?/alloc"]
-std = ["serde/std", "serde_json?/std"]
-
-json = ["dep:serde_json"]
-jsonb = ["std", "dep:serde_sqlite_jsonb"]
+std = ["serde?/std"]
 
 [dependencies.serde]
 workspace = true
-features = ["derive"]
-
-[dependencies.serde_json]
-version = "^1.0.100"
-optional = true
-
-[dependencies.serde_sqlite_jsonb]
-version = "^0.2.1"
 optional = true
 
 [package.metadata.docs.rs]

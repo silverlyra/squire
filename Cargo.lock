@@ -1239,6 +1239,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "squire-sqlite3-version"
+version = "0.1.0-alpha.1"
+dependencies = [
+ "serde",
+]
+
+[[package]]
 name = "stable_deref_trait"
 version = "1.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
