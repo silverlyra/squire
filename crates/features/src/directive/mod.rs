@@ -15,7 +15,7 @@ directives! {
     DEBUG => Debug,
     DEFAULT_AUTOMATIC_INDEX => DefaultAutomaticIndex,
     DEFAULT_AUTOVACUUM => DefaultAutomaticVacuum,
-    DEFAULT_FOREIGN_KEYS => DefaultForeignKeys,
+    DEFAULT_FOREIGN_KEYS => DefaultForeignKeys(bool),
     DEFAULT_MEMSTATUS => DefaultMemoryStatus(bool),
     DEFAULT_SYNCHRONOUS => DefaultSynchronous(Synchronous),
     DEFAULT_WAL_SYNCHRONOUS => DefaultWalSynchronous(Synchronous),
