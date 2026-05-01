@@ -77,7 +77,7 @@ fn build_bundled_sqlite(dest: &Path, mock: bool) -> Result<sqlite::Build> {
         Directive::DefaultWalSynchronous(Synchronous::Normal),
         Directive::Threading(threading),
         Directive::DefaultAutomaticIndex,
-        Directive::DefaultForeignKeys,
+        Directive::DefaultForeignKeys(true),
         Directive::DefaultMemoryStatus(false),
         Directive::DoubleQuotedStrings(DoubleQuotedStrings::default()),
         Directive::LikeOperatorDoesntMatchBlob,

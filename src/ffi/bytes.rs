@@ -224,8 +224,8 @@ impl<'b> Bind<'b> for Bytes {
         's: 'b,
     {
         let (ptr, len) = self.into_raw_parts();
-        let ptr = ptr as *const c_void;
-        let destructor = sqlite3_destructor_type::new(sqlite3_free);
+        let ptr = ptr.cast::<c_void>();
+        let destructor = sqlite3_destructor_type::free();
 
         #[cfg(target_pointer_width = "32")]
         bind! { sqlite3_bind_blob(statement, index, ptr, len as c_int, destructor) }?;
@@ -242,8 +242,8 @@ impl<'b> Bind<'b> for Bytes {
         'b: 'c,
     {
         let (ptr, len) = self.into_raw_parts();
-        let ptr = ptr as *const c_void;
-        let destructor = sqlite3_destructor_type::new(sqlite3_free);
+        let ptr = ptr.cast::<c_void>();
+        let destructor = sqlite3_destructor_type::free();
 
         #[cfg(target_pointer_width = "32")]
         result! { sqlite3_result_blob(context, ptr, len as c_int, destructor) };

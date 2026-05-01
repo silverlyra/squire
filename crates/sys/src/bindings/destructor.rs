@@ -1,3 +1,6 @@
+#[cfg(not(feature = "bindgen"))]
+use crate::bindings::sqlite3_free;
+
 /// A destructor / memory `free` function for a value passed to SQLite as a
 /// [bound parameter][bind] or a [function result][].
 ///
@@ -23,10 +26,19 @@ impl sqlite3_destructor_type {
         sqlite3_destructor_type { func }
     }
 
+    /// A [destructor](Self) which calls [`sqlite3_free`].
+    pub const fn free() -> Self {
+        Self::new(free)
+    }
+
     /// Construct `SQLITE_STATIC` or `SQLITE_TRANSIENT`.
     pub(crate) const fn from_sentinel(sentinel: isize) -> Self {
         sqlite3_destructor_type { sentinel }
     }
+}
+
+unsafe extern "C" fn free(p: *mut ::core::ffi::c_void) {
+    unsafe { sqlite3_free(p) };
 }
 
 impl ::core::fmt::Debug for sqlite3_destructor_type {

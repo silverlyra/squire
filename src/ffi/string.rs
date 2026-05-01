@@ -244,7 +244,7 @@ impl<'b> Bind<'b> for String {
     {
         let (ptr, len) = self.into_raw_parts();
 
-        let destructor = sqlite3_destructor_type::new(sqlite3_free);
+        let destructor = sqlite3_destructor_type::free();
 
         #[cfg(target_pointer_width = "32")]
         bind! { sqlite3_bind_text(statement, index, ptr, len as c_int, destructor) }?;
@@ -262,7 +262,7 @@ impl<'b> Bind<'b> for String {
     {
         let (ptr, len) = self.into_raw_parts();
 
-        let destructor = sqlite3_destructor_type::new(sqlite3_free);
+        let destructor = sqlite3_destructor_type::free();
 
         #[cfg(target_pointer_width = "32")]
         result! { sqlite3_result_text(context, ptr, len as c_int, destructor) }
