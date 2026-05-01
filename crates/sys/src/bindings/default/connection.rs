@@ -15,16 +15,18 @@ unsafe extern "C" {
     /// [database connection]: https://sqlite.org/c3ref/sqlite3.html
     pub fn sqlite3_open_v2(
         filename: *const c_char,
-        ppDb: *mut *mut sqlite3,
+        opened_db: *mut *mut sqlite3,
         flags: c_int,
-        zVfs: *const c_char,
+        vfs_name: *const c_char,
     ) -> c_int;
 
     /// [Close][close] a [database connection][].
     ///
     /// [close]: https://sqlite.org/c3ref/close.html
     /// [database connection]: https://sqlite.org/c3ref/sqlite3.html
-    pub fn sqlite3_close(pDb: *mut sqlite3) -> c_int;
+    pub fn sqlite3_close(db: *mut sqlite3) -> c_int;
+
+    pub fn sqlite3_get_autocommit(db: *mut sqlite3) -> c_int;
 }
 
 pub const SQLITE_OPEN_READONLY: i32 = 0x00000001;
