@@ -12,6 +12,7 @@ keywords = ["sqlite", "database", "api", "bindings", "sql"]
 [workspace]
 resolver = "3"
 members = [
+    "crates/config",
     "crates/derive",
     "crates/features",
     "crates/serde",
@@ -25,10 +26,6 @@ members = [
 repository = "https://github.com/silverlyra/squire"
 license = "Apache-2.0"
 
-[workspace.dependencies.const_format]
-version = "0.2.36"
-features = ["rust_1_83"]
-
 [workspace.dependencies.derive_more]
 version = "2"
 
@@ -40,7 +37,7 @@ version = "^1.0.220"
 default-features = false
 
 [features]
-default = ["common", "derive", "multi-thread"]
+default = ["common", "derive", "multi-thread", "bundled"]
 derive = ["dep:squire-derive"]
 
 core = ["sqlite/core"]

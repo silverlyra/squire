@@ -1,0 +1,30 @@
+[package]
+name = "squire-sqlite3-config"
+description = "Defines build-time, library-wide, and connection options for SQLite"
+version = "0.1.0-alpha.1"
+edition = "2024"
+readme = "Readme.md"
+repository.workspace = true
+license.workspace = true
+
+[features]
+default = ["std", "build", "connection", "library"]
+
+alloc = []
+std = []
+
+build = []
+connection = []
+library = []
+
+[package.metadata.docs.rs]
+all-features = true
+
+rustdoc-args = ["--cfg", "docsrs"]
+
+targets = [
+    "aarch64-apple-darwin",
+    "aarch64-unknown-linux-gnu",
+    "i686-unknown-linux-gnu",
+    "x86_64-unknown-linux-gnu",
+]
