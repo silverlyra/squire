@@ -68,30 +68,32 @@ pub struct DoubleQuotedStrings {
 }
 
 impl DoubleQuotedStrings {
+    #[inline]
+    const fn new(in_ddl: bool, in_dml: bool) -> Self {
+        Self { in_ddl, in_dml }
+    }
+
+    pub const fn disabled() -> Self {
+        Self::new(false, false)
+    }
+
+    pub const fn enabled() -> Self {
+        Self::new(true, true)
+    }
+
     pub const fn value(&self) -> i32 {
         ((self.in_ddl as i32) << 1) | (self.in_dml as i32)
     }
 
     pub const fn from_value(value: i32) -> Option<Self> {
-        match value {
-            0 => Some(Self {
-                in_ddl: false,
-                in_dml: false,
-            }),
-            1 => Some(Self {
-                in_ddl: false,
-                in_dml: true,
-            }),
-            2 => Some(Self {
-                in_ddl: true,
-                in_dml: false,
-            }),
-            3 => Some(Self {
-                in_ddl: true,
-                in_dml: true,
-            }),
-            _ => None,
+        if value & !0b11 != 0 {
+            return None;
         }
+
+        let in_ddl = value & 0b01 != 0;
+        let in_dml = value & 0b10 != 0;
+
+        Some(Self { in_ddl, in_dml })
     }
 }
 

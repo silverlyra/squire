@@ -13,8 +13,8 @@ pub use value::{DirectiveValue, DoubleQuotedStrings, Synchronous, TemporaryStora
 directives! {
     CASE_SENSITIVE_LIKE => LikeOperatorCaseSenstive,
     DEBUG => Debug,
-    DEFAULT_AUTOMATIC_INDEX => DefaultAutomaticIndex,
-    DEFAULT_AUTOVACUUM => DefaultAutomaticVacuum,
+    DEFAULT_AUTOMATIC_INDEX => DefaultAutomaticIndex, // FIXME
+    DEFAULT_AUTOVACUUM => DefaultAutomaticVacuum, // FIXME
     DEFAULT_FOREIGN_KEYS => DefaultForeignKeys(bool),
     DEFAULT_MEMSTATUS => DefaultMemoryStatus(bool),
     DEFAULT_SYNCHRONOUS => DefaultSynchronous(Synchronous),

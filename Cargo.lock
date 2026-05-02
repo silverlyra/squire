@@ -1197,6 +1197,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "squire-sqlite3-config"
+version = "0.1.0-alpha.1"
+
+[[package]]
 name = "squire-sqlite3-features"
 version = "0.1.0-alpha.4"
 dependencies = [
